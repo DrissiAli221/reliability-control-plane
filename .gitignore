@@ -1,0 +1,19 @@
+.DS_Store
+.idea/
+
+.env
+.env.*
+!.env.example
+
+*.pem
+*.key
+*.p12
+*.jks
+
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+
+# Personal learning notebook; intentionally kept outside repository history.
+docs/learning-notes.md
