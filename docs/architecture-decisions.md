@@ -24,6 +24,7 @@ RCP will be an uptime and reliability control plane that:
 - handles duplicates, retries, late and out-of-order results;
 - deterministically opens and resolves incidents from a versioned policy;
 - calculates measured availability separately from configured SLO targets;
+- generates evidence-backed reliability reports for an authorized monitor and explicit time window;
 - exposes a thin operator dashboard and an explicitly published public status page; and
 - makes its own health, queue lag, scheduler lag, incident decisions, and telemetry observable.
 
@@ -42,6 +43,7 @@ The sprint is successful when the repository can demonstrate, locally and repeat
 - at-least-once queue processing without duplicate logical results or incident events;
 - deterministic incident transitions under duplicate, late, missing, disagreeing, and out-of-order evidence;
 - explicit availability and evidence-coverage calculations;
+- deterministic report output whose availability, coverage, incidents, latency summaries, policy/calculation versions, and source window reconcile with stored facts;
 - useful metrics, traces, structured logs, and dashboards;
 - failure injection, load evidence, and a restore exercise;
 - valid Terraform configuration and a reviewable plan without an apply; and
@@ -319,7 +321,13 @@ A status page is anonymous only for an explicitly published projection. Private 
 
 Each scheduled execution is one SLI opportunity, regardless of the number of regions. Quorum <code>UP</code> is good; quorum <code>DOWN</code> is bad. <code>DISAGREEMENT</code> and <code>NO_DATA</code> reduce evidence coverage and cannot make the SLO appear to pass when coverage is below threshold. The SLO target remains a configuration, not measured uptime.
 
-#### Step 9 — RCP monitors the monitoring system
+#### Step 9 — reports package verified evidence, not invented conclusions
+
+An owner can request a reliability report for an explicit monitor and time window. The reporting module reads published monitor, incident, and availability projections and produces a versioned report model containing the measurement window, measured availability, SLO target/result, evidence coverage, error-budget consumption, regional disagreement/missing-data summary, latency percentiles when sample coverage is sufficient, and an incident timeline. Every report includes its generation time, calculation/policy version, and source-data watermark so later corrections are explainable.
+
+The first implementation returns deterministic JSON and HTML from the same report model. PDF is a final rendering adapter, not a second calculation path. A PDF must display insufficient evidence and missing checks explicitly and must never turn absent data into uptime. Manual owner-authorized generation comes first; scheduled delivery/email is deferred until report correctness, authorization, storage, retention, and notification abuse controls are proven.
+
+#### Step 10 — RCP monitors the monitoring system
 
 Actuator, Micrometer, structured logs, and OpenTelemetry expose API latency, scheduler lag, outbox age, queue age/depth, duplicates, result lateness, probe outcomes, incident decision delay, database pressure, DLQ depth, and telemetry-export failure. These signals distinguish “target failed” from “RCP failed to observe the target.”
 
@@ -751,6 +759,7 @@ Local tests use generated asymmetric signing keys, signed test JWTs, and a mock 
 | <code>incidents</code> | Global evidence evaluation, state machine, incidents/events, policy versions | probe facts and monitor policy snapshots |
 | <code>availability</code> | SLI/SLO calculations, coverage, maintenance exclusion, rollups/read models | probe/incident facts and monitor SLO snapshots |
 | <code>statuspage</code> | Explicit publication aggregate and anonymous read projection | monitors, incidents, availability read contracts |
+| <code>reporting</code> | Owner-authorized, time-bounded reliability report model and JSON/HTML/PDF renderers; no independent metric calculations | published monitor, incident, and availability read contracts |
 | <code>shared</code> | Only unavoidable technical primitives such as typed IDs, clock, pagination, and message metadata | No business logic |
 
 Modules communicate through published interfaces and domain events, not another module's repository or entity. Spring Modulith verification tests enforce allowed dependencies, absence of cycles, and module boundaries. “Shared” is not a dumping ground; a primitive remains in its owning module until at least two modules genuinely need a stable abstraction.
@@ -778,6 +787,7 @@ Exact columns will be finalized through Flyway migrations, but invariants are fi
 | <code>audit_events</code> | Security/administrative evidence | Append-only; actor, action, resource, time, outcome, correlation ID; sensitive values redacted. |
 | Optional <code>worker_region_health</code> | Separate platform health from target health | Derived from heartbeats/synthetic evidence; cannot be used to fabricate target success; region and time window explicit. |
 | Optional availability rollups | Efficient reporting after raw correctness | Rebuildable from immutable facts; calculation version/window/policy retained; never the only copy of evidence. |
+| Optional <code>generated_reports</code> metadata | Reproduce or audit persisted report artifacts | Owner/monitor/window, generation time, calculation/policy version, source watermark and content hash required; artifact reference never grants authorization; raw facts remain canonical. |
 
 Database constraints enforce what can be enforced structurally. Service-level checks are not substitutes for unique, foreign-key, check, and partial indexes. Flyway migrations own schema evolution; ORM auto-DDL is disabled outside disposable tests.
 
@@ -938,7 +948,8 @@ The order prioritizes proof-bearing backend correctness. The UI is deliberately 
 6. Write Terraform for the reviewed AWS topology; run formatting, validation, lint/security checks, and a plan that uses no apply.
 7. Finish ADRs, threat model, runbook, recovery notes, and learning concept records.
 8. Add only the minimum React/Vite operator/status UI needed to demonstrate proven backend behavior.
-9. Optionally, and only with explicit authorization, run a bounded AWS deploy/smoke/destroy exercise with a cost/cleanup checklist. Without authorization, stop at local evidence and Terraform plan.
+9. Add owner-authorized, time-bounded JSON/HTML reliability reports from the availability/incident read contracts; add PDF only as a renderer over the exact same tested report model.
+10. Optionally, and only with explicit authorization, run a bounded AWS deploy/smoke/destroy exercise with a cost/cleanup checklist. Without authorization, stop at local evidence and Terraform plan.
 
 **Day-3 exit evidence:** the system's failure modes are visible; the plan is reproducible; a restore works locally; infrastructure is reviewable; every portfolio claim points to a test, metric, trace, plan, or documented limitation.
 
@@ -1134,7 +1145,8 @@ This table is the review index. Ali can use it months later to verify that a pla
 | How are incidents opened/resolved? | Sections 3.5 Step 6 and 5.7 | Quorum, disagreement, deadline, ordered state diagram, transition keys, timestamps |
 | How are dashboard and public status responsibilities separated? | Sections 3.5 Step 7, 3.2, 6.5, and 7 | Thin private operator UI and explicit anonymous projection |
 | How are availability, SLO, maintenance, and missing checks defined? | Sections 3.5 Step 8 and 5.8 | Exact denominator, separate evidence coverage, prospective maintenance, versioned corrections |
-| How does RCP monitor itself? | Sections 3.5 Step 9, 3.2, 9.3, and ADR-012 | Actuator/Micrometer/OTel signals and operational metrics |
+| How are reliability reports produced without inventing measurements? | Sections 2, 3.5 Step 9, 7, and 10 Day 3 | One versioned report model, explicit window/coverage/policy/source watermark, JSON/HTML first, PDF rendering only |
+| How does RCP monitor itself? | Sections 3.5 Step 10, 3.2, 9.3, and ADR-012 | Actuator/Micrometer/OTel signals and operational metrics |
 | Which technologies run locally and which run on AWS? | Sections 3.2, 4, and 4.1 | Responsibility-by-responsibility mapping plus non-parity column |
 | What is the control plane versus worker/data plane? | Sections 3.3, 4.2, and 5.6 | Decides/remembers versus executes/reports facts; queues are transport |
 | Why is AWS meaningful rather than decorative? | Section 4.3 | Names platform behaviors/IAM/regions to prove, plus bounded real-AWS sequence |
