@@ -28,6 +28,7 @@
     </scm>
     <properties>
         <java.version>21</java.version>
+        <aws.java.sdk.version>2.46.7</aws.java.sdk.version>
         <spring-modulith.version>2.1.0</spring-modulith.version>
     </properties>
     <dependencies>
@@ -74,6 +75,10 @@
         <dependency>
             <groupId>org.springframework.modulith</groupId>
             <artifactId>spring-modulith-starter-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sqs</artifactId>
         </dependency>
 
         <dependency>
@@ -154,6 +159,13 @@
     </dependencies>
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws.java.sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>org.springframework.modulith</groupId>
                 <artifactId>spring-modulith-bom</artifactId>
