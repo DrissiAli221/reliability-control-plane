@@ -25,7 +25,8 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
                                 HttpMethod.GET,
-                                "/actuator/health"
+                                "/actuator/health",
+                                "/status/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
