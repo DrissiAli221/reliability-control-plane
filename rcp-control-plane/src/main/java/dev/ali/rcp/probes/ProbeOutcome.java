@@ -1,0 +1,14 @@
+package dev.ali.rcp.probes;
+
+public enum ProbeOutcome {
+    HTTP_RESPONSE,
+    EXPIRED,
+    UNSAFE_TARGET,
+    CONNECT_TIMEOUT,
+    REQUEST_TIMEOUT,
+    TLS_FAILURE,
+    CONNECTION_FAILURE,
+    RESPONSE_TOO_LARGE,
+    INTERRUPTED,
+    INTERNAL_ERROR
+}
