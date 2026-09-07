@@ -2,12 +2,14 @@ package dev.ali.rcp.probes;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
+import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-public final class ProbeMessageCodec {
+@Component
+public class ProbeMessageCodec {
     private static final int SUPPORTED_SCHEMA_VERSION = 1;
 
     private final ObjectMapper objectMapper;
@@ -61,6 +63,34 @@ public final class ProbeMessageCodec {
             return objectMapper.writeValueAsString(message);
         } catch (JacksonException exception) {
             throw new IllegalStateException("could not encode probe result", exception);
+        }
+    }
+
+    public ProbeResult decodeResult(String payload) {
+        try {
+            ProbeResultMessage message = objectMapper.readValue(payload, ProbeResultMessage.class);
+            if (message.schemaVersion() != SUPPORTED_SCHEMA_VERSION) {
+                throw new IllegalArgumentException(
+                        "unsupported probe-result schema version: " + message.schemaVersion()
+                );
+            }
+            return new ProbeResult(
+                    message.jobId(),
+                    message.executionId(),
+                    message.monitorId(),
+                    message.probeRegion(),
+                    message.scheduledAt(),
+                    message.startedAt(),
+                    message.completedAt(),
+                    message.outcome(),
+                    message.httpStatus(),
+                    message.latencyMillis(),
+                    message.responseBytes(),
+                    message.errorType(),
+                    message.monitorBehaviorVersion()
+            );
+        } catch (JacksonException exception) {
+            throw new IllegalArgumentException("invalid probe-result JSON", exception);
         }
     }
 
