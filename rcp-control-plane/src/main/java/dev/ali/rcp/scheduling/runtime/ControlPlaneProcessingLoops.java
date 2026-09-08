@@ -8,6 +8,7 @@ import dev.ali.rcp.scheduling.DueMonitorScheduler;
 import dev.ali.rcp.scheduling.outbox.OutboxPublishResult;
 import dev.ali.rcp.scheduling.outbox.OutboxPublisher;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -91,11 +92,20 @@ public class ControlPlaneProcessingLoops {
     }
 
     private void runLoop(String loop, Runnable work) {
+        Timer.Sample duration = Timer.start(meters);
+        String outcome = "success";
         try {
             work.run();
         } catch (RuntimeException exception) {
+            outcome = "failure";
             meters.counter("rcp.runtime.loop.failures", "loop", loop).increment();
             LOG.error("control-plane loop failed loop={}", loop, exception);
+        } finally {
+            duration.stop(meters.timer(
+                    "rcp.runtime.loop.duration",
+                    "loop", loop,
+                    "outcome", outcome
+            ));
         }
     }
 

@@ -109,6 +109,18 @@ curl -fsS http://localhost:8080/actuator/metrics \
 docker compose logs -f elasticmq postgres
 ```
 
+## Observe the reliability pipeline
+
+Compose also starts Prometheus and Grafana. Prometheus scrapes the local-only `/actuator/prometheus` endpoint every five seconds, and Grafana automatically provisions the **RCP Overview** dashboard.
+
+- Grafana: <http://localhost:3000/d/rcp-overview>
+- Prometheus targets: <http://localhost:9090/targets>
+- Raw application metrics: <http://localhost:8080/actuator/prometheus>
+
+The dashboard separates event counters from current-state gauges. Counters answer “how much work has passed through?” while gauges expose current pressure: pending outbox events, their oldest age, pending executions, unevaluated incident decisions, and open incidents. The snapshot-age panel turns red when the database-backed gauges stop refreshing, so a stale dashboard cannot silently look healthy.
+
+The Prometheus endpoint is unauthenticated only in the `local` Spring profile so the container can scrape the host application. Non-local profiles continue to require authentication; production metrics should additionally be isolated through private networking.
+
 Stop Spring Boot with `Ctrl+C`. Stop the dependency containers without deleting PostgreSQL data:
 
 ```bash

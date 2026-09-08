@@ -1,0 +1,130 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Enabled monitors",
+      "id": 1,
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "targets": [{ "expr": "rcp_system_monitors_enabled", "refId": "A" }],
+      "fieldConfig": { "defaults": { "decimals": 0 }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "Open incidents",
+      "id": 2,
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "targets": [{ "expr": "rcp_system_incidents_open", "refId": "A" }],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Pending outbox events",
+      "id": 3,
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "targets": [{ "expr": "rcp_system_outbox_pending", "refId": "A" }],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Pending executions",
+      "id": 4,
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "targets": [{ "expr": "rcp_system_executions_pending", "refId": "A" }],
+      "fieldConfig": { "defaults": { "decimals": 0 }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "Oldest outbox event",
+      "id": 5,
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "targets": [{ "expr": "rcp_system_outbox_oldest_pending_age_seconds", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "s", "decimals": 0 }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "Metric snapshot age",
+      "id": 6,
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "targets": [{ "expr": "time() - rcp_system_metrics_last_success_epoch_seconds", "refId": "A" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 20 }] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Scheduled monitors and completed regional jobs",
+      "id": 7,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        { "expr": "sum(rate(rcp_scheduler_monitors_scheduled_total[1m]))", "legendFormat": "scheduled monitors", "refId": "A" },
+        { "expr": "sum by (region) (rate(rcp_probe_jobs_completed_total[1m]))", "legendFormat": "jobs {{region}}", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ops", "min": 0 }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Control-plane loop duration",
+      "id": 8,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        {
+          "expr": "sum by (loop) (rate(rcp_runtime_loop_duration_seconds_sum{outcome=\"success\"}[5m])) / sum by (loop) (rate(rcp_runtime_loop_duration_seconds_count{outcome=\"success\"}[5m]))",
+          "legendFormat": "{{loop}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0 }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Failures and duplicates",
+      "id": 9,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [
+        { "expr": "sum by (loop) (increase(rcp_runtime_loop_failures_total[5m]))", "legendFormat": "loop failure {{loop}}", "refId": "A" },
+        { "expr": "sum(increase(rcp_outbox_events_failed_total[5m]))", "legendFormat": "outbox publish failure", "refId": "B" },
+        { "expr": "sum(increase(rcp_probe_results_duplicates_total[5m]))", "legendFormat": "duplicate result", "refId": "C" },
+        { "expr": "sum(increase(rcp_probe_results_processing_failures_total[5m]))", "legendFormat": "result processing failure", "refId": "D" }
+      ],
+      "fieldConfig": { "defaults": { "decimals": 0, "min": 0 }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "JVM heap usage",
+      "id": 10,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "targets": [{ "expr": "sum(jvm_memory_used_bytes{area=\"heap\"})", "legendFormat": "used heap", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "bytes", "min": 0 }, "overrides": [] }
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 41,
+  "tags": ["rcp", "reliability"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30m", "to": "now" },
+  "timezone": "browser",
+  "title": "RCP Overview",
+  "uid": "rcp-overview",
+  "version": 1
+}

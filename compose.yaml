@@ -23,5 +23,33 @@ services:
     volumes:
       - ./infra/local/elasticmq.conf:/opt/elasticmq.conf:ro
 
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/local/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - rcp-prometheus-data:/prometheus
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    depends_on:
+      - prometheus
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./infra/local/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/local/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - rcp-grafana-data:/var/lib/grafana
+
 volumes:
   rcp-postgres-data:
+  rcp-prometheus-data:
+  rcp-grafana-data:

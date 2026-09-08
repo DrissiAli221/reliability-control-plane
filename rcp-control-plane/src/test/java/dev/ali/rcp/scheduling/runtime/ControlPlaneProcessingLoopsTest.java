@@ -31,6 +31,16 @@ class ControlPlaneProcessingLoopsTest {
                 .isEqualTo(1);
         assertThat(meters.counter("rcp.scheduler.monitors.scheduled").count())
                 .isEqualTo(2);
+        assertThat(meters.timer(
+                "rcp.runtime.loop.duration",
+                "loop", "scheduler",
+                "outcome", "failure"
+        ).count()).isEqualTo(1);
+        assertThat(meters.timer(
+                "rcp.runtime.loop.duration",
+                "loop", "scheduler",
+                "outcome", "success"
+        ).count()).isEqualTo(1);
     }
 
     private ControlPlaneProcessingLoops loops(
