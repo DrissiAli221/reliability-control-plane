@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:17.6
+    environment:
+      POSTGRES_DB: rcp
+      POSTGRES_USER: rcp
+      POSTGRES_PASSWORD: rcp-local-only
+    ports:
+      - "15432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rcp -d rcp"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    volumes:
+      - rcp-postgres-data:/var/lib/postgresql/data
+
+  elasticmq:
+    image: softwaremill/elasticmq-native:1.7.1
+    ports:
+      - "9324:9324"
+      - "9325:9325"
+    volumes:
+      - ./infra/local/elasticmq.conf:/opt/elasticmq.conf:ro
+
+volumes:
+  rcp-postgres-data:
