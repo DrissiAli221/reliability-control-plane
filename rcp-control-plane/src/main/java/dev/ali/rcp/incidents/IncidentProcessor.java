@@ -1,5 +1,7 @@
 package dev.ali.rcp.incidents;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -9,6 +11,7 @@ import java.util.UUID;
 
 @Service
 public class IncidentProcessor {
+    private static final Logger LOG = LoggerFactory.getLogger(IncidentProcessor.class);
     private static final int BATCH_SIZE = 50;
 
     private final IncidentRepository repository;
@@ -58,5 +61,13 @@ public class IncidentProcessor {
             repository.saveState(execution.monitorId(), decision.state(), openIncidentId);
         }
         repository.recordEvaluation(execution, decision.transition());
+
+        LOG.atInfo()
+                .addKeyValue("executionId", execution.executionId())
+                .addKeyValue("monitorId", execution.monitorId())
+                .addKeyValue("verdict", execution.verdict())
+                .addKeyValue("incidentTransition", decision.transition())
+                .addKeyValue("resultingIncidentStatus", decision.state().status())
+                .log("incident policy evaluated");
     }
 }

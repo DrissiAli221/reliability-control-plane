@@ -1,5 +1,7 @@
 package dev.ali.rcp.probes.sqs;
 
+import dev.ali.rcp.probes.ProbeOutcome;
+import dev.ali.rcp.probes.ProbeResult;
 import dev.ali.rcp.probes.ProbeWorker;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.services.sqs.SqsClient;
@@ -7,6 +9,9 @@ import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
+
+import java.time.Instant;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -23,6 +28,7 @@ class SqsProbeWorkerPollerTest {
         ProbeWorker worker = mock(ProbeWorker.class);
         when(sqs.receiveMessage(any(ReceiveMessageRequest.class)))
                 .thenReturn(response());
+        when(worker.handle("job-json")).thenReturn(probeResult());
 
         ProbeJobPoll result = poller(sqs, worker).pollBatch();
 
@@ -65,5 +71,24 @@ class SqsProbeWorkerPollerTest {
                         .body("job-json")
                         .build())
                 .build();
+    }
+
+    private ProbeResult probeResult() {
+        Instant now = Instant.parse("2026-09-08T12:00:00Z");
+        return new ProbeResult(
+                UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                UUID.fromString("00000000-0000-0000-0000-000000000003"),
+                "eu-west-1",
+                now.minusSeconds(1),
+                now,
+                now.plusMillis(25),
+                ProbeOutcome.HTTP_RESPONSE,
+                200,
+                25,
+                512,
+                null,
+                1
+        );
     }
 }

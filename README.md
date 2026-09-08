@@ -39,17 +39,28 @@ docker compose ps
 
 The project uses host port `15432` for PostgreSQL to avoid common collisions with locally installed databases. ElasticMQ exposes its SQS-compatible API on `9324`.
 
-In the first terminal, start Spring Boot with an ephemeral local JWT signing secret:
+In the first terminal, download the OpenTelemetry Java agent and start Spring Boot with tracing plus an ephemeral local JWT signing secret:
 
 ```bash
 cd rcp-control-plane
 export JAVA_HOME=$(/usr/libexec/java_home -v 21)
 export PATH="$JAVA_HOME/bin:$PATH"
+./mvnw dependency:copy \
+  -Dartifact=io.opentelemetry.javaagent:opentelemetry-javaagent:2.25.0 \
+  -DoutputDirectory=target/otel \
+  -Dmdep.stripVersion=true
 export RCP_LOCAL_JWT_SECRET="$(openssl rand -base64 48)"
-./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+export OTEL_SERVICE_NAME=rcp-control-plane
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+export OTEL_METRICS_EXPORTER=none
+export OTEL_LOGS_EXPORTER=none
+./mvnw spring-boot:run \
+  -Dspring-boot.run.profiles=local \
+  -Dspring-boot.run.jvmArguments="-javaagent:target/otel/opentelemetry-javaagent.jar"
 ```
 
-The `local` profile applies Flyway migrations, enables the control-plane processing loops, and starts local adapters for the two configured probe queues. The local token issuer exists only in this profile; AWS will use Cognito/OIDC instead.
+The `local` profile applies Flyway migrations, enables the control-plane processing loops, and starts local adapters for the two configured probe queues. The Java agent instruments supported libraries without coupling domain code to a tracing vendor. If `mvn clean` removes `target`, repeat the agent download command. The local token issuer exists only in this profile; AWS will use Cognito/OIDC instead.
 
 In a second terminal, request a one-hour development JWT:
 
@@ -111,15 +122,24 @@ docker compose logs -f elasticmq postgres
 
 ## Observe the reliability pipeline
 
-Compose also starts Prometheus and Grafana. Prometheus scrapes the local-only `/actuator/prometheus` endpoint every five seconds, and Grafana automatically provisions the **RCP Overview** dashboard.
+Compose also starts Prometheus, Grafana, an OpenTelemetry Collector, and Tempo. Prometheus scrapes the local-only `/actuator/prometheus` endpoint every five seconds, the collector receives OTLP traces from the Java agent and forwards them to Tempo, and Grafana provisions both data sources automatically.
 
 - Grafana: <http://localhost:3000/d/rcp-overview>
+- Grafana Explore for traces: <http://localhost:3000/explore>
 - Prometheus targets: <http://localhost:9090/targets>
 - Raw application metrics: <http://localhost:8080/actuator/prometheus>
 
 The dashboard separates event counters from current-state gauges. Counters answer “how much work has passed through?” while gauges expose current pressure: pending outbox events, their oldest age, pending executions, unevaluated incident decisions, and open incidents. The snapshot-age panel turns red when the database-backed gauges stop refreshing, so a stale dashboard cannot silently look healthy.
 
 The Prometheus endpoint is unauthenticated only in the `local` Spring profile so the container can scrape the host application. Non-local profiles continue to require authentication; production metrics should additionally be isolated through private networking.
+
+Local application logs use Spring Boot's ECS JSON format. Lifecycle messages carry stable business correlation fields such as `executionId`, `jobId`, `eventId`, `monitorId`, region, verdict, and incident transition; agent-instrumented operations also carry `trace.id` and `span.id`. Search by `executionId` across queue boundaries, and use `trace.id` to inspect one instrumented runtime path in Grafana Explore. Choose the Tempo data source and run this TraceQL query:
+
+```text
+{ resource.service.name = "rcp-control-plane" }
+```
+
+Trace context is diagnostic metadata, not source-of-truth state. The durable execution/job/event IDs remain the reliable way to correlate asynchronous work after retries, duplicates, restarts, or trace retention expiry.
 
 Stop Spring Boot with `Ctrl+C`. Stop the dependency containers without deleting PostgreSQL data:
 

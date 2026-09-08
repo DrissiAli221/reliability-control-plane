@@ -1,11 +1,15 @@
 package dev.ali.rcp.scheduling.outbox;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
 public final class OutboxPublisher {
+    private static final Logger LOG = LoggerFactory.getLogger(OutboxPublisher.class);
 
     private static final int DEFAULT_BATCH_SIZE = 50;
     private static final int DEFAULT_MAX_ATTEMPTS = 5;
@@ -78,8 +82,14 @@ public final class OutboxPublisher {
                         publisherId
                 )) {
                     published++;
+                    LOG.atInfo()
+                            .addKeyValue("eventId", event.eventId())
+                            .addKeyValue("eventType", event.eventType())
+                            .addKeyValue("destinationRegion", event.destinationRegion())
+                            .log("outbox event published");
                 } else {
                     lostClaims++;
+                    logLostClaim(event);
                 }
             } catch (Exception exception) {
                 if (exception instanceof InterruptedException) {
@@ -101,8 +111,16 @@ public final class OutboxPublisher {
                         safeError(exception)
                 )) {
                     failed++;
+                    LOG.atWarn()
+                            .addKeyValue("eventId", event.eventId())
+                            .addKeyValue("eventType", event.eventType())
+                            .addKeyValue("destinationRegion", event.destinationRegion())
+                            .addKeyValue("attempt", attemptNumber)
+                            .addKeyValue("errorType", exception.getClass().getSimpleName())
+                            .log("outbox publication failed; retry recorded");
                 } else {
                     lostClaims++;
+                    logLostClaim(event);
                 }
             }
         }
@@ -113,6 +131,14 @@ public final class OutboxPublisher {
                 failed,
                 lostClaims
         );
+    }
+
+    private void logLostClaim(ClaimedOutboxEvent event) {
+        LOG.atWarn()
+                .addKeyValue("eventId", event.eventId())
+                .addKeyValue("eventType", event.eventType())
+                .addKeyValue("destinationRegion", event.destinationRegion())
+                .log("outbox publisher lost its lease before recording outcome");
     }
 
     private String safeError(Exception exception) {

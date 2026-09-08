@@ -34,10 +34,32 @@ services:
       - ./infra/local/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - rcp-prometheus-data:/prometheus
 
+  tempo:
+    image: grafana/tempo:2.8.2
+    command:
+      - -config.file=/etc/tempo.yml
+    ports:
+      - "3200:3200"
+    volumes:
+      - ./infra/local/tempo.yml:/etc/tempo.yml:ro
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.135.0
+    command:
+      - --config=/etc/otelcol-contrib/config.yml
+    depends_on:
+      - tempo
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./infra/local/otel-collector.yml:/etc/otelcol-contrib/config.yml:ro
+
   grafana:
     image: grafana/grafana:12.1.0
     depends_on:
       - prometheus
+      - tempo
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer

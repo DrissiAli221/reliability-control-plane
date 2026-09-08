@@ -1,5 +1,7 @@
 package dev.ali.rcp.scheduling;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -10,6 +12,7 @@ import java.util.UUID;
 
 @Service
 public class DueMonitorScheduler {
+    private static final Logger LOG = LoggerFactory.getLogger(DueMonitorScheduler.class);
 
     private static final int BATCH_SIZE = 50;
     private static final long INCIDENT_POLICY_VERSION = 1;
@@ -59,14 +62,23 @@ public class DueMonitorScheduler {
         );
 
         for (String probeRegion : PROBE_REGIONS) {
+            UUID jobId = UUID.randomUUID();
+            UUID eventId = UUID.randomUUID();
             schedulingRepository.insertJobAndOutboxEvent(
                     executionId,
-                    UUID.randomUUID(),
-                    UUID.randomUUID(),
+                    jobId,
+                    eventId,
                     monitor,
                     probeRegion,
                     resultDeadlineAt
             );
+            LOG.atInfo()
+                    .addKeyValue("monitorId", monitor.monitorId())
+                    .addKeyValue("executionId", executionId)
+                    .addKeyValue("jobId", jobId)
+                    .addKeyValue("eventId", eventId)
+                    .addKeyValue("probeRegion", probeRegion)
+                    .log("probe job and outbox intent staged in scheduling transaction");
         }
 
         schedulingRepository.advanceNextCheckAt(
@@ -74,6 +86,13 @@ public class DueMonitorScheduler {
                 monitor.scheduledAt(),
                 firstFutureDueTime(monitor, databaseNow)
         );
+
+        LOG.atInfo()
+                .addKeyValue("monitorId", monitor.monitorId())
+                .addKeyValue("executionId", executionId)
+                .addKeyValue("scheduledAt", monitor.scheduledAt())
+                .addKeyValue("regionCount", PROBE_REGIONS.size())
+                .log("probe execution scheduled");
     }
 
     private Instant firstFutureDueTime(

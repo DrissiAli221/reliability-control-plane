@@ -1,5 +1,7 @@
 package dev.ali.rcp.incidents;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +12,7 @@ import java.util.Objects;
 
 @Service
 public class ExecutionFinalizer {
+    private static final Logger LOG = LoggerFactory.getLogger(ExecutionFinalizer.class);
     private static final int BATCH_SIZE = 50;
 
     private final ExecutionFinalizationRepository repository;
@@ -44,6 +47,13 @@ public class ExecutionFinalizer {
                     "repository returned an execution that is not finalizable: " + execution.executionId()
             ));
             repository.finalizeExecution(execution.executionId(), verdict);
+            LOG.atInfo()
+                    .addKeyValue("executionId", execution.executionId())
+                    .addKeyValue("monitorId", execution.monitorId())
+                    .addKeyValue("receivedRegionCount", facts.size())
+                    .addKeyValue("expectedRegionCount", execution.expectedRegionCount())
+                    .addKeyValue("verdict", verdict)
+                    .log("probe execution finalized");
         }
         return executions.size();
     }

@@ -1,6 +1,9 @@
 package dev.ali.rcp.probes.sqs;
 
+import dev.ali.rcp.probes.ProbeResult;
 import dev.ali.rcp.probes.ProbeWorker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
 import software.amazon.awssdk.services.sqs.model.Message;
@@ -10,6 +13,7 @@ import java.util.List;
 import java.util.Objects;
 
 public final class SqsProbeWorkerPoller {
+    private static final Logger LOG = LoggerFactory.getLogger(SqsProbeWorkerPoller.class);
     private final String region;
     private final SqsClient sqsClient;
     private final String jobQueueUrl;
@@ -55,15 +59,34 @@ public final class SqsProbeWorkerPoller {
 
         for (Message message : messages) {
             try {
-                worker.handle(message.body());
+                ProbeResult result = worker.handle(message.body());
                 completed++;
+                LOG.atInfo()
+                        .addKeyValue("jobId", result.jobId())
+                        .addKeyValue("executionId", result.executionId())
+                        .addKeyValue("monitorId", result.monitorId())
+                        .addKeyValue("probeRegion", result.probeRegion())
+                        .addKeyValue("probeOutcome", result.outcome())
+                        .addKeyValue("httpStatus", result.httpStatus())
+                        .addKeyValue("latencyMs", result.latencyMillis())
+                        .log("probe job completed and result published");
                 try {
                     acknowledge(message);
                 } catch (RuntimeException acknowledgementFailure) {
                     acknowledgementFailures++;
+                    LOG.atWarn()
+                            .addKeyValue("sqsMessageId", message.messageId())
+                            .addKeyValue("probeRegion", region)
+                            .addKeyValue("errorType", acknowledgementFailure.getClass().getSimpleName())
+                            .log("probe job completed but queue acknowledgement failed");
                 }
             } catch (RuntimeException processingFailure) {
                 processingFailures++;
+                LOG.atWarn()
+                        .addKeyValue("sqsMessageId", message.messageId())
+                        .addKeyValue("probeRegion", region)
+                        .addKeyValue("errorType", processingFailure.getClass().getSimpleName())
+                        .log("probe job processing failed");
             }
         }
 
