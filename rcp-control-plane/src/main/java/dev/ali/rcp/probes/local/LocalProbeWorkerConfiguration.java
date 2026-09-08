@@ -46,11 +46,15 @@ public class LocalProbeWorkerConfiguration {
             LocalProbeWorkerProperties properties,
             ProbeMessageCodec codec,
             SafeTargetPolicy safeTargetPolicy,
+            LocalProbeFaults faults,
             MeterRegistry meterRegistry
     ) {
         ProbeEngine engine = new ProbeEngine(
                 new SafeTargetProbePolicy(safeTargetPolicy),
-                new JdkProbeHttpClient(Duration.ofSeconds(3))
+                new FaultInjectingProbeHttpClient(
+                        new JdkProbeHttpClient(Duration.ofSeconds(3)),
+                        faults
+                )
         );
         ProbeResultTransport resultTransport = new SqsProbeResultTransport(
                 localWorkerSqsClient,

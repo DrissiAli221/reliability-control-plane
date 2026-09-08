@@ -78,6 +78,28 @@ curl -fsS http://localhost:8080/api/monitors \
   -H "Authorization: Bearer $RCP_TOKEN" | jq
 ```
 
+## Exercise incident opening and recovery
+
+The local profile has an authenticated fault-injection control. It changes only the local HTTP adapter and is absent from non-local profiles. `HTTP_503` makes both simulated regional workers report a real HTTP 503 fact without weakening URL validation.
+
+```bash
+curl -fsS -X PUT http://localhost:8080/api/local/probe-fault \
+  -H "Authorization: Bearer $RCP_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data '{"mode":"HTTP_503"}' | jq
+```
+
+After two scheduled checks, the incident state becomes `OPEN`. Restore real network probing:
+
+```bash
+curl -fsS -X PUT http://localhost:8080/api/local/probe-fault \
+  -H "Authorization: Bearer $RCP_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data '{"mode":"PASS_THROUGH"}' | jq
+```
+
+Two subsequent `UP` checks resolve the incident. Other supported modes are `CONNECTION_FAILURE`, `REQUEST_TIMEOUT`, and `RESPONSE_TOO_LARGE`.
+
 Useful diagnostics:
 
 ```bash
