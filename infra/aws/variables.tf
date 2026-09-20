@@ -41,11 +41,22 @@ variable "offline_mode" {
 variable "queue_visibility_timeout_seconds" {
   description = "Time granted to a consumer before an unacknowledged message becomes visible again."
   type        = number
-  default     = 180
+  default     = 210
 
   validation {
     condition     = var.queue_visibility_timeout_seconds >= 30 && var.queue_visibility_timeout_seconds <= 43200
     error_message = "queue_visibility_timeout_seconds must be between 30 and 43200."
+  }
+}
+
+variable "probe_worker_timeout_seconds" {
+  description = "Hard timeout for each regional Lambda invocation."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.probe_worker_timeout_seconds >= 1 && var.probe_worker_timeout_seconds <= 900
+    error_message = "probe_worker_timeout_seconds must be between 1 and 900."
   }
 }
 
@@ -58,4 +69,20 @@ variable "queue_max_receive_count" {
     condition     = var.queue_max_receive_count >= 1 && var.queue_max_receive_count <= 1000
     error_message = "queue_max_receive_count must be between 1 and 1000."
   }
+}
+
+variable "probe_worker_artifact_bucket" {
+  description = "Existing S3 bucket containing the immutable regional probe-worker artifact. Terraform does not create or upload it."
+  type        = string
+}
+
+variable "probe_worker_artifact_key" {
+  description = "Versioned S3 key for the regional probe-worker artifact."
+  type        = string
+}
+
+variable "probe_worker_artifact_object_version" {
+  description = "Optional S3 object version. Set it for every authorized deployment so rollbacks are deterministic."
+  type        = string
+  default     = null
 }

@@ -25,4 +25,23 @@ output "queue_topology" {
     condition     = var.secondary_probe_region != var.central_region
     error_message = "secondary_probe_region must differ from central_region."
   }
+
+  precondition {
+    condition     = var.queue_visibility_timeout_seconds >= (var.probe_worker_timeout_seconds * 6) + 1
+    error_message = "queue visibility must be at least six times the Lambda timeout plus the one-second batching window."
+  }
+}
+
+output "probe_workers" {
+  description = "Regional worker and execution-role ARNs. Workers have no RDS or control-plane network attachment."
+  value = {
+    (var.central_region) = {
+      function_arn       = module.central_probe_worker.function_arn
+      execution_role_arn = module.central_probe_worker.execution_role_arn
+    }
+    (var.secondary_probe_region) = {
+      function_arn       = module.secondary_probe_worker.function_arn
+      execution_role_arn = module.secondary_probe_worker.execution_role_arn
+    }
+  }
 }

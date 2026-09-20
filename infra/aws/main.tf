@@ -38,3 +38,37 @@ module "central_probe_results" {
   visibility_timeout_seconds = var.queue_visibility_timeout_seconds
   max_receive_count          = var.queue_max_receive_count
 }
+
+module "central_probe_worker" {
+  source = "./modules/probe_worker"
+
+  name                    = "${local.name_prefix}-probe-worker-${var.central_region}"
+  probe_region            = var.central_region
+  job_queue_arn           = module.central_probe_jobs.queue_arn
+  result_queue_arn        = module.central_probe_results.queue_arn
+  result_queue_url        = module.central_probe_results.queue_url
+  result_queue_region     = var.central_region
+  artifact_bucket         = var.probe_worker_artifact_bucket
+  artifact_key            = var.probe_worker_artifact_key
+  artifact_object_version = var.probe_worker_artifact_object_version
+  timeout_seconds         = var.probe_worker_timeout_seconds
+}
+
+module "secondary_probe_worker" {
+  source = "./modules/probe_worker"
+
+  providers = {
+    aws = aws.secondary_probe
+  }
+
+  name                    = "${local.name_prefix}-probe-worker-${var.secondary_probe_region}"
+  probe_region            = var.secondary_probe_region
+  job_queue_arn           = module.secondary_probe_jobs.queue_arn
+  result_queue_arn        = module.central_probe_results.queue_arn
+  result_queue_url        = module.central_probe_results.queue_url
+  result_queue_region     = var.central_region
+  artifact_bucket         = var.probe_worker_artifact_bucket
+  artifact_key            = var.probe_worker_artifact_key
+  artifact_object_version = var.probe_worker_artifact_object_version
+  timeout_seconds         = var.probe_worker_timeout_seconds
+}
