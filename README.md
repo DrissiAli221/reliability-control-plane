@@ -167,6 +167,10 @@ Each run writes `report.md` and the complete k6 `summary.json` beneath `artifact
 
 This test is a regression and learning tool, not a production capacity benchmark. The runner intentionally avoids creating monitors under load so repeated experiments do not pollute the source-of-truth database.
 
+## Validate the AWS infrastructure model
+
+Terraform is developed in reviewable slices under [`infra/aws`](infra/aws/README.md). The current slice models the central results queue and regional probe-job queues with their DLQs; it deliberately performs no deployment. Follow that directory's offline validation instructions to produce a plan without contacting an AWS account.
+
 Stop Spring Boot with `Ctrl+C`. Stop the dependency containers without deleting PostgreSQL data:
 
 ```bash

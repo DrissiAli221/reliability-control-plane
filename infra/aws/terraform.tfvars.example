@@ -1,0 +1,7 @@
+project_name           = "rcp"
+environment            = "dev"
+central_region         = "eu-west-1"
+secondary_probe_region = "us-east-1"
+
+# Local validation/plan only. Leave false for any real AWS operation.
+offline_mode = true
