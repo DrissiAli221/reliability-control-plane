@@ -141,6 +141,32 @@ Local application logs use Spring Boot's ECS JSON format. Lifecycle messages car
 
 Trace context is diagnostic metadata, not source-of-truth state. The durable execution/job/event IDs remain the reliable way to correlate asynchronous work after retries, duplicates, restarts, or trace retention expiry.
 
+## Run the local load experiment
+
+With the application and Compose services running, execute from the repository root:
+
+```bash
+./scripts/run-load-test.sh
+```
+
+The runner obtains a short-lived local JWT, selects an existing owned monitor, and starts a pinned k6 Docker image. The default workload sends 10 iterations per second for 40 seconds; every iteration reads the monitor overview and calculates an availability report. It checks:
+
+- fewer than 1% failed HTTP requests;
+- more than 99% successful functional checks;
+- no dropped iterations;
+- p95 below 500 ms for both endpoints.
+
+Override the workload without editing the script:
+
+```bash
+RCP_LOAD_RATE=25 RCP_LOAD_DURATION=60s RCP_LOAD_P95_LIMIT_MS=750 \
+  ./scripts/run-load-test.sh
+```
+
+Each run writes `report.md` and the complete k6 `summary.json` beneath `artifacts/load-tests/<UTC timestamp>/`. These machine-specific results are ignored by Git. The report also records scheduler, stored-result, and loop-failure counter changes during the workload, showing whether background reliability processing continued under API pressure.
+
+This test is a regression and learning tool, not a production capacity benchmark. The runner intentionally avoids creating monitors under load so repeated experiments do not pollute the source-of-truth database.
+
 Stop Spring Boot with `Ctrl+C`. Stop the dependency containers without deleting PostgreSQL data:
 
 ```bash
