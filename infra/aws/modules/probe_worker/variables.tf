@@ -47,7 +47,7 @@ variable "artifact_object_version" {
 variable "handler" {
   description = "Java Lambda handler implemented by the probe-worker artifact."
   type        = string
-  default     = "dev.ali.rcp.lambda.ProbeLambdaHandler::handleRequest"
+  default     = "dev.ali.rcp.lambda.ProbeLambdaHandler"
 }
 
 variable "timeout_seconds" {

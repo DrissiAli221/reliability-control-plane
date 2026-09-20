@@ -171,6 +171,12 @@ This test is a regression and learning tool, not a production capacity benchmark
 
 Terraform is developed in reviewable slices under [`infra/aws`](infra/aws/README.md). The current slice models the central results queue and regional probe-job queues with their DLQs; it deliberately performs no deployment. Follow that directory's offline validation instructions to produce a plan without contacting an AWS account.
 
+The repository root is a Maven reactor for the pure probe core and both Java deployables. The control plane and Lambda adapter share probe contracts and execution logic without packaging database or Spring control-plane code into the worker. Build and test everything with:
+
+```bash
+./rcp-control-plane/mvnw verify
+```
+
 Stop Spring Boot with `Ctrl+C`. Stop the dependency containers without deleting PostgreSQL data:
 
 ```bash

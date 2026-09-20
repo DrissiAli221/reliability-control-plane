@@ -2,13 +2,10 @@ package dev.ali.rcp.probes;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Component;
-
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-@Component
 public class ProbeMessageCodec {
     private static final int SUPPORTED_SCHEMA_VERSION = 1;
 

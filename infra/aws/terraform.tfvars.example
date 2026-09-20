@@ -7,7 +7,7 @@ probe_worker_timeout_seconds = 30
 # The offline plan does not inspect this object. A future apply requires a real,
 # immutable artifact and should pin probe_worker_artifact_object_version.
 probe_worker_artifact_bucket = "replace-with-versioned-artifact-bucket"
-probe_worker_artifact_key    = "probe-worker/not-built-yet/rcp-probe-lambda.zip"
+probe_worker_artifact_key    = "probe-worker/not-uploaded/rcp-probe-lambda.jar"
 
 # Local validation/plan only. Leave false for any real AWS operation.
 offline_mode = true

@@ -26,7 +26,7 @@ The queue slice contains six Standard SQS queues—three source queues and three
 
 Each worker can consume only its own regional job queue and send only to the central result queue. It has no RDS permissions and no VPC attachment to control-plane private subnets. Reserved concurrency and event-source concurrency are both capped at 10 so a backlog or retry storm cannot create unbounded probing. Partial batch responses are enabled; the Java handler must return the failed SQS item identifiers.
 
-The artifact bucket is deliberately external to this stack. Terraform consumes a versioned artifact; it does not compile or upload mutable local source during planning. The placeholder in `terraform.tfvars.example` is sufficient only for offline planning and cannot support an apply.
+The artifact bucket is deliberately external to this stack. Terraform consumes the shaded JAR produced at `rcp-probe-lambda/target/rcp-probe-lambda.jar`; it does not compile or upload mutable local source during planning. The placeholder in `terraform.tfvars.example` is sufficient only for offline planning and cannot support an apply.
 
 ## State and secrets
 

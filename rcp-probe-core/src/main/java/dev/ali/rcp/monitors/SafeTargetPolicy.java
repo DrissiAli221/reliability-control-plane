@@ -1,7 +1,5 @@
 package dev.ali.rcp.monitors;
 
-import org.springframework.stereotype.Component;
-
 import java.net.IDN;
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -10,7 +8,6 @@ import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.Locale;
 
-@Component
 public class SafeTargetPolicy {
 
     public String validateAndNormalize(String rawTargetUrl) {
