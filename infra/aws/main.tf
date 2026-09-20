@@ -8,6 +8,26 @@ locals {
   }
 }
 
+module "central_network" {
+  source = "./modules/central_network"
+
+  name               = local.name_prefix
+  vpc_cidr           = var.central_vpc_cidr
+  availability_zones = var.central_availability_zones
+}
+
+module "postgresql" {
+  source = "./modules/postgresql"
+
+  name                = local.name_prefix
+  subnet_ids          = module.central_network.database_subnet_ids
+  security_group_id   = module.central_network.database_security_group_id
+  instance_class      = var.database_instance_class
+  multi_az            = var.database_multi_az
+  deletion_protection = var.database_deletion_protection
+  skip_final_snapshot = var.database_skip_final_snapshot
+}
+
 module "central_probe_jobs" {
   source = "./modules/standard_queue"
 

@@ -45,3 +45,24 @@ output "probe_workers" {
     }
   }
 }
+
+output "central_data_plane" {
+  description = "Private central network and PostgreSQL endpoints for the future ECS service."
+  value = {
+    vpc_id                          = module.central_network.vpc_id
+    public_subnet_ids               = module.central_network.public_subnet_ids
+    application_subnet_ids          = module.central_network.application_subnet_ids
+    database_subnet_ids             = module.central_network.database_subnet_ids
+    load_balancer_security_group_id = module.central_network.load_balancer_security_group_id
+    control_plane_security_group_id = module.central_network.control_plane_security_group_id
+    database_endpoint               = module.postgresql.endpoint
+    database_port                   = module.postgresql.port
+    database_name                   = module.postgresql.database_name
+    database_master_secret_arn      = module.postgresql.master_secret_arn
+  }
+
+  precondition {
+    condition     = alltrue([for zone in var.central_availability_zones : startswith(zone, var.central_region)])
+    error_message = "Every central availability zone must belong to central_region."
+  }
+}

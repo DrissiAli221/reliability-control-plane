@@ -38,6 +38,47 @@ variable "offline_mode" {
   default     = false
 }
 
+variable "central_vpc_cidr" {
+  description = "Private IPv4 range for the central control-plane VPC."
+  type        = string
+  default     = "10.42.0.0/16"
+
+  validation {
+    condition     = can(cidrnetmask(var.central_vpc_cidr))
+    error_message = "central_vpc_cidr must be a valid IPv4 CIDR."
+  }
+}
+
+variable "central_availability_zones" {
+  description = "Two availability zones in central_region."
+  type        = list(string)
+  default     = ["eu-west-1a", "eu-west-1b"]
+}
+
+variable "database_instance_class" {
+  description = "Small default for the reference environment; resize from measured load and connection evidence."
+  type        = string
+  default     = "db.t4g.micro"
+}
+
+variable "database_multi_az" {
+  description = "Enable intra-region RDS standby failover. False keeps the undeployed reference plan cheaper."
+  type        = bool
+  default     = false
+}
+
+variable "database_deletion_protection" {
+  description = "Enable before any environment contains durable data."
+  type        = bool
+  default     = false
+}
+
+variable "database_skip_final_snapshot" {
+  description = "Development-only teardown behavior. Must be false for durable environments."
+  type        = bool
+  default     = true
+}
+
 variable "queue_visibility_timeout_seconds" {
   description = "Time granted to a consumer before an unacknowledged message becomes visible again."
   type        = number

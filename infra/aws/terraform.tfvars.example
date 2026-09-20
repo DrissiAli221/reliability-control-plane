@@ -3,6 +3,13 @@ environment            = "dev"
 central_region         = "eu-west-1"
 secondary_probe_region = "us-east-1"
 probe_worker_timeout_seconds = 30
+central_availability_zones = ["eu-west-1a", "eu-west-1b"]
+
+# Development/reference posture. These must be reconsidered before durable use.
+database_instance_class      = "db.t4g.micro"
+database_multi_az            = false
+database_deletion_protection = false
+database_skip_final_snapshot = true
 
 # The offline plan does not inspect this object. A future apply requires a real,
 # immutable artifact and should pin probe_worker_artifact_object_version.

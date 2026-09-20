@@ -1,6 +1,6 @@
 # AWS Terraform
 
-This directory incrementally declares the validated AWS architecture. It currently models the central result queue, one probe-job queue plus DLQ in each of two explicit AWS regions, and a least-privilege Java 21 Lambda worker attached to each regional job queue.
+This directory incrementally declares the validated AWS architecture. It currently models the regional queue/worker plane plus the central network and PostgreSQL source-of-truth boundary.
 
 Provider aliases are intentionally explicit. Terraform cannot dynamically create provider configurations, so adding a real probe region requires a reviewed provider alias and module instance. That friction makes geographic placement visible in code.
 
@@ -27,6 +27,10 @@ The queue slice contains six Standard SQS queues—three source queues and three
 Each worker can consume only its own regional job queue and send only to the central result queue. It has no RDS permissions and no VPC attachment to control-plane private subnets. Reserved concurrency and event-source concurrency are both capped at 10 so a backlog or retry storm cannot create unbounded probing. Partial batch responses are enabled; the Java handler must return the failed SQS item identifiers.
 
 The artifact bucket is deliberately external to this stack. Terraform consumes the shaded JAR produced at `rcp-probe-lambda/target/rcp-probe-lambda.jar`; it does not compile or upload mutable local source during planning. The placeholder in `terraform.tfvars.example` is sufficient only for offline planning and cannot support an apply.
+
+The central VPC spans two availability zones. Public subnets contain only edge/NAT resources; future Fargate tasks use private application subnets; RDS uses isolated subnets with no default Internet route. Security groups allow PostgreSQL only from the control-plane task group. Two NAT gateways preserve AZ-local egress for cross-region SQS publication and OIDC/telemetry calls, but they carry meaningful hourly and data-processing cost—another reason this plan must not be applied casually.
+
+The reference database is private and encrypted, exports PostgreSQL logs, keeps seven days of automated backups, enables Performance Insights, and asks RDS to manage the master password in Secrets Manager. The example deliberately uses a small Single-AZ instance and development teardown settings; this is not a production-HA claim. Before durable use, enable Multi-AZ, deletion protection, and final snapshots, then perform a restore/failover exercise with explicit RPO/RTO.
 
 ## State and secrets
 
