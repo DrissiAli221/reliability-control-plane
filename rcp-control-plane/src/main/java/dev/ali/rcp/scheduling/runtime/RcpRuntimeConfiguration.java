@@ -21,16 +21,34 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.SqsClientBuilder;
 
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 @Configuration(proxyBeanMethods = false)
 @EnableScheduling
 @EnableConfigurationProperties(RcpRuntimeProperties.class)
 @ConditionalOnProperty(prefix = "rcp.runtime", name = "enabled", havingValue = "true")
 public class RcpRuntimeConfiguration {
 
-    @Bean
-    SqsClient runtimeSqsClient(RcpRuntimeProperties properties) {
+    @Bean(destroyMethod = "close")
+    SqsClient resultSqsClient(RcpRuntimeProperties properties) {
+        return sqsClient(properties, properties.getProbeResultQueueRegion());
+    }
+
+    @Bean(destroyMethod = "close")
+    RegionalSqsClients probeJobSqsClients(RcpRuntimeProperties properties) {
+        Map<String, SqsClient> clients = properties.getProbeJobQueueUrls().keySet().stream()
+                .collect(Collectors.toUnmodifiableMap(
+                        Function.identity(),
+                        region -> sqsClient(properties, region)
+                ));
+        return new RegionalSqsClients(clients);
+    }
+
+    private SqsClient sqsClient(RcpRuntimeProperties properties, String region) {
         SqsClientBuilder builder = SqsClient.builder()
-                .region(Region.of(properties.getAwsRegion()));
+                .region(Region.of(region));
         if (properties.getSqsEndpoint() != null) {
             builder.endpointOverride(properties.getSqsEndpoint())
                     .credentialsProvider(StaticCredentialsProvider.create(
@@ -41,8 +59,8 @@ public class RcpRuntimeConfiguration {
     }
 
     @Bean
-    ProbeJobTransport probeJobTransport(SqsClient runtimeSqsClient, RcpRuntimeProperties properties) {
-        return new SqsProbeJobTransport(runtimeSqsClient, properties.getProbeJobQueueUrls());
+    ProbeJobTransport probeJobTransport(RegionalSqsClients clients, RcpRuntimeProperties properties) {
+        return new SqsProbeJobTransport(clients.asMap(), properties.getProbeJobQueueUrls());
     }
 
     @Bean
@@ -55,12 +73,12 @@ public class RcpRuntimeConfiguration {
 
     @Bean
     SqsProbeResultConsumer probeResultConsumer(
-            SqsClient runtimeSqsClient,
+            SqsClient resultSqsClient,
             RcpRuntimeProperties properties,
             ProbeResultIngestionService ingestionService
     ) {
         return new SqsProbeResultConsumer(
-                runtimeSqsClient,
+                resultSqsClient,
                 properties.getProbeResultQueueUrl(),
                 ingestionService,
                 properties.getResultWaitTimeSeconds(),

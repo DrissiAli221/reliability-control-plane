@@ -8,19 +8,19 @@ import java.util.Map;
 
 @ConfigurationProperties("rcp.runtime")
 public class RcpRuntimeProperties {
-    private String awsRegion = "us-east-1";
+    private String probeResultQueueRegion = "us-east-1";
     private URI sqsEndpoint;
     private Map<String, String> probeJobQueueUrls = new HashMap<>();
     private String probeResultQueueUrl;
     private int resultWaitTimeSeconds = 10;
     private int resultVisibilityTimeoutSeconds = 60;
 
-    public String getAwsRegion() {
-        return awsRegion;
+    public String getProbeResultQueueRegion() {
+        return probeResultQueueRegion;
     }
 
-    public void setAwsRegion(String awsRegion) {
-        this.awsRegion = awsRegion;
+    public void setProbeResultQueueRegion(String probeResultQueueRegion) {
+        this.probeResultQueueRegion = probeResultQueueRegion;
     }
 
     public URI getSqsEndpoint() {

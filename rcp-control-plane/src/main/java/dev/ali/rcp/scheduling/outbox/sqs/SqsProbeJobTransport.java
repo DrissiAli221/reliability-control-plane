@@ -5,19 +5,21 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 
 import java.util.Map;
-import java.util.Objects;
 
 public final class SqsProbeJobTransport implements ProbeJobTransport {
 
-    private final SqsClient sqsClient;
+    private final Map<String, SqsClient> sqsClientsByRegion;
     private final Map<String, String> queueUrlsByRegion;
 
     public SqsProbeJobTransport(
-            SqsClient sqsClient,
+            Map<String, SqsClient> sqsClientsByRegion,
             Map<String, String> queueUrlsByRegion
     ) {
-        this.sqsClient = Objects.requireNonNull(sqsClient);
+        this.sqsClientsByRegion = Map.copyOf(sqsClientsByRegion);
         this.queueUrlsByRegion = Map.copyOf(queueUrlsByRegion);
+        if (!this.sqsClientsByRegion.keySet().equals(this.queueUrlsByRegion.keySet())) {
+            throw new IllegalArgumentException("Every probe-job queue region must have exactly one SQS client");
+        }
     }
 
     @Override
@@ -34,6 +36,7 @@ public final class SqsProbeJobTransport implements ProbeJobTransport {
             );
         }
 
+        SqsClient sqsClient = sqsClientsByRegion.get(destinationRegion);
         sqsClient.sendMessage(
                 SendMessageRequest.builder()
                         .queueUrl(queueUrl)

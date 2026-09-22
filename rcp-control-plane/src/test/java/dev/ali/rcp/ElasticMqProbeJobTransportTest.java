@@ -77,7 +77,7 @@ class ElasticMqProbeJobTransportTest {
     @Test
     void sendsPayloadToTheQueueConfiguredForItsRegion() {
         SqsProbeJobTransport transport = new SqsProbeJobTransport(
-                sqsClient,
+                Map.of(EUROPE, sqsClient, VIRGINIA, sqsClient),
                 queueUrls
         );
 
