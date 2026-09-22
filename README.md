@@ -177,6 +177,18 @@ The repository root is a Maven reactor for the pure probe core and both Java dep
 ./rcp-control-plane/mvnw verify
 ```
 
+## Run the operator dashboard
+
+The thin React/TypeScript client lives in [`rcp-dashboard`](rcp-dashboard/README.md). With the local Spring application running on port 8080:
+
+```bash
+cd rcp-dashboard
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`. Local development obtains a generated test JWT from the local-only backend endpoint. AWS builds use Cognito authorization code with PKCE; incident decisions and availability calculations stay in the Java control plane.
+
 Build the same non-root Java 21 control-plane container intended for ECS from the repository root:
 
 ```bash
