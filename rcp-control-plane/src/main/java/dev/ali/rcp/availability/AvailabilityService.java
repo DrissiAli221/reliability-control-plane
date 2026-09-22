@@ -1,5 +1,6 @@
 package dev.ali.rcp.availability;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,9 +18,15 @@ public class AvailabilityService {
 
     private final AvailabilityRepository repository;
     private final AvailabilityCalculator calculator = new AvailabilityCalculator();
+    private final BigDecimal minimumEvidenceCoveragePercent;
 
-    public AvailabilityService(AvailabilityRepository repository) {
+    public AvailabilityService(
+            AvailabilityRepository repository,
+            @Value("${rcp.availability.minimum-evidence-coverage-percent:95}")
+            BigDecimal minimumEvidenceCoveragePercent
+    ) {
         this.repository = Objects.requireNonNull(repository);
+        this.minimumEvidenceCoveragePercent = Objects.requireNonNull(minimumEvidenceCoveragePercent);
     }
 
     @Transactional(readOnly = true)
@@ -39,7 +46,11 @@ public class AvailabilityService {
         }
 
         VerdictCounts counts = repository.countFinalizedVerdicts(monitorId, from, to);
-        AvailabilityMeasurement measurement = calculator.calculate(counts, sloTargetPercent);
+        AvailabilityMeasurement measurement = calculator.calculate(
+                counts,
+                sloTargetPercent,
+                minimumEvidenceCoveragePercent
+        );
         return new AvailabilityReport(
                 monitorId,
                 from,
@@ -47,6 +58,7 @@ public class AvailabilityService {
                 sloTargetPercent,
                 measurement.measuredAvailabilityPercent(),
                 measurement.evidenceCoveragePercent(),
+                minimumEvidenceCoveragePercent,
                 measurement.sloMet(),
                 counts.up(),
                 counts.down(),

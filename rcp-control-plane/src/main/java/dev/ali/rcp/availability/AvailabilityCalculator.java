@@ -7,9 +7,14 @@ import java.util.Objects;
 public final class AvailabilityCalculator {
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
 
-    public AvailabilityMeasurement calculate(VerdictCounts counts, BigDecimal sloTargetPercent) {
+    public AvailabilityMeasurement calculate(
+            VerdictCounts counts,
+            BigDecimal sloTargetPercent,
+            BigDecimal minimumEvidenceCoveragePercent
+    ) {
         Objects.requireNonNull(counts, "counts must not be null");
-        validateTarget(sloTargetPercent);
+        validatePercentage(sloTargetPercent, "sloTargetPercent");
+        validatePercentage(minimumEvidenceCoveragePercent, "minimumEvidenceCoveragePercent");
 
         BigDecimal coverage = percentage(counts.conclusive(), counts.total());
         if (counts.conclusive() == 0) {
@@ -20,7 +25,9 @@ public final class AvailabilityCalculator {
         return new AvailabilityMeasurement(
                 availability,
                 coverage,
-                availability.compareTo(sloTargetPercent) >= 0
+                coverage.compareTo(minimumEvidenceCoveragePercent) >= 0
+                        ? availability.compareTo(sloTargetPercent) >= 0
+                        : null
         );
     }
 
@@ -33,10 +40,10 @@ public final class AvailabilityCalculator {
                 .divide(BigDecimal.valueOf(denominator), 5, RoundingMode.HALF_UP);
     }
 
-    private void validateTarget(BigDecimal target) {
-        Objects.requireNonNull(target, "sloTargetPercent must not be null");
-        if (target.signum() <= 0 || target.compareTo(ONE_HUNDRED) > 0) {
-            throw new IllegalArgumentException("sloTargetPercent must be greater than 0 and at most 100");
+    private void validatePercentage(BigDecimal value, String name) {
+        Objects.requireNonNull(value, name + " must not be null");
+        if (value.signum() <= 0 || value.compareTo(ONE_HUNDRED) > 0) {
+            throw new IllegalArgumentException(name + " must be greater than 0 and at most 100");
         }
     }
 }

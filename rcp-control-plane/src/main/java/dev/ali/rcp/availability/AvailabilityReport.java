@@ -11,6 +11,7 @@ public record AvailabilityReport(
         BigDecimal sloTargetPercent,
         BigDecimal measuredAvailabilityPercent,
         BigDecimal evidenceCoveragePercent,
+        BigDecimal minimumEvidenceCoveragePercent,
         Boolean sloMet,
         long upExecutions,
         long downExecutions,

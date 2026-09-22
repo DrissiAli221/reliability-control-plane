@@ -210,6 +210,10 @@ Stop Spring Boot with `Ctrl+C`. Stop the dependency containers without deleting 
 docker compose down
 ```
 
+## Availability evidence policy
+
+The availability endpoint reports measured availability separately from evidence coverage. The reference policy requires at least 95% conclusive evidence among finalized executions before `sloMet` may be `true` or `false`; below that threshold it is `null` (insufficient evidence), even when the measured percentage looks good. The response includes the threshold. This coverage metric does **not** yet detect executions the scheduler never created, so it is not a production-grade contractual SLO proof.
+
 ## Delivery semantics
 
 - PostgreSQL is the source of truth; queues transport work.

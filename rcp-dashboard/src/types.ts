@@ -30,6 +30,7 @@ export type AvailabilityReport = {
   sloTargetPercent: number;
   measuredAvailabilityPercent: number | null;
   evidenceCoveragePercent: number;
+  minimumEvidenceCoveragePercent: number;
   sloMet: boolean | null;
   upExecutions: number;
   downExecutions: number;
