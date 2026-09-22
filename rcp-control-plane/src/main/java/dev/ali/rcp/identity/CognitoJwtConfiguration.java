@@ -21,9 +21,14 @@ class CognitoJwtConfiguration {
             @Value("${rcp.identity.issuer-uri}") String issuerUri,
             @Value("${rcp.identity.client-id}") String clientId
     ) {
-        NimbusJwtDecoder decoder = NimbusJwtDecoder.withIssuerLocation(issuerUri).build();
+        String normalizedIssuer = issuerUri.endsWith("/")
+                ? issuerUri.substring(0, issuerUri.length() - 1)
+                : issuerUri;
+        NimbusJwtDecoder decoder = NimbusJwtDecoder
+                .withJwkSetUri(normalizedIssuer + "/.well-known/jwks.json")
+                .build();
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<Jwt>(
-                JwtValidators.createDefaultWithIssuer(issuerUri),
+                JwtValidators.createDefaultWithIssuer(normalizedIssuer),
                 new CognitoAccessTokenValidator(clientId)
         ));
         return decoder;
