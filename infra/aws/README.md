@@ -1,6 +1,6 @@
 # AWS Terraform
 
-This directory incrementally declares the validated AWS architecture. It currently models the regional queue/worker plane plus the central network and PostgreSQL source-of-truth boundary.
+This directory incrementally declares the validated AWS architecture. It currently models the regional queue/worker plane, central network and PostgreSQL source-of-truth boundary, and Cognito operator identity.
 
 Provider aliases are intentionally explicit. Terraform cannot dynamically create provider configurations, so adding a real probe region requires a reviewed provider alias and module instance. That friction makes geographic placement visible in code.
 
@@ -31,6 +31,8 @@ The artifact bucket is deliberately external to this stack. Terraform consumes t
 The central VPC spans two availability zones. Public subnets contain only edge/NAT resources; future Fargate tasks use private application subnets; RDS uses isolated subnets with no default Internet route. Security groups allow PostgreSQL only from the control-plane task group. Two NAT gateways preserve AZ-local egress for cross-region SQS publication and OIDC/telemetry calls, but they carry meaningful hourly and data-processing cost—another reason this plan must not be applied casually.
 
 The reference database is private and encrypted, exports PostgreSQL logs, keeps seven days of automated backups, enables Performance Insights, and asks RDS to manage the master password in Secrets Manager. The example deliberately uses a small Single-AZ instance and development teardown settings; this is not a production-HA claim. Before durable use, enable Multi-AZ, deletion protection, and final snapshots, then perform a restore/failover exercise with explicit RPO/RTO.
+
+The Cognito user pool is for human operators. Its dashboard app client is public—there is deliberately no browser-exposed client secret—and allows only the authorization-code grant. The React client must add PKCE (S256) to that flow. Cognito access tokens identify this app in the `client_id` claim and use `token_use=access`; the Spring resource server validates both in addition to signature, issuer, expiry, and not-before checks. Callback and logout URLs are exact allowlists. The example localhost values and globally unique domain placeholder must be replaced before any authorized apply. No user account is created by this stack.
 
 ## State and secrets
 

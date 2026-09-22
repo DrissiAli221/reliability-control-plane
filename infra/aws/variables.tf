@@ -79,6 +79,27 @@ variable "database_skip_final_snapshot" {
   default     = true
 }
 
+variable "cognito_domain_prefix" {
+  description = "Globally unique managed-login domain prefix. Replace the example before any apply."
+  type        = string
+}
+
+variable "cognito_callback_urls" {
+  description = "Exact dashboard OAuth callback URLs; localhost is allowed only for development."
+  type        = list(string)
+}
+
+variable "cognito_logout_urls" {
+  description = "Exact dashboard post-logout URLs; localhost is allowed only for development."
+  type        = list(string)
+}
+
+variable "cognito_deletion_protection" {
+  description = "Enable before the user pool contains real operator identities."
+  type        = bool
+  default     = false
+}
+
 variable "queue_visibility_timeout_seconds" {
   description = "Time granted to a consumer before an unacknowledged message becomes visible again."
   type        = number

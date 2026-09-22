@@ -66,3 +66,21 @@ output "central_data_plane" {
     error_message = "Every central availability zone must belong to central_region."
   }
 }
+
+output "identity" {
+  description = "OIDC values consumed by the dashboard and Spring resource server."
+  value = {
+    user_pool_id         = module.identity.user_pool_id
+    issuer_uri           = module.identity.issuer_uri
+    dashboard_client_id  = module.identity.dashboard_client_id
+    managed_login_domain = module.identity.managed_login_domain
+  }
+
+  precondition {
+    condition = var.offline_mode || (
+      !strcontains(var.cognito_domain_prefix, "replace-before-apply") &&
+      alltrue([for url in concat(var.cognito_callback_urls, var.cognito_logout_urls) : startswith(url, "https://")])
+    )
+    error_message = "A real AWS plan requires a unique Cognito domain and HTTPS dashboard callback/logout URLs."
+  }
+}

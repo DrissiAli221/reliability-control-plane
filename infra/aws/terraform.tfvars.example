@@ -11,6 +11,13 @@ database_multi_az            = false
 database_deletion_protection = false
 database_skip_final_snapshot = true
 
+# The SPA uses authorization code + PKCE and therefore has no client secret.
+# Replace the globally unique domain prefix and URLs before any authorized apply.
+cognito_domain_prefix       = "rcp-dev-replace-before-apply"
+cognito_callback_urls       = ["http://localhost:5173/auth/callback"]
+cognito_logout_urls         = ["http://localhost:5173/"]
+cognito_deletion_protection = false
+
 # The offline plan does not inspect this object. A future apply requires a real,
 # immutable artifact and should pin probe_worker_artifact_object_version.
 probe_worker_artifact_bucket = "replace-with-versioned-artifact-bucket"

@@ -28,6 +28,16 @@ module "postgresql" {
   skip_final_snapshot = var.database_skip_final_snapshot
 }
 
+module "identity" {
+  source = "./modules/identity"
+
+  name                = local.name_prefix
+  domain_prefix       = var.cognito_domain_prefix
+  callback_urls       = var.cognito_callback_urls
+  logout_urls         = var.cognito_logout_urls
+  deletion_protection = var.cognito_deletion_protection
+}
+
 module "central_probe_jobs" {
   source = "./modules/standard_queue"
 
