@@ -4,9 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 
-import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
 
@@ -17,21 +15,17 @@ public class ExecutionFinalizer {
 
     private final ExecutionFinalizationRepository repository;
     private final ExecutionVerdictPolicy verdictPolicy;
-    private final Clock clock;
 
-    @Autowired
     public ExecutionFinalizer(ExecutionFinalizationRepository repository) {
-        this(repository, new ExecutionVerdictPolicy(), Clock.systemUTC());
+        this(repository, new ExecutionVerdictPolicy());
     }
 
     ExecutionFinalizer(
             ExecutionFinalizationRepository repository,
-            ExecutionVerdictPolicy verdictPolicy,
-            Clock clock
+            ExecutionVerdictPolicy verdictPolicy
     ) {
         this.repository = Objects.requireNonNull(repository);
         this.verdictPolicy = Objects.requireNonNull(verdictPolicy);
-        this.clock = Objects.requireNonNull(clock);
     }
 
     @Transactional
@@ -41,7 +35,7 @@ public class ExecutionFinalizer {
             List<RegionalProbeFact> facts = repository.findFacts(execution.executionId());
             ExecutionVerdict verdict = verdictPolicy.evaluate(
                     execution.expectedRegionCount(),
-                    !clock.instant().isBefore(execution.resultDeadlineAt()),
+                    execution.deadlineElapsed(),
                     facts
             ).orElseThrow(() -> new IllegalStateException(
                     "repository returned an execution that is not finalizable: " + execution.executionId()

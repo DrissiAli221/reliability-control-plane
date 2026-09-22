@@ -62,6 +62,15 @@ export OTEL_LOGS_EXPORTER=none
 
 The `local` profile applies Flyway migrations, enables the control-plane processing loops, and starts local adapters for the two configured probe queues. The Java agent instruments supported libraries without coupling domain code to a tracing vendor. If `mvn clean` removes `target`, repeat the agent download command. The local token issuer exists only in this profile; AWS will use Cognito/OIDC instead.
 
+If executions appear hours late or expire immediately, compare the host and PostgreSQL container clocks before changing scheduler logic:
+
+```bash
+date -u
+docker compose exec -T postgres date -u
+```
+
+They should agree within a few seconds. The scheduler and deadline query use PostgreSQL time as their authority; the application and local probe adapters still run on the host. A large Docker Desktop clock skew makes local end-to-end timings unreliable. Restart Docker Desktop, recheck both clocks, and only then repeat the experiment. Keep the Compose volumes; `docker compose down -v` would delete local data and is not a clock fix.
+
 In a second terminal, request a one-hour development JWT:
 
 ```bash

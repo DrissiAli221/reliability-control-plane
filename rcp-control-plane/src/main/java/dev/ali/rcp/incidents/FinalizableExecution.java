@@ -9,6 +9,7 @@ public record FinalizableExecution(
         UUID monitorId,
         Instant scheduledAt,
         Instant resultDeadlineAt,
+        boolean deadlineElapsed,
         int expectedRegionCount
 ) {
     public FinalizableExecution {

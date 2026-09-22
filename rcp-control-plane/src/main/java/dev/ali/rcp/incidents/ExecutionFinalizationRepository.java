@@ -24,7 +24,8 @@ public class ExecutionFinalizationRepository {
         return jdbcTemplate.query(
                 """
                 SELECT execution_id, monitor_id, scheduled_at,
-                       result_deadline_at, expected_region_count
+                       result_deadline_at, expected_region_count,
+                       result_deadline_at <= CURRENT_TIMESTAMP AS deadline_elapsed
                 FROM probe_executions executions
                 WHERE status = 'PENDING'
                   AND (
@@ -44,6 +45,7 @@ public class ExecutionFinalizationRepository {
                         resultSet.getObject("monitor_id", UUID.class),
                         resultSet.getObject("scheduled_at", OffsetDateTime.class).toInstant(),
                         resultSet.getObject("result_deadline_at", OffsetDateTime.class).toInstant(),
+                        resultSet.getBoolean("deadline_elapsed"),
                         resultSet.getInt("expected_region_count")
                 ),
                 batchSize
