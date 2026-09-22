@@ -177,6 +177,12 @@ The repository root is a Maven reactor for the pure probe core and both Java dep
 ./rcp-control-plane/mvnw verify
 ```
 
+Build the same non-root Java 21 control-plane container intended for ECS from the repository root:
+
+```bash
+docker build -f rcp-control-plane/Dockerfile -t rcp-control-plane:local .
+```
+
 Stop Spring Boot with `Ctrl+C`. Stop the dependency containers without deleting PostgreSQL data:
 
 ```bash

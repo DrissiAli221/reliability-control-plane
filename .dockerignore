@@ -1,0 +1,11 @@
+.git
+.idea
+artifacts
+docs
+infra
+load
+scripts
+target
+**/target
+**/.idea
+**/*.iml
