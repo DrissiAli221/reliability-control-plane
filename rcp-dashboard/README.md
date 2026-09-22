@@ -15,8 +15,8 @@ Vite proxies `/api`, `/local`, and `/status` to `http://localhost:8080`. Local m
 
 ## AWS authentication boundary
 
-Set `VITE_AUTH_MODE=cognito`, `VITE_COGNITO_AUTHORITY`, and `VITE_COGNITO_CLIENT_ID` at build time. `oidc-client-ts` performs authorization-code flow with PKCE and keeps the token in session storage. The future CloudFront distribution should serve the SPA and forward API paths to the ALB under one origin, avoiding a permissive cross-origin policy.
+Set `VITE_AUTH_MODE=cognito`, `VITE_COGNITO_AUTHORITY`, and `VITE_COGNITO_CLIENT_ID` at build time. `oidc-client-ts` performs authorization-code flow with PKCE and keeps the token in session storage. The current Terraform model serves the SPA from CloudFront and uses an explicit CloudFront origin in the backend's CORS allowlist; it does not yet proxy API paths through CloudFront. A future same-origin proxy would be a separate reviewed change.
 
 Production builds default to Cognito mode and fail closed when its configuration is absent. Local-token mode must be selected explicitly in a production build; it cannot authenticate against an AWS-profile backend because that backend does not expose `/local/token`.
 
-The dashboard currently supports monitor listing/creation, seven-day availability evidence, and read-only public status pages. Incident state transitions and availability calculations remain backend responsibilities.
+The dashboard currently supports monitor listing/creation, seven-day availability evidence, an owner-authorized seven-day HTML report download per monitor, and read-only public status pages. Incident state transitions, availability calculations, and report generation remain backend responsibilities. The browser obtains the report with its existing bearer token and downloads the returned HTML attachment; it does not calculate report values.

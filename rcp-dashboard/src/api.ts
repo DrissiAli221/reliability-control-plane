@@ -9,7 +9,7 @@ import type {
 
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? "";
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function authorizedResponse(path: string, init: RequestInit = {}): Promise<Response> {
   const token = await accessToken();
   if (!token) throw new Error("Sign in to continue");
 
@@ -29,7 +29,11 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       | null;
     throw new Error(problem?.detail ?? problem?.title ?? `Request failed (${response.status})`);
   }
-  return response.json() as Promise<T>;
+  return response;
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return (await authorizedResponse(path, init)).json() as Promise<T>;
 }
 
 export function listMonitors(): Promise<MonitorOverview[]> {
@@ -49,6 +53,17 @@ export function availability(monitorId: string, days = 7): Promise<AvailabilityR
     sloTargetPercent: "99.9",
   });
   return request(`/api/monitors/${monitorId}/availability?${query}`);
+}
+
+export async function reliabilityReportHtml(monitorId: string, days = 7): Promise<Blob> {
+  const to = new Date();
+  const from = new Date(to.getTime() - days * 86_400_000);
+  const query = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
+  const response = await authorizedResponse(
+    `/api/monitors/${encodeURIComponent(monitorId)}/reliability-report/html?${query}`,
+    { headers: { Accept: "text/html" } },
+  );
+  return response.blob();
 }
 
 export async function publicStatus(slug: string): Promise<PublicStatusPage> {

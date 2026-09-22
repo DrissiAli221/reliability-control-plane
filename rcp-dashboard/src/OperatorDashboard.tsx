@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { availability, createMonitor, listMonitors } from "./api";
 import { isLocalAuth } from "./auth";
 import { EvidenceRail } from "./components/EvidenceRail";
+import { DownloadReportButton } from "./components/DownloadReportButton";
 import type { AvailabilityReport, CreateMonitorInput, MonitorOverview } from "./types";
 
 type LoadState = "loading" | "ready" | "error";
@@ -104,7 +105,7 @@ export function OperatorDashboard({ onLogout }: { onLogout: () => void }) {
         )}
         <footer className="method-note">
           <span>Measurement rule</span>
-          <p>Availability uses conclusive UP and DOWN executions. Disagreement and missing data reduce evidence coverage instead of silently counting as uptime or downtime.</p>
+          <p>Availability uses conclusive UP and DOWN executions. Disagreement and missing data reduce coverage rather than counting as uptime; an SLO decision needs at least 95% coverage among finalized checks. Scheduler gaps are not yet counted.</p>
         </footer>
       </main>
 
@@ -126,7 +127,7 @@ function MonitorRow({ monitor, report }: { monitor: MonitorOverview; report?: Av
     <article className="fleet-row monitor-row">
       <div className="target-cell">
         <span className={`target-beacon ${tone}`} aria-hidden="true" />
-        <div><strong>{monitor.name}</strong><a href={monitor.targetUrl} target="_blank" rel="noreferrer">{compactUrl(monitor.targetUrl)}</a></div>
+        <div><strong>{monitor.name}</strong><a href={monitor.targetUrl} target="_blank" rel="noreferrer">{compactUrl(monitor.targetUrl)}</a><DownloadReportButton monitorId={monitor.id} /></div>
       </div>
       <div className="state-cell"><span className={`state-chip ${tone}`}>{state}</span><small>{relativeTime(monitor.latestCheckedAt)}</small></div>
       <div>{report ? <EvidenceRail report={report} /> : <span className="waiting-copy">Collecting finalized checks…</span>}</div>
