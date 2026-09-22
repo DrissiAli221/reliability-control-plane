@@ -121,6 +121,7 @@ module "control_plane_service" {
   database_master_secret_arn      = module.postgresql.master_secret_arn
   identity_issuer_uri             = module.identity.issuer_uri
   identity_client_id              = module.identity.dashboard_client_id
+  dashboard_allowed_origins       = var.dashboard_allowed_origins
   central_region                  = var.central_region
   probe_job_queue_urls = {
     (var.central_region)         = module.central_probe_jobs.queue_url

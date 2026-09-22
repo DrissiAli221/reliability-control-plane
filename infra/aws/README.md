@@ -42,6 +42,8 @@ The dashboard host is a private, versioned, encrypted S3 bucket behind CloudFron
 
 The static distribution and public ALB are separate origins in this slice. Before an AWS dashboard is started, choose and verify one explicit browser-to-API boundary: either a narrow Spring CORS allowlist for the exact dashboard origin, or a CloudFront API behavior backed by a correctly secured ALB origin. Do not enable wildcard authenticated CORS merely to make the browser connect.
 
+The current reference chooses the first boundary: `dashboard_allowed_origins` is injected into Spring and accepts exact origins only. It permits the authorization and JSON headers used by the SPA, does not allow browser credentials/cookies, and applies only to `/api/**` and `/status/**`. CORS controls which browser origins may read responses; it is not authentication, so protected endpoints still require a valid Cognito access token and ownership checks.
+
 ## State and secrets
 
 Terraform state and saved plans can contain sensitive values. Local state, plans, and `.terraform/` are ignored by Git. A future authorized AWS environment must use a separately bootstrapped encrypted remote backend with locking, restricted IAM, versioning, and recovery—not hard-coded credentials or committed backend secrets.

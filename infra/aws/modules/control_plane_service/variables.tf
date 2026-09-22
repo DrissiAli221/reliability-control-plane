@@ -78,6 +78,11 @@ variable "identity_client_id" {
   description = "Cognito public dashboard client expected in access-token client_id."
 }
 
+variable "dashboard_allowed_origins" {
+  type        = list(string)
+  description = "Exact browser origins allowed to call the authenticated API."
+}
+
 variable "central_region" {
   type        = string
   description = "Region that owns the result queue and central control plane."

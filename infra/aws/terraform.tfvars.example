@@ -23,6 +23,7 @@ cognito_deletion_protection = false
 control_plane_certificate_arn = "arn:aws:acm:eu-west-1:000000000000:certificate/00000000-0000-0000-0000-000000000000"
 control_plane_image_tag       = "not-pushed"
 control_plane_desired_count   = 0
+dashboard_allowed_origins     = ["http://localhost:5173"]
 
 # The offline plan does not inspect this object. A future apply requires a real,
 # immutable artifact and should pin probe_worker_artifact_object_version.

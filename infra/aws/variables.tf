@@ -127,6 +127,18 @@ variable "dashboard_force_destroy" {
   default     = false
 }
 
+variable "dashboard_allowed_origins" {
+  description = "Exact dashboard origins allowed by Spring CORS; use HTTPS origins without paths in AWS."
+  type        = list(string)
+
+  validation {
+    condition = length(var.dashboard_allowed_origins) > 0 && alltrue([
+      for origin in var.dashboard_allowed_origins : can(regex("^https?://[A-Za-z0-9.-]+(?::[0-9]+)?$", origin))
+    ])
+    error_message = "dashboard_allowed_origins must contain origins such as https://dashboard.example.com, without paths or wildcards."
+  }
+}
+
 variable "queue_visibility_timeout_seconds" {
   description = "Time granted to a consumer before an unacknowledged message becomes visible again."
   type        = number

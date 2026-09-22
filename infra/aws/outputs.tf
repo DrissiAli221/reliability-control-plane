@@ -98,9 +98,10 @@ output "control_plane_runtime" {
   precondition {
     condition = var.offline_mode || (
       !strcontains(var.control_plane_certificate_arn, "000000000000") &&
-      (var.control_plane_desired_count == 0 || var.control_plane_image_tag != "not-pushed")
+      (var.control_plane_desired_count == 0 || var.control_plane_image_tag != "not-pushed") &&
+      alltrue([for origin in var.dashboard_allowed_origins : startswith(origin, "https://")])
     )
-    error_message = "A real AWS plan requires a real ACM certificate ARN; starting tasks also requires an immutable image tag already pushed to ECR."
+    error_message = "A real AWS plan requires a real ACM certificate ARN and HTTPS dashboard origins; starting tasks also requires an immutable image tag already pushed to ECR."
   }
 }
 

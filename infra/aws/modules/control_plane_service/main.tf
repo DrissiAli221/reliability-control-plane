@@ -233,6 +233,7 @@ resource "aws_ecs_task_definition" "this" {
     environment = [
       { name = "SPRING_PROFILES_ACTIVE", value = "aws" },
       { name = "SPRING_DATASOURCE_URL", value = "jdbc:postgresql://${var.database_address}:${var.database_port}/${var.database_name}" },
+      { name = "RCP_IDENTITY_ALLOWED_ORIGINS", value = join(",", var.dashboard_allowed_origins) },
       { name = "SPRING_APPLICATION_JSON", value = jsonencode({
         rcp = {
           identity = {
