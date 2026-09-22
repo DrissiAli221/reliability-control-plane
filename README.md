@@ -214,6 +214,20 @@ docker compose down
 
 The availability endpoint reports measured availability separately from evidence coverage. The reference policy requires at least 95% conclusive evidence among finalized executions before `sloMet` may be `true` or `false`; below that threshold it is `null` (insufficient evidence), even when the measured percentage looks good. The response includes the threshold. This coverage metric does **not** yet detect executions the scheduler never created, so it is not a production-grade contractual SLO proof.
 
+## Generate an owner-only reliability report
+
+The report API uses the same availability calculation for JSON and downloadable HTML. Supply the monitor ID returned by monitor creation and an explicit UTC window (the end is exclusive):
+
+```bash
+export RCP_MONITOR_ID="<owned-monitor-id>"
+curl -fsS -G "http://localhost:8080/api/monitors/$RCP_MONITOR_ID/reliability-report" \
+  -H "Authorization: Bearer $RCP_TOKEN" \
+  --data-urlencode 'from=2026-09-01T00:00:00Z' \
+  --data-urlencode 'to=2026-09-08T00:00:00Z' | jq
+```
+
+Add `/html` before the query string and use `curl -o report.html` for a download. Both representations include the schema version, generation time, source-data watermark, availability and coverage, observed error-budget usage, HTTP-response latency when there are at least 20 samples, a bounded incident transition timeline, and explicit limitations. The HTML response is an attachment with a restrictive content-security policy; PDF is not yet implemented. A report request by another owner returns 404 rather than revealing that the monitor exists.
+
 ## Delivery semantics
 
 - PostgreSQL is the source of truth; queues transport work.

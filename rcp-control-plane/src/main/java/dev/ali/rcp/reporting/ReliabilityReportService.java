@@ -1,0 +1,99 @@
+package dev.ali.rcp.reporting;
+
+import dev.ali.rcp.availability.AvailabilityReport;
+import dev.ali.rcp.availability.AvailabilityService;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+
+@Service
+public class ReliabilityReportService {
+    private static final int MAX_INCIDENT_EVENTS = 100;
+    private static final int MINIMUM_LATENCY_SAMPLES = 20;
+    private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
+    private static final List<String> LIMITATIONS = List.of(
+            "Coverage counts conclusive finalized executions, not opportunities the scheduler never created.",
+            "Maintenance windows and regional SLIs are not implemented.",
+            "Incident timeline contains transitions in the requested window; an incident opened earlier may still be active.",
+            "Latency percentiles use HTTP-response samples only and require at least 20 samples.",
+            "Local region labels do not prove geographic probe execution or AWS production operation."
+    );
+
+    private final AvailabilityService availabilityService;
+    private final ReliabilityReportRepository repository;
+
+    public ReliabilityReportService(
+            AvailabilityService availabilityService,
+            ReliabilityReportRepository repository
+    ) {
+        this.availabilityService = Objects.requireNonNull(availabilityService);
+        this.repository = Objects.requireNonNull(repository);
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public ReliabilityReport generate(
+            String ownerSubject,
+            UUID monitorId,
+            Instant from,
+            Instant to,
+            BigDecimal sloTargetPercent
+    ) {
+        AvailabilityReport availability = availabilityService.report(
+                ownerSubject, monitorId, from, to, sloTargetPercent
+        );
+
+        ReliabilityReportRepository.MonitorLabel monitor;
+        try {
+            monitor = repository.monitorLabel(monitorId, ownerSubject);
+        } catch (EmptyResultDataAccessException exception) {
+            throw new dev.ali.rcp.availability.AvailabilityMonitorNotFoundException();
+        }
+
+        List<ReportIncidentEvent> events = repository.incidentTimeline(
+                monitorId, from, to, MAX_INCIDENT_EVENTS + 1
+        );
+        boolean truncated = events.size() > MAX_INCIDENT_EVENTS;
+        List<ReportIncidentEvent> timeline = truncated
+                ? List.copyOf(events.subList(0, MAX_INCIDENT_EVENTS))
+                : List.copyOf(events);
+
+        ReliabilityReportRepository.LatencySamples samples = repository.latencySamples(monitorId, from, to);
+        ReportLatency latency = new ReportLatency(
+                samples.sampleCount(),
+                samples.sampleCount() >= MINIMUM_LATENCY_SAMPLES ? samples.p50Ms() : null,
+                samples.sampleCount() >= MINIMUM_LATENCY_SAMPLES ? samples.p95Ms() : null,
+                MINIMUM_LATENCY_SAMPLES
+        );
+
+        BigDecimal allowedBad = BigDecimal.valueOf(availability.conclusiveExecutions())
+                .multiply(ONE_HUNDRED.subtract(sloTargetPercent))
+                .divide(ONE_HUNDRED, 5, RoundingMode.HALF_UP);
+        ReportErrorBudget budget = new ReportErrorBudget(
+                allowedBad,
+                availability.downExecutions(),
+                allowedBad.subtract(BigDecimal.valueOf(availability.downExecutions()))
+        );
+
+        return new ReliabilityReport(
+                "rcp-report-v1",
+                repository.databaseNow(),
+                repository.sourceDataWatermark(monitorId, from, to),
+                monitor.name(),
+                monitor.targetUrl(),
+                availability,
+                budget,
+                latency,
+                timeline,
+                truncated,
+                LIMITATIONS
+        );
+    }
+}
