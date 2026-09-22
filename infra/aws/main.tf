@@ -133,3 +133,10 @@ module "control_plane_service" {
   probe_result_queue_url = module.central_probe_results.queue_url
   probe_result_queue_arn = module.central_probe_results.queue_arn
 }
+
+module "dashboard_hosting" {
+  source = "./modules/dashboard_hosting"
+
+  name          = local.name_prefix
+  force_destroy = var.dashboard_force_destroy
+}

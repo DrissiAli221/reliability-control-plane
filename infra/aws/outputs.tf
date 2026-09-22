@@ -103,3 +103,12 @@ output "control_plane_runtime" {
     error_message = "A real AWS plan requires a real ACM certificate ARN; starting tasks also requires an immutable image tag already pushed to ECR."
   }
 }
+
+output "dashboard_hosting" {
+  description = "Private S3 and CloudFront destination for a reviewed dashboard build."
+  value = {
+    bucket_name     = module.dashboard_hosting.bucket_name
+    distribution_id = module.dashboard_hosting.distribution_id
+    dashboard_url   = module.dashboard_hosting.dashboard_url
+  }
+}

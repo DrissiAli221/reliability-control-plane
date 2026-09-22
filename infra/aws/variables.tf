@@ -121,6 +121,12 @@ variable "control_plane_desired_count" {
   default     = 0
 }
 
+variable "dashboard_force_destroy" {
+  description = "Allow a development dashboard bucket to be destroyed while it contains objects. Keep false for durable environments."
+  type        = bool
+  default     = false
+}
+
 variable "queue_visibility_timeout_seconds" {
   description = "Time granted to a consumer before an unacknowledged message becomes visible again."
   type        = number
