@@ -100,6 +100,27 @@ variable "cognito_deletion_protection" {
   default     = false
 }
 
+variable "control_plane_certificate_arn" {
+  description = "ACM certificate ARN for the public HTTPS ALB. The example is plan-only."
+  type        = string
+
+  validation {
+    condition     = can(regex("^arn:aws[a-z-]*:acm:[a-z0-9-]+:[0-9]{12}:certificate/", var.control_plane_certificate_arn))
+    error_message = "control_plane_certificate_arn must be an ACM certificate ARN."
+  }
+}
+
+variable "control_plane_image_tag" {
+  description = "Immutable ECR tag for the reviewed Java 21 control-plane image."
+  type        = string
+}
+
+variable "control_plane_desired_count" {
+  description = "Fargate task count. Use zero only for the first ECR bootstrap, one for cheap non-HA development, and two or more after resilience testing."
+  type        = number
+  default     = 0
+}
+
 variable "queue_visibility_timeout_seconds" {
   description = "Time granted to a consumer before an unacknowledged message becomes visible again."
   type        = number

@@ -102,3 +102,34 @@ module "secondary_probe_worker" {
   artifact_object_version = var.probe_worker_artifact_object_version
   timeout_seconds         = var.probe_worker_timeout_seconds
 }
+
+module "control_plane_service" {
+  source = "./modules/control_plane_service"
+
+  name                            = local.name_prefix
+  vpc_id                          = module.central_network.vpc_id
+  public_subnet_ids               = module.central_network.public_subnet_ids
+  application_subnet_ids          = module.central_network.application_subnet_ids
+  load_balancer_security_group_id = module.central_network.load_balancer_security_group_id
+  control_plane_security_group_id = module.central_network.control_plane_security_group_id
+  certificate_arn                 = var.control_plane_certificate_arn
+  image_tag                       = var.control_plane_image_tag
+  desired_count                   = var.control_plane_desired_count
+  database_address                = module.postgresql.endpoint
+  database_port                   = module.postgresql.port
+  database_name                   = module.postgresql.database_name
+  database_master_secret_arn      = module.postgresql.master_secret_arn
+  identity_issuer_uri             = module.identity.issuer_uri
+  identity_client_id              = module.identity.dashboard_client_id
+  central_region                  = var.central_region
+  probe_job_queue_urls = {
+    (var.central_region)         = module.central_probe_jobs.queue_url
+    (var.secondary_probe_region) = module.secondary_probe_jobs.queue_url
+  }
+  probe_job_queue_arns = [
+    module.central_probe_jobs.queue_arn,
+    module.secondary_probe_jobs.queue_arn
+  ]
+  probe_result_queue_url = module.central_probe_results.queue_url
+  probe_result_queue_arn = module.central_probe_results.queue_arn
+}

@@ -18,6 +18,12 @@ cognito_callback_urls       = ["http://localhost:5173/auth/callback"]
 cognito_logout_urls         = ["http://localhost:5173/"]
 cognito_deletion_protection = false
 
+# Plan-only placeholders. A real apply requires a validated ACM certificate and
+# an immutable image tag that has already been pushed to the planned ECR repository.
+control_plane_certificate_arn = "arn:aws:acm:eu-west-1:000000000000:certificate/00000000-0000-0000-0000-000000000000"
+control_plane_image_tag       = "not-pushed"
+control_plane_desired_count   = 0
+
 # The offline plan does not inspect this object. A future apply requires a real,
 # immutable artifact and should pin probe_worker_artifact_object_version.
 probe_worker_artifact_bucket = "replace-with-versioned-artifact-bucket"

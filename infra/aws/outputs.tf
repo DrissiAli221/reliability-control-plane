@@ -84,3 +84,22 @@ output "identity" {
     error_message = "A real AWS plan requires a unique Cognito domain and HTTPS dashboard callback/logout URLs."
   }
 }
+
+output "control_plane_runtime" {
+  description = "Central ECS/ALB runtime and immutable image destination."
+  value = {
+    cluster_arn            = module.control_plane_service.cluster_arn
+    service_name           = module.control_plane_service.service_name
+    load_balancer_dns_name = module.control_plane_service.load_balancer_dns_name
+    ecr_repository_url     = module.control_plane_service.ecr_repository_url
+    task_role_arn          = module.control_plane_service.task_role_arn
+  }
+
+  precondition {
+    condition = var.offline_mode || (
+      !strcontains(var.control_plane_certificate_arn, "000000000000") &&
+      (var.control_plane_desired_count == 0 || var.control_plane_image_tag != "not-pushed")
+    )
+    error_message = "A real AWS plan requires a real ACM certificate ARN; starting tasks also requires an immutable image tag already pushed to ECR."
+  }
+}
