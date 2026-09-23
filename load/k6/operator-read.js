@@ -25,6 +25,7 @@ export const options = {
         dropped_iterations: ['count==0'],
         [`http_req_duration{endpoint:monitor-list}`]: [`p(95)<${P95_LIMIT_MS}`],
         [`http_req_duration{endpoint:availability}`]: [`p(95)<${P95_LIMIT_MS}`],
+        [`http_req_duration{endpoint:reliability-report}`]: [`p(95)<${P95_LIMIT_MS}`],
     },
 };
 
@@ -65,6 +66,26 @@ export default function () {
             }
         },
     });
+
+    const report = http.get(
+        `${BASE_URL}/api/monitors/${MONITOR_ID}/reliability-report` +
+        `?from=${reportFrom}&to=${reportTo}&sloTargetPercent=99.9`,
+        {
+            headers,
+            tags: { endpoint: 'reliability-report' },
+        }
+    );
+    check(report, {
+        'reliability report returns 200': (response) => response.status === 200,
+        'reliability report remains JSON': (response) => contentTypeIsJson(response),
+        'report belongs to requested monitor': (response) => {
+            try {
+                return response.json('availability.monitorId') === MONITOR_ID;
+            } catch (_) {
+                return false;
+            }
+        },
+    });
 }
 
 export function handleSummary(data) {
@@ -94,12 +115,12 @@ Generated: ${new Date().toISOString()}
 
 - Scenario: sustained authenticated operator reads
 - Arrival rate: ${RATE} iterations/second
-- Requests per iteration: 2
+- Requests per iteration: 3
 - Duration: ${DURATION}
 - Target monitor: \`${MONITOR_ID}\`
 - API target: \`${BASE_URL}\`
 
-Each iteration reads the monitor overview and calculates a one-hour availability/SLO report. It does not create monitors or mutate application state.
+Each iteration reads the monitor overview, calculates one-hour availability/SLO evidence, and generates the versioned reliability report JSON. It does not create monitors or mutate application state.
 
 ## Results
 

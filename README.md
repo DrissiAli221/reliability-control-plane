@@ -158,12 +158,12 @@ With the application and Compose services running, execute from the repository r
 ./scripts/run-load-test.sh
 ```
 
-The runner obtains a short-lived local JWT, selects an existing owned monitor, and starts a pinned k6 Docker image. The default workload sends 10 iterations per second for 40 seconds; every iteration reads the monitor overview and calculates an availability report. It checks:
+The runner obtains a short-lived local JWT, selects an existing owned monitor, and starts a pinned k6 Docker image. The default workload sends 10 iterations per second for 40 seconds; every iteration reads the monitor overview, calculates availability evidence, and generates report JSON. It checks:
 
 - fewer than 1% failed HTTP requests;
 - more than 99% successful functional checks;
 - no dropped iterations;
-- p95 below 500 ms for both endpoints.
+- p95 below 500 ms for all three endpoints.
 
 Override the workload without editing the script:
 
