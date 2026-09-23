@@ -176,6 +176,16 @@ Each run writes `report.md` and the complete k6 `summary.json` beneath `artifact
 
 This test is a regression and learning tool, not a production capacity benchmark. The runner intentionally avoids creating monitors under load so repeated experiments do not pollute the source-of-truth database.
 
+## Exercise local backup and restore
+
+Stop the local Spring application to quiesce writes, keep Compose PostgreSQL running, then execute:
+
+```bash
+./scripts/run-restore-exercise.sh
+```
+
+The script takes a PostgreSQL 17.6 custom-format backup of the existing local database, restores it into a fresh temporary PostgreSQL 17.6 container, compares core table counts, checks for orphaned jobs/results/incidents, and writes a timestamped report under ignored `artifacts/recovery-tests/`. It removes the temporary dump and restore container; it does **not** overwrite or delete the source database or its Compose volume. Start Spring again afterward. This is local recovery evidence, not an RDS restore or production RPO/RTO claim.
+
 ## Validate the AWS infrastructure model
 
 Terraform is developed in reviewable slices under [`infra/aws`](infra/aws/README.md). It models the regional SQS/Lambda worker plane, central VPC/RDS/Cognito/ECS control plane, and private S3/CloudFront dashboard host; it deliberately performs no deployment. Follow that directory's offline validation instructions to produce a plan without contacting an AWS account.
