@@ -35,6 +35,7 @@ describe("TraceView", () => {
     expect([...spans].map((span) => span.className)).toEqual([
       "span outbox first", "span queue", "span probe good", "span delivery last",
     ]);
+    // jsdom has no layout, so nothing measures wide enough to carry a label.
     expect(container.querySelector(".waterfall em")).toBeNull();
   });
 
