@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -29,6 +30,10 @@ public class DueMonitorScheduler {
             SchedulingRepository schedulingRepository
     ) {
         this.schedulingRepository = schedulingRepository;
+    }
+
+    public static Set<String> probeRegions() {
+        return Set.copyOf(PROBE_REGIONS);
     }
 
     @Transactional
