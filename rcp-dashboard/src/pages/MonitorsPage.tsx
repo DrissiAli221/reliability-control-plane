@@ -248,18 +248,22 @@ function aggregateLatency(history?: MonitorHistory): string {
   return `${milliseconds(p50)} · ${milliseconds(p95)}`;
 }
 
-export function Metric({ label, value, suffix, hint, tone, explain }: {
+export function Metric({ label, value, suffix, hint, tone, explain, visual }: {
   label: string;
   value: string;
   suffix?: string;
   hint?: string;
   tone: Tone;
   explain?: ReactNode;
+  visual?: ReactNode;
 }) {
+  // Only cards that need attention are tinted, so colour keeps its meaning.
+  const attention = tone === "fault" || tone === "warn";
   return (
-    <div className="metric">
+    <div className={`metric${attention ? ` attention ${tone}` : ""}`}>
       <span className="metric-label"><StatusDot tone={tone} />{label}{explain}</span>
       <span className="metric-value">{value}{suffix && <small>{suffix}</small>}</span>
+      {visual && <div className="metric-visual">{visual}</div>}
       {hint && <span className="metric-hint">{hint}</span>}
     </div>
   );
