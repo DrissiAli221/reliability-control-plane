@@ -19,4 +19,12 @@ Set `VITE_AUTH_MODE=cognito`, `VITE_COGNITO_AUTHORITY`, and `VITE_COGNITO_CLIENT
 
 Production builds default to Cognito mode and fail closed when its configuration is absent. Local-token mode must be selected explicitly in a production build; it cannot authenticate against an AWS-profile backend because that backend does not expose `/local/token`.
 
-The dashboard currently supports monitor listing/creation, seven-day availability evidence, an owner-authorized seven-day HTML report download per monitor, and read-only public status pages. Incident state transitions, availability calculations, and report generation remain backend responsibilities. The browser obtains the report with its existing bearer token and downloads the returned HTML attachment; it does not calculate report values.
+The dashboard currently supports:
+
+- a monitor table (`/`) with search, status filters, 30-day day bars, seven-day uptime and coverage, slowest-region latency, and a row menu to pause/resume or download the report;
+- monitor creation, with the backend's SSRF rejection shown inline;
+- read-only public status pages (`/public/:slug`) with 45-day history.
+
+Incident state transitions, day statuses, availability calculations, and report generation remain backend responsibilities. The browser obtains the report with its existing bearer token and downloads the returned HTML attachment; it does not calculate report values. Pages refresh every 30 seconds; a failed refresh keeps the last data but marks it as stale.
+
+The visual system is a dark, Vercel-inspired console (Geist Sans/Mono, neutral surfaces, colour reserved for evidence) with an OpenStatus-style monitor table and an OpenAI-status-style public page. OpenStatus is AGPL-3.0, so only its layout ideas are borrowed; no code is copied.
