@@ -166,4 +166,27 @@ export type IncidentStateView = {
   recentEvaluations: Array<{ executionId: string; scheduledAt: string; verdict: Verdict; transition: Transition; evaluatedAt: string }>;
 };
 
+export type PipelineSnapshot = {
+  generatedAt: string;
+  windowSeconds: number;
+  enabledMonitors: number;
+  dueMonitors: number;
+  pendingOutbox: number;
+  failedOutbox: number;
+  oldestPendingOutboxSeconds: number;
+  pendingExecutions: number;
+  awaitingIncidentEvaluation: number;
+  openIncidents: number;
+  regions: Array<{ region: string; jobsPublished: number; resultsReceived: number; p50LatencyMs: number | null }>;
+  recentActivity: Array<{
+    monitorId: string;
+    monitorName: string;
+    executionId: string;
+    scheduledAt: string;
+    verdict: Verdict;
+    finalizedAt: string;
+    transition: Transition | null;
+  }>;
+};
+
 export type FaultMode = "PASS_THROUGH" | "HTTP_503" | "CONNECTION_FAILURE" | "REQUEST_TIMEOUT" | "RESPONSE_TOO_LARGE";

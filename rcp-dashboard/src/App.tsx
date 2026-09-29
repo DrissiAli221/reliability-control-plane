@@ -4,6 +4,7 @@ import { completeLogin, isLocalAuth, login, logout } from "./auth";
 import { AppShell, BrandMark } from "./components/AppShell";
 import { MonitorDetailPage } from "./pages/MonitorDetailPage";
 import { MonitorsPage } from "./pages/MonitorsPage";
+import { PipelinePage } from "./pages/PipelinePage";
 import { PublicStatus } from "./PublicStatus";
 
 function AuthCallback() {
@@ -53,6 +54,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/" element={<AppShell onLogout={() => void logout()}><MonitorsPage /></AppShell>} />
+      <Route path="/pipeline" element={<AppShell onLogout={() => void logout()}><PipelinePage /></AppShell>} />
       <Route path="/monitors/:monitorId" element={<AppShell onLogout={() => void logout()}><MonitorDetailPage /></AppShell>} />
       <Route path="/signin" element={<SignIn />} />
       <Route path="/auth/callback" element={<AuthCallback />} />

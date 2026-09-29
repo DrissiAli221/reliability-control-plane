@@ -92,3 +92,7 @@ export function ordinal(value: number): string {
   if (tens >= 11 && tens <= 13) return `${value}th`;
   return `${value}${({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[value % 10] ?? "th"}`;
 }
+
+export function durationBetween(from: string, to: string): string {
+  return milliseconds(Math.max(0, new Date(to).getTime() - new Date(from).getTime()));
+}

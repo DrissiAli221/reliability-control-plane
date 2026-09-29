@@ -1,6 +1,6 @@
-import { Activity, BookOpen, ExternalLink, LayoutList, LogOut } from "lucide-react";
+import { Activity, BookOpen, ExternalLink, LayoutList, LogOut, Workflow } from "lucide-react";
 import type { ReactNode } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { isLocalAuth } from "../auth";
 
 const telemetryUrl = import.meta.env.VITE_GRAFANA_URL
@@ -17,6 +17,7 @@ export function BrandMark() {
 
 export function AppShell({ children, onLogout }: { children: ReactNode; onLogout: () => void }) {
   const local = isLocalAuth();
+  const { pathname } = useLocation();
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -30,8 +31,11 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
 
         <nav className="nav" aria-label="Primary">
           <p className="nav-label">Monitoring</p>
-          <NavLink to="/" end className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
+          <NavLink to="/" end className={({ isActive }) => `nav-item${isActive || pathname.startsWith("/monitors/") ? " active" : ""}`}>
             <LayoutList size={16} aria-hidden="true" /> Monitors
+          </NavLink>
+          <NavLink to="/pipeline" className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
+            <Workflow size={16} aria-hidden="true" /> Pipeline
           </NavLink>
           {telemetryUrl && (
             <a className="nav-item" href={telemetryUrl} target="_blank" rel="noreferrer">
