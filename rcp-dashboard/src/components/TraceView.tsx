@@ -1,7 +1,7 @@
-import { useMemo, useState, type CSSProperties, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { milliseconds, verdictState } from "../format";
-import { spanLabel, traceEvents, traceRows, verdictRule, type SpanKind, type TraceRow } from "../trace";
+import { labelFits, spanLabel, traceEvents, traceRows, verdictRule, type SpanKind, type TraceRow } from "../trace";
 import type { ExecutionTrace } from "../types";
 import { StatusBadge } from "./StatusBadge";
 
@@ -37,6 +37,17 @@ export function TraceView({ trace }: { trace: ExecutionTrace }) {
   const verdict = trace.verdict ? verdictState(trace.verdict) : { label: "Pending", tone: "info" as const };
   const t0 = new Date(trace.scheduledAt).getTime();
   const [hover, setHover] = useState<RowHover | null>(null);
+  const axis = useRef<HTMLDivElement>(null);
+  const [trackWidth, setTrackWidth] = useState(0);
+
+  // Labels depend on real pixel widths, so re-measure the track whenever the layout changes.
+  useEffect(() => {
+    const element = axis.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => setTrackWidth(entry.contentRect.width));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [view]);
 
   // The breakdown follows the pointer along the row and flips below it near the top of the viewport.
   function showRow(row: TraceRow, event: MouseEvent<HTMLDivElement>) {
@@ -72,7 +83,7 @@ export function TraceView({ trace }: { trace: ExecutionTrace }) {
         <div className="waterfall" role="table" aria-label="Check timeline">
           <div className="waterfall-row axis" role="row">
             <span role="columnheader" />
-            <div className="waterfall-track">
+            <div className="waterfall-track" ref={axis}>
               {ticks(totalMs).map((value) => (
                 <span key={value} className="tick" style={{ left: `${(value / totalMs) * 100}%` }}>{tickLabel(value)}</span>
               ))}
@@ -93,6 +104,7 @@ export function TraceView({ trace }: { trace: ExecutionTrace }) {
                   {ticks(totalMs).map((value) => <i key={value} className="gridline" style={{ left: `${(value / totalMs) * 100}%` }} />)}
                   {row.spans.map((item, index) => {
                     const width = ((item.endMs - item.startMs) / totalMs) * 100;
+                    const label = milliseconds(item.endMs - item.startMs);
                     // One continuous bar per row: only its outer ends are rounded.
                     const edges = `${index === 0 ? " first" : ""}${index === row.spans.length - 1 ? " last" : ""}`;
                     return (
@@ -100,7 +112,9 @@ export function TraceView({ trace }: { trace: ExecutionTrace }) {
                         key={item.kind}
                         className={`span ${item.kind}${item.tone ? ` ${item.tone}` : ""}${edges}`}
                         style={{ left: `${(item.startMs / totalMs) * 100}%`, width: `max(${width}%, 3px)`, animationDelay: `${rowIndex * 70}ms` }}
-                      />
+                      >
+                        {labelFits((width / 100) * trackWidth, label) && <em>{label}</em>}
+                      </span>
                     );
                   })}
                 </div>

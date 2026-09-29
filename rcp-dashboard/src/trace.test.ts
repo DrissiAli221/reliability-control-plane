@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { traceEvents, traceRows } from "./trace";
+import { labelFits, traceEvents, traceRows } from "./trace";
 import type { ExecutionTrace } from "./types";
 
 const at = (ms: number) => new Date(Date.parse("2026-09-29T12:00:00Z") + ms).toISOString();
@@ -71,5 +71,13 @@ describe("traceRows", () => {
     const skewed: ExecutionTrace = { ...trace, jobs: [{ ...trace.jobs[0], startedAt: at(1_500) }] };
     const queue = traceRows(skewed).rows[1].spans.find((item) => item.kind === "queue");
     expect(queue).toMatchObject({ startMs: 1_800, endMs: 1_800 });
+  });
+});
+
+describe("labelFits", () => {
+  it("labels a phase only when its duration text fits inside the bar", () => {
+    expect(labelFits(60, "1.01 s")).toBe(true);
+    expect(labelFits(40, "1.01 s")).toBe(false);
+    expect(labelFits(3, "8 ms")).toBe(false);
   });
 });

@@ -138,3 +138,12 @@ export const spanLabel: Record<SpanKind, string> = {
   finalize: "Finalizing",
   evaluate: "Incident evaluation",
 };
+
+// Geist Mono at 10.5px is about 6.4px per character; keep 6px of padding either side.
+const LABEL_CHAR_PX = 6.4;
+const LABEL_PADDING_PX = 12;
+
+/** A phase shows its duration inside the bar only when the text fits in its rendered width. */
+export function labelFits(widthPx: number, label: string): boolean {
+  return widthPx >= label.length * LABEL_CHAR_PX + LABEL_PADDING_PX;
+}
