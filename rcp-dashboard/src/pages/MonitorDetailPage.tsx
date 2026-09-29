@@ -2,11 +2,13 @@ import { AlertTriangle, ChevronLeft, ExternalLink, Info, PauseCircle, RefreshCw 
 import { useCallback } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
-  availability, executionTrace, getMonitor, listMonitors, monitorHistory, reliabilityReport, setMonitorEnabled,
+  availability, executionTrace, getMonitor, incidentState, listMonitors, monitorHistory, reliabilityReport, setMonitorEnabled,
 } from "../api";
 import { isLocalAuth } from "../auth";
+import { ChaosPanel } from "../components/ChaosPanel";
 import { DownloadReportButton } from "../components/DownloadReportButton";
 import { EvidenceRail } from "../components/EvidenceRail";
+import { IncidentMachine } from "../components/IncidentMachine";
 import { MonitorToggleButton } from "../components/MonitorToggleButton";
 import { StatusBadge, StatusDot } from "../components/StatusBadge";
 import { TraceView } from "../components/TraceView";
@@ -15,7 +17,7 @@ import {
   absoluteTime, compactUrl, count, interval, milliseconds, monitorState, outcomeLabel, outcomeTone, percent,
   relativeTime, verdictState,
 } from "../format";
-import type { AvailabilityReport, MonitorDetail, MonitorHistory, MonitorOverview, ReliabilityReport } from "../types";
+import type { AvailabilityReport, IncidentStateView, MonitorDetail, MonitorHistory, MonitorOverview, ReliabilityReport } from "../types";
 import { useLiveData, useNow } from "../useLiveData";
 import { CoverageNote, ErrorState, LiveIndicator, Metric } from "./MonitorsPage";
 
@@ -28,17 +30,19 @@ type DetailData = {
   history?: MonitorHistory;
   availability?: AvailabilityReport;
   report?: ReliabilityReport;
+  incident?: IncidentStateView;
 };
 
 export function MonitorDetailPage() {
   const { monitorId = "" } = useParams();
   const load = useCallback(async (): Promise<DetailData> => {
     const monitor = await getMonitor(monitorId);
-    const [overviews, history, report7d, report] = await Promise.allSettled([
+    const [overviews, history, report7d, report, incident] = await Promise.allSettled([
       listMonitors(),
       monitorHistory(monitorId, HISTORY_DAYS),
       availability(monitorId),
       reliabilityReport(monitorId),
+      incidentState(monitorId),
     ]);
     return {
       monitor,
@@ -46,6 +50,7 @@ export function MonitorDetailPage() {
       history: history.status === "fulfilled" ? history.value : undefined,
       availability: report7d.status === "fulfilled" ? report7d.value : undefined,
       report: report.status === "fulfilled" ? report.value : undefined,
+      incident: incident.status === "fulfilled" ? incident.value : undefined,
     };
   }, [monitorId]);
   const detail = useLiveData(load, 10_000);
@@ -61,7 +66,7 @@ export function MonitorDetailPage() {
     );
   }
 
-  const { monitor, overview, history, availability: evidence, report } = detail.data;
+  const { monitor, overview, history, availability: evidence, report, incident } = detail.data;
   const selectedCheck = params.get("check") ?? history?.recentChecks[0]?.executionId ?? null;
   const selectCheck = (executionId: string) => setParams({ check: executionId }, { replace: true });
   const state = overview ? monitorState(overview) : { label: monitor.enabled ? "Awaiting evidence" : "Paused", tone: "muted" as const };
@@ -168,6 +173,19 @@ export function MonitorDetailPage() {
               </ul>
             </>
           ) : <p className="subtle">History unavailable.</p>}
+        </div>
+      </section>
+
+      <section className="panel">
+        <header className="panel-header">
+          <h2>Incident policy</h2>
+          <span className="subtle">
+            {incident ? `Opens after ${incident.failuresToOpen} consecutive DOWN, resolves after ${incident.successesToResolve} UP` : "State unavailable"}
+          </span>
+        </header>
+        {isLocalAuth() && <ChaosPanel failuresToOpen={incident?.failuresToOpen} inline />}
+        <div className="panel-body">
+          {incident ? <IncidentMachine state={incident} now={now} /> : <p className="subtle">Incident state unavailable.</p>}
         </div>
       </section>
 

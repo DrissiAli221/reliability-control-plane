@@ -154,3 +154,16 @@ export type ExecutionTrace = {
 };
 
 export type Transition = "NONE" | "OPENED" | "RESOLVED" | "IGNORED_STALE";
+
+export type IncidentStateView = {
+  status: "HEALTHY" | "OPEN";
+  consecutiveDown: number;
+  consecutiveUp: number;
+  failuresToOpen: number;
+  successesToResolve: number;
+  openedAt: string | null;
+  lastEvaluatedAt: string | null;
+  recentEvaluations: Array<{ executionId: string; scheduledAt: string; verdict: Verdict; transition: Transition; evaluatedAt: string }>;
+};
+
+export type FaultMode = "PASS_THROUGH" | "HTTP_503" | "CONNECTION_FAILURE" | "REQUEST_TIMEOUT" | "RESPONSE_TOO_LARGE";
