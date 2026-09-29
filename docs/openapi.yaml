@@ -131,6 +131,49 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/monitors/{monitorId}/incident-state:
+    parameters:
+      - $ref: '#/components/parameters/MonitorId'
+    get:
+      operationId: getIncidentState
+      summary: Position in the incident state machine, the thresholds that move it, and the latest evaluations
+      responses:
+        '200':
+          description: Persisted streak counters; a never-evaluated monitor reports the healthy initial state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentState'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/monitors/{monitorId}/executions/{executionId}/trace:
+    parameters:
+      - $ref: '#/components/parameters/MonitorId'
+      - name: executionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getExecutionTrace
+      summary: Every recorded timestamp of one check, from due time to incident evaluation
+      description: >-
+        Worker start and completion times come from the worker's clock; all other times are PostgreSQL time.
+        An execution that belongs to another monitor returns 404 even when the caller owns this monitor.
+      responses:
+        '200':
+          description: Execution, per-region job, outbox, result, and evaluation timestamps
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionTrace'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/monitors/{monitorId}/availability:
     parameters:
       - $ref: '#/components/parameters/MonitorId'
@@ -735,6 +778,143 @@ components:
                       nullable: true
                     latencyMs:
                       type: integer
+    IncidentState:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [HEALTHY, OPEN]
+        consecutiveDown:
+          type: integer
+        consecutiveUp:
+          type: integer
+        failuresToOpen:
+          type: integer
+        successesToResolve:
+          type: integer
+        openedAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastEvaluatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        recentEvaluations:
+          type: array
+          description: The latest 8 evaluations, newest first.
+          items:
+            type: object
+            properties:
+              executionId:
+                type: string
+                format: uuid
+              scheduledAt:
+                type: string
+                format: date-time
+              verdict:
+                type: string
+              transition:
+                type: string
+                enum: [NONE, OPENED, RESOLVED, IGNORED_STALE]
+              evaluatedAt:
+                type: string
+                format: date-time
+    ExecutionTrace:
+      type: object
+      properties:
+        executionId:
+          type: string
+          format: uuid
+        monitorId:
+          type: string
+          format: uuid
+        scheduledAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        resultDeadlineAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [PENDING, FINALIZED]
+        verdict:
+          type: string
+          nullable: true
+        finalizedAt:
+          type: string
+          format: date-time
+          nullable: true
+        expectedRegionCount:
+          type: integer
+        jobs:
+          type: array
+          items:
+            type: object
+            properties:
+              jobId:
+                type: string
+                format: uuid
+              region:
+                type: string
+              createdAt:
+                type: string
+                format: date-time
+              publishedAt:
+                type: string
+                format: date-time
+                nullable: true
+              failedPublishAttempts:
+                type: integer
+                description: Publish attempts that failed; a first-try publish reports 0.
+              publishFailedAt:
+                type: string
+                format: date-time
+                nullable: true
+              publishLastError:
+                type: string
+                nullable: true
+              startedAt:
+                type: string
+                format: date-time
+                nullable: true
+              completedAt:
+                type: string
+                format: date-time
+                nullable: true
+              receivedAt:
+                type: string
+                format: date-time
+                nullable: true
+              outcome:
+                type: string
+                nullable: true
+              httpStatus:
+                type: integer
+                nullable: true
+              latencyMs:
+                type: integer
+                nullable: true
+              responseBytes:
+                type: integer
+                nullable: true
+              errorType:
+                type: string
+                nullable: true
+        evaluation:
+          type: object
+          nullable: true
+          properties:
+            verdict:
+              type: string
+            transition:
+              type: string
+            evaluatedAt:
+              type: string
+              format: date-time
     LocalFaultMode:
       type: object
       required: [mode]

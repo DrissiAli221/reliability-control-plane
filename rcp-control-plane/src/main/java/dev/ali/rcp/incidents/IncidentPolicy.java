@@ -26,6 +26,14 @@ public final class IncidentPolicy {
         return new IncidentPolicy(2, 2);
     }
 
+    public int failuresToOpen() {
+        return failuresToOpen;
+    }
+
+    public int successesToResolve() {
+        return successesToResolve;
+    }
+
     public IncidentDecision evaluate(
             IncidentState current,
             ExecutionVerdict verdict,
