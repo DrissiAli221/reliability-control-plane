@@ -103,6 +103,34 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/monitors/{monitorId}/history:
+    parameters:
+      - $ref: '#/components/parameters/MonitorId'
+      - name: days
+        in: query
+        required: false
+        description: UTC days to include, ending today by PostgreSQL time.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 90
+          default: 45
+    get:
+      operationId: getMonitorHistory
+      summary: Daily verdict counts, per-region latency, and recent checks for an owned monitor
+      responses:
+        '200':
+          description: Zero-filled daily evidence with regional detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorHistory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/monitors/{monitorId}/availability:
     parameters:
       - $ref: '#/components/parameters/MonitorId'
@@ -611,6 +639,93 @@ components:
                 type: string
                 format: date-time
                 nullable: true
+    DailyEvidence:
+      type: object
+      required: [day, up, down, disagreement, noData, status]
+      properties:
+        day:
+          type: string
+          format: date
+        up:
+          type: integer
+        down:
+          type: integer
+        disagreement:
+          type: integer
+        noData:
+          type: integer
+        status:
+          type: string
+          enum: [OPERATIONAL, DEGRADED, OUTAGE, NO_DATA]
+          description: OUTAGE if any confirmed DOWN; DEGRADED if regions disagreed; NO_DATA verdicts alone never count as failure.
+    MonitorHistory:
+      type: object
+      required: [monitorId, generatedAt, days, regions, recentChecks]
+      properties:
+        monitorId:
+          type: string
+          format: uuid
+        generatedAt:
+          type: string
+          format: date-time
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/DailyEvidence'
+        regions:
+          type: array
+          description: Per region, the last 24 hours. Percentiles use HTTP responses only.
+          items:
+            type: object
+            properties:
+              region:
+                type: string
+              httpSamples:
+                type: integer
+              p50Ms:
+                type: integer
+                nullable: true
+              p95Ms:
+                type: integer
+                nullable: true
+              lastOutcome:
+                type: string
+              lastHttpStatus:
+                type: integer
+                nullable: true
+              lastLatencyMs:
+                type: integer
+              lastCompletedAt:
+                type: string
+                format: date-time
+        recentChecks:
+          type: array
+          description: The latest 12 finalized executions with their regional results.
+          items:
+            type: object
+            properties:
+              executionId:
+                type: string
+                format: uuid
+              scheduledAt:
+                type: string
+                format: date-time
+              verdict:
+                type: string
+              results:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    region:
+                      type: string
+                    outcome:
+                      type: string
+                    httpStatus:
+                      type: integer
+                      nullable: true
+                    latencyMs:
+                      type: integer
     LocalFaultMode:
       type: object
       required: [mode]
