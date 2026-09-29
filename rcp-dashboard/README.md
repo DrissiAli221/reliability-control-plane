@@ -25,7 +25,9 @@ The dashboard currently supports:
 - a monitor detail page (`/monitors/:id`) with seven-day uptime/SLO/latency/error-budget cards, 45-day day bars, per-region 24-hour latency, the latest checks per region, incidents, and the report's stated limitations;
 - monitor creation, with the backend's SSRF rejection shown inline;
 - read-only public status pages (`/public/:slug`) with 45-day history;
-- a check trace on the detail page: select any recent check to see its timeline (staging, outbox, queue, probe, result delivery, finalization, incident evaluation) or its event history, built from real timestamps.
+- a check trace on the detail page: select any recent check to see its timeline (staging, outbox, queue, probe, result delivery, finalization, incident evaluation) or its event history, built from real timestamps;
+- the incident state machine (Healthy, Suspect, Incident open, Recovering) lit from the persisted streak counters, with the latest evaluations;
+- in local mode, a fault drill (HTTP 503, timeout, refused connection, oversized body) that drives `/api/local/probe-fault` and states which faults can open an incident.
 
 Incident state transitions, day statuses, availability calculations, and report generation remain backend responsibilities. The browser obtains the report with its existing bearer token and downloads the returned HTML attachment; it does not calculate report values. The monitor list refreshes every 30 seconds and a monitor page every 10; a failed refresh keeps the last data but marks it as stale.
 

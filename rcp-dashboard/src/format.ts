@@ -86,3 +86,9 @@ export function outcomeTone(outcome: string, httpStatus: number | null): Tone {
   if (outcome === "HTTP_RESPONSE") return httpStatus != null && httpStatus >= 200 && httpStatus < 400 ? "good" : "fault";
   return TARGET_FAILURES.has(outcome) ? "fault" : "muted";
 }
+
+export function ordinal(value: number): string {
+  const tens = value % 100;
+  if (tens >= 11 && tens <= 13) return `${value}th`;
+  return `${value}${({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[value % 10] ?? "th"}`;
+}
