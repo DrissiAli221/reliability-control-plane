@@ -32,13 +32,14 @@
   --gray-text: #8f8f8f;
   --gray-bg: rgba(255, 255, 255, 0.06);
 
-  /* Corner scale: every rounded corner reads one of these, so the whole system changes in one place. */
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius: 8px;
-  --radius-lg: 12px;
-  --radius-pill: 999px;
+  /* Corner scale: every rounded corner reads one of these, so the whole system changes in one place.
+     The operator console is square, like an instrument panel; status dots stay round. */
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius: 0;
+  --radius-lg: 0;
+  --radius-pill: 0;
   --shadow-pop: 0 8px 30px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--border-strong);
 
   color-scheme: dark;
@@ -405,6 +406,13 @@ a { color: inherit; }
   --amber: #f2a01e;
   --red: #e5484d;
   --shadow-pop: 0 8px 30px rgba(0, 0, 0, 0.12), 0 0 0 1px #e5e5e5;
+  /* The customer-facing page keeps soft corners. */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius: 8px;
+  --radius-lg: 10px;
+  --radius-pill: 999px;
 
   color-scheme: light;
   min-height: 100vh;
