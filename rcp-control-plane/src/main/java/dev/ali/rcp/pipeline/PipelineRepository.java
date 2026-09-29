@@ -9,8 +9,10 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.UUID;
 
 @Repository
@@ -19,6 +21,12 @@ public class PipelineRepository {
 
     public PipelineRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate);
+    }
+
+    public Instant databaseNow() {
+        return Objects.requireNonNull(jdbcTemplate.queryForObject(
+                "SELECT clock_timestamp()", OffsetDateTime.class
+        )).toInstant();
     }
 
     public boolean ownsMonitor(String ownerSubject, UUID monitorId) {
@@ -140,6 +148,140 @@ public class PipelineRepository {
         ).stream().findFirst().orElse(new IncidentStateView(
                 "HEALTHY", 0, 0, failuresToOpen, successesToResolve, null, null, evaluations
         ));
+    }
+
+    public PipelineSnapshot snapshot(String ownerSubject, Instant now, int windowSeconds) {
+        OffsetDateTime since = timestamp(now.minusSeconds(windowSeconds));
+        // Rows scheduled well before the window cannot have been published or received inside it,
+        // so this bound lets PostgreSQL use the (monitor_id, scheduled_at) indexes.
+        OffsetDateTime scheduledSince = timestamp(now.minusSeconds(windowSeconds + 900L));
+
+        Map<String, PipelineSnapshot.RegionFlow> regions = new TreeMap<>();
+        jdbcTemplate.query(
+                """
+                SELECT outbox.destination_region AS region, COUNT(*) AS published
+                FROM monitors
+                JOIN probe_executions executions ON executions.monitor_id = monitors.monitor_id
+                JOIN probe_jobs jobs ON jobs.execution_id = executions.execution_id
+                JOIN outbox_events outbox
+                  ON outbox.event_type = 'PROBE_JOB_REQUESTED' AND outbox.aggregate_id = jobs.job_id
+                WHERE monitors.owner_subject = ?
+                  AND executions.scheduled_at >= ?
+                  AND outbox.published_at >= ?
+                GROUP BY outbox.destination_region
+                """,
+                resultSet -> {
+                    String region = resultSet.getString("region");
+                    regions.put(region, new PipelineSnapshot.RegionFlow(region, resultSet.getLong("published"), 0, null));
+                },
+                ownerSubject, scheduledSince, since
+        );
+        jdbcTemplate.query(
+                """
+                SELECT results.probe_region AS region,
+                       COUNT(*) AS received,
+                       percentile_disc(0.5) WITHIN GROUP (ORDER BY results.latency_ms)
+                           FILTER (WHERE results.outcome = 'HTTP_RESPONSE') AS p50_ms
+                FROM monitors
+                JOIN probe_results results ON results.monitor_id = monitors.monitor_id
+                WHERE monitors.owner_subject = ?
+                  AND results.scheduled_at >= ?
+                  AND results.received_at >= ?
+                GROUP BY results.probe_region
+                """,
+                resultSet -> {
+                    String region = resultSet.getString("region");
+                    PipelineSnapshot.RegionFlow published = regions.get(region);
+                    regions.put(region, new PipelineSnapshot.RegionFlow(
+                            region,
+                            published == null ? 0 : published.jobsPublished(),
+                            resultSet.getLong("received"),
+                            resultSet.getObject("p50_ms", Long.class)
+                    ));
+                },
+                ownerSubject, scheduledSince, since
+        );
+
+        List<PipelineSnapshot.Activity> activity = jdbcTemplate.query(
+                """
+                SELECT monitors.monitor_id, monitors.name, latest.execution_id, latest.scheduled_at,
+                       latest.verdict, latest.finalized_at, evaluations.transition
+                FROM monitors
+                CROSS JOIN LATERAL (
+                    SELECT execution_id, scheduled_at, verdict, finalized_at
+                    FROM probe_executions executions
+                    WHERE executions.monitor_id = monitors.monitor_id AND executions.status = 'FINALIZED'
+                    ORDER BY executions.scheduled_at DESC
+                    LIMIT 15
+                ) latest
+                LEFT JOIN incident_evaluations evaluations ON evaluations.execution_id = latest.execution_id
+                WHERE monitors.owner_subject = ?
+                ORDER BY latest.scheduled_at DESC, latest.execution_id
+                LIMIT 15
+                """,
+                (resultSet, rowNumber) -> new PipelineSnapshot.Activity(
+                        resultSet.getObject("monitor_id", UUID.class),
+                        resultSet.getString("name"),
+                        resultSet.getObject("execution_id", UUID.class),
+                        instant(resultSet, "scheduled_at"),
+                        resultSet.getString("verdict"),
+                        instant(resultSet, "finalized_at"),
+                        resultSet.getString("transition")
+                ),
+                ownerSubject
+        );
+
+        return jdbcTemplate.queryForObject(
+                """
+                WITH owned AS (
+                    SELECT monitor_id, enabled, next_check_at FROM monitors WHERE owner_subject = ?
+                ),
+                owned_outbox AS (
+                    SELECT outbox.published_at, outbox.failed_at, outbox.created_at
+                    FROM owned
+                    JOIN probe_executions executions ON executions.monitor_id = owned.monitor_id
+                    JOIN probe_jobs jobs ON jobs.execution_id = executions.execution_id
+                    JOIN outbox_events outbox
+                      ON outbox.event_type = 'PROBE_JOB_REQUESTED' AND outbox.aggregate_id = jobs.job_id
+                    WHERE outbox.published_at IS NULL
+                )
+                SELECT
+                    (SELECT COUNT(*) FROM owned WHERE enabled) AS enabled_monitors,
+                    (SELECT COUNT(*) FROM owned WHERE enabled AND next_check_at <= ?) AS due_monitors,
+                    (SELECT COUNT(*) FROM owned_outbox WHERE failed_at IS NULL) AS pending_outbox,
+                    (SELECT COUNT(*) FROM owned_outbox WHERE failed_at IS NOT NULL) AS failed_outbox,
+                    (SELECT COALESCE(EXTRACT(EPOCH FROM (? - MIN(created_at))), 0)
+                       FROM owned_outbox WHERE failed_at IS NULL) AS oldest_outbox_seconds,
+                    (SELECT COUNT(*) FROM owned
+                       JOIN probe_executions executions ON executions.monitor_id = owned.monitor_id
+                      WHERE executions.status = 'PENDING') AS pending_executions,
+                    (SELECT COUNT(*) FROM owned
+                       JOIN probe_executions executions ON executions.monitor_id = owned.monitor_id
+                      WHERE executions.status = 'FINALIZED'
+                        AND NOT EXISTS (
+                            SELECT 1 FROM incident_evaluations evaluations
+                            WHERE evaluations.execution_id = executions.execution_id
+                        )) AS awaiting_evaluation,
+                    (SELECT COUNT(*) FROM owned
+                       JOIN incidents ON incidents.monitor_id = owned.monitor_id
+                      WHERE incidents.status = 'OPEN') AS open_incidents
+                """,
+                (resultSet, rowNumber) -> new PipelineSnapshot(
+                        now,
+                        windowSeconds,
+                        resultSet.getLong("enabled_monitors"),
+                        resultSet.getLong("due_monitors"),
+                        resultSet.getLong("pending_outbox"),
+                        resultSet.getLong("failed_outbox"),
+                        Math.max(0, Math.round(resultSet.getDouble("oldest_outbox_seconds"))),
+                        resultSet.getLong("pending_executions"),
+                        resultSet.getLong("awaiting_evaluation"),
+                        resultSet.getLong("open_incidents"),
+                        List.copyOf(regions.values()),
+                        activity
+                ),
+                ownerSubject, timestamp(now), timestamp(now)
+        );
     }
 
     private static Instant instant(ResultSet resultSet, String column) throws SQLException {
