@@ -22,6 +22,7 @@ Production builds default to Cognito mode and fail closed when its configuration
 The dashboard currently supports:
 
 - a monitor table (`/`) with search, status filters, 30-day day bars, seven-day uptime and coverage, slowest-region latency, and a row menu to pause/resume or download the report;
+- a monitor detail page (`/monitors/:id`) with seven-day uptime/SLO/latency/error-budget cards, 45-day day bars, per-region 24-hour latency, the latest checks per region, incidents, and the report's stated limitations;
 - monitor creation, with the backend's SSRF rejection shown inline;
 - read-only public status pages (`/public/:slug`) with 45-day history.
 

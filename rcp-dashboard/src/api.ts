@@ -3,9 +3,11 @@ import type {
   AvailabilityReport,
   CreateMonitorInput,
   CreatedMonitor,
+  MonitorDetail,
   MonitorHistory,
   MonitorOverview,
   PublicStatusPage,
+  ReliabilityReport,
 } from "./types";
 
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? "";
@@ -41,8 +43,19 @@ export function listMonitors(): Promise<MonitorOverview[]> {
   return request("/api/monitors");
 }
 
+export function getMonitor(monitorId: string): Promise<MonitorDetail> {
+  return request(`/api/monitors/${encodeURIComponent(monitorId)}`);
+}
+
 export function monitorHistory(monitorId: string, days = 45): Promise<MonitorHistory> {
   return request(`/api/monitors/${encodeURIComponent(monitorId)}/history?days=${days}`);
+}
+
+export function reliabilityReport(monitorId: string, days = 7): Promise<ReliabilityReport> {
+  const to = new Date();
+  const from = new Date(to.getTime() - days * 86_400_000);
+  const query = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
+  return request(`/api/monitors/${encodeURIComponent(monitorId)}/reliability-report?${query}`);
 }
 
 export function createMonitor(input: CreateMonitorInput): Promise<CreatedMonitor> {

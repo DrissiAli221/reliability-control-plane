@@ -11,6 +11,17 @@ export type MonitorOverview = {
   latestCheckedAt: string | null;
 };
 
+export type MonitorDetail = {
+  id: string;
+  name: string;
+  targetUrl: string;
+  checkIntervalSeconds: number;
+  timeoutMs: number;
+  enabled: boolean;
+  nextCheckAt: string | null;
+  createdAt: string;
+};
+
 export type CreateMonitorInput = {
   name: string;
   targetUrl: string;
@@ -81,6 +92,16 @@ export type MonitorHistory = {
   days: DailyEvidence[];
   regions: RegionSummary[];
   recentChecks: RecentCheck[];
+};
+
+export type ReliabilityReport = {
+  generatedAt: string;
+  availability: AvailabilityReport;
+  errorBudget: { allowedBadExecutions: number; observedBadExecutions: number; remainingExecutions: number };
+  latency: { sampleCount: number; p50Ms: number | null; p95Ms: number | null; minimumSamples: number };
+  incidentTimeline: Array<{ incidentId: string; eventType: "OPENED" | "RESOLVED"; occurredAt: string }>;
+  incidentTimelineTruncated: boolean;
+  limitations: string[];
 };
 
 export type PublicComponentStatus = "OPERATIONAL" | "DEGRADED" | "OUTAGE" | "PAUSED" | "STALE" | "UNKNOWN";
