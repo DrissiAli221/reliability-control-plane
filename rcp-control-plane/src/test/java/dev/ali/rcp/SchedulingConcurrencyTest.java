@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -38,11 +39,17 @@ class SchedulingConcurrencyTest {
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @AfterEach
     void deleteTestMonitor() {
         monitorRepository.findAll().stream()
                 .filter(monitor -> OWNER.equals(monitor.getOwnerSubject()))
-                .forEach(monitorRepository::delete);
+                .forEach(monitor -> {
+                    jdbcTemplate.update("DELETE FROM monitor_schedule_periods WHERE monitor_id = ?", monitor.getId());
+                    monitorRepository.delete(monitor);
+                });
     }
 
     @Test

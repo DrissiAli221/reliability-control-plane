@@ -23,4 +23,12 @@ public record RegionalProbeFact(
                 && httpStatus >= 200
                 && httpStatus < 400;
     }
+
+    public boolean isTargetEvidence() {
+        return switch (outcome) {
+            case HTTP_RESPONSE -> httpStatus != null;
+            case CONNECT_TIMEOUT, REQUEST_TIMEOUT, TLS_FAILURE, CONNECTION_FAILURE -> true;
+            case UNSAFE_TARGET, EXPIRED, RESPONSE_TOO_LARGE, INTERRUPTED, INTERNAL_ERROR -> false;
+        };
+    }
 }

@@ -9,6 +9,21 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class MonitorExceptionHandler {
 
+    @ExceptionHandler(MonitorQuotaExceededException.class)
+    public ResponseEntity<ProblemDetail> handleQuota(MonitorQuotaExceededException exception) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT, exception.getMessage());
+        problem.setTitle("Monitor quota reached");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
+    }
+
+    @ExceptionHandler(MonitorNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleNotFound(MonitorNotFoundException exception) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
+        problem.setTitle("Monitor not found");
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
+    }
+
     @ExceptionHandler(UnsafeTargetException.class)
     public ResponseEntity<ProblemDetail> handleUnsafeTarget(
             UnsafeTargetException exception

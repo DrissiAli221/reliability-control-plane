@@ -2,6 +2,8 @@ package dev.ali.rcp.probes.sqs;
 
 import dev.ali.rcp.probes.ProbeResultIngestion;
 import dev.ali.rcp.probes.ProbeResultIngestionService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.modulith.NamedInterface;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
@@ -13,6 +15,7 @@ import java.util.Objects;
 
 @NamedInterface("runtime")
 public final class SqsProbeResultConsumer {
+    private static final Logger LOG = LoggerFactory.getLogger(SqsProbeResultConsumer.class);
     private final SqsClient sqsClient;
     private final String resultQueueUrl;
     private final ProbeResultIngestionService ingestionService;
@@ -70,9 +73,18 @@ public final class SqsProbeResultConsumer {
                     acknowledge(message);
                 } catch (RuntimeException acknowledgementFailure) {
                     acknowledgementFailures++;
+                    LOG.atWarn()
+                            .addKeyValue("sqsMessageId", message.messageId())
+                            .addKeyValue("errorType", acknowledgementFailure.getClass().getSimpleName())
+                            .log("probe result stored but queue acknowledgement failed");
                 }
             } catch (RuntimeException processingFailure) {
                 processingFailures++;
+                // Never log the raw result body: it is untrusted queue input.
+                LOG.atWarn()
+                        .addKeyValue("sqsMessageId", message.messageId())
+                        .addKeyValue("errorType", processingFailure.getClass().getSimpleName())
+                        .log("probe result processing failed; message left for retry or DLQ");
             }
         }
 

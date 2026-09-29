@@ -19,8 +19,10 @@ import java.util.UUID;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @Import(TestcontainersConfiguration.class)
@@ -58,10 +60,98 @@ class StatusPageApiTest {
 
         mockMvc.perform(get("/status/ali-systems"))
                 .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(jsonPath("$.overallStatus").value("OPERATIONAL"))
                 .andExpect(jsonPath("$.components[0].name").value("Portfolio API"))
                 .andExpect(jsonPath("$.components[0].status").value("OPERATIONAL"))
                 .andExpect(jsonPath("$.components[0].targetUrl").doesNotExist());
+    }
+
+    @Test
+    void pausedMonitorDoesNotAdvertiseItsLastUpVerdictAsCurrentHealth() throws Exception {
+        Monitor monitor = createMonitor("ali-subject", "Paused component");
+        insertVerdict(monitor, ExecutionVerdict.UP);
+
+        mockMvc.perform(post("/api/status-pages")
+                        .with(jwt().jwt(token -> token.subject("ali-subject")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Paused systems",
+                                  "slug": "paused-systems",
+                                  "monitorIds": ["%s"],
+                                  "published": true
+                                }
+                                """.formatted(monitor.getId())))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(patch("/api/monitors/{id}/enabled", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":false}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/status/paused-systems"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.overallStatus").value("UNKNOWN"))
+                .andExpect(jsonPath("$.components[0].status").value("PAUSED"))
+                .andExpect(jsonPath("$.components[0].latestVerdict").value("UP"))
+                .andExpect(jsonPath("$.components[0].targetUrl").doesNotExist());
+    }
+
+    @Test
+    void oldUpVerdictDoesNotHideStoppedMonitoring() throws Exception {
+        Monitor monitor = createMonitor("ali-subject", "Stale component", Instant.now().minusSeconds(7_200));
+        insertVerdict(monitor, ExecutionVerdict.UP, Instant.now().minusSeconds(3_600));
+
+        mockMvc.perform(post("/api/status-pages")
+                        .with(jwt().jwt(token -> token.subject("ali-subject")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Stale systems",
+                                  "slug": "stale-systems",
+                                  "monitorIds": ["%s"],
+                                  "published": true
+                                }
+                                """.formatted(monitor.getId())))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/status/stale-systems"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.overallStatus").value("UNKNOWN"))
+                .andExpect(jsonPath("$.components[0].status").value("STALE"))
+                .andExpect(jsonPath("$.components[0].latestVerdict").value("UP"));
+    }
+
+    @Test
+    void resumedMonitorNeedsResultFromItsNewBehaviorVersion() throws Exception {
+        Monitor monitor = createMonitor("ali-subject", "Resumed component");
+        insertVerdict(monitor, ExecutionVerdict.UP);
+
+        mockMvc.perform(post("/api/status-pages")
+                        .with(jwt().jwt(token -> token.subject("ali-subject")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Resumed systems",
+                                  "slug": "resumed-systems",
+                                  "monitorIds": ["%s"],
+                                  "published": true
+                                }
+                                """.formatted(monitor.getId())))
+                .andExpect(status().isCreated());
+
+        monitor.changeEnabled(false, Instant.now().minusSeconds(2));
+        monitorRepository.flush();
+        monitor.changeEnabled(true, Instant.now());
+        monitorRepository.flush();
+
+        mockMvc.perform(get("/status/resumed-systems"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.overallStatus").value("UNKNOWN"))
+                .andExpect(jsonPath("$.components[0].status").value("UNKNOWN"))
+                .andExpect(jsonPath("$.components[0].latestVerdict").value("UP"));
     }
 
     @Test
@@ -82,7 +172,8 @@ class StatusPageApiTest {
                 .andExpect(jsonPath("$.published").value(false));
 
         mockMvc.perform(get("/status/private-page"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(header().string("Cache-Control", "no-store"));
     }
 
     @Test
@@ -104,14 +195,21 @@ class StatusPageApiTest {
     }
 
     private Monitor createMonitor(String owner, String name) {
+        return createMonitor(owner, name, Instant.now().minusSeconds(90));
+    }
+
+    private Monitor createMonitor(String owner, String name, Instant createdAt) {
         return monitorRepository.saveAndFlush(Monitor.create(
                 owner, name, "https://example.com", 60, 5_000,
-                Instant.parse("2026-09-07T12:00:00Z")
+                createdAt
         ));
     }
 
     private void insertVerdict(Monitor monitor, ExecutionVerdict verdict) {
-        Instant scheduledAt = Instant.parse("2026-09-07T12:01:00Z");
+        insertVerdict(monitor, verdict, Instant.now().minusSeconds(30));
+    }
+
+    private void insertVerdict(Monitor monitor, ExecutionVerdict verdict, Instant scheduledAt) {
         jdbcTemplate.update(
                 """
                 INSERT INTO probe_executions

@@ -3,6 +3,7 @@ package dev.ali.rcp.availability;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -14,7 +15,7 @@ import java.util.UUID;
 public class AvailabilityService {
     private static final Duration MAXIMUM_WINDOW = Duration.ofDays(366);
     private static final String DENOMINATOR_POLICY =
-            "UP_AND_DOWN_ONLY; DISAGREEMENT_AND_NO_DATA_EXCLUDED; MAINTENANCE_WINDOWS_NOT_YET_IMPLEMENTED";
+            "UP_AND_DOWN_ONLY; COVERAGE_INCLUDES_MISSING_AND_PENDING_SCHEDULE_SLOTS; MAINTENANCE_WINDOWS_NOT_YET_IMPLEMENTED";
 
     private final AvailabilityRepository repository;
     private final AvailabilityCalculator calculator = new AvailabilityCalculator();
@@ -29,7 +30,7 @@ public class AvailabilityService {
         this.minimumEvidenceCoveragePercent = Objects.requireNonNull(minimumEvidenceCoveragePercent);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public AvailabilityReport report(
             String ownerSubject,
             UUID monitorId,
@@ -41,13 +42,22 @@ public class AvailabilityService {
         Objects.requireNonNull(monitorId, "monitorId must not be null");
         validateWindow(from, to);
 
+        Instant observedAt = repository.databaseNow();
         if (!repository.ownerHasMonitor(ownerSubject, monitorId)) {
             throw new AvailabilityMonitorNotFoundException();
         }
 
-        VerdictCounts counts = repository.countFinalizedVerdicts(monitorId, from, to);
+        var schedules = repository.schedules(monitorId);
+        if (schedules.isEmpty()) {
+            throw new IllegalStateException("monitor has no schedule history");
+        }
+        VerdictCounts counts = repository.countExecutionVerdicts(monitorId, from, to);
+        long expected = schedules.stream()
+                .mapToLong(schedule -> schedule.opportunities(from, to, observedAt))
+                .sum();
         AvailabilityMeasurement measurement = calculator.calculate(
                 counts,
+                expected,
                 sloTargetPercent,
                 minimumEvidenceCoveragePercent
         );
@@ -66,6 +76,9 @@ public class AvailabilityService {
                 counts.noData(),
                 counts.conclusive(),
                 counts.total(),
+                counts.pending(),
+                Math.max(0, expected - counts.totalCreated()),
+                expected,
                 DENOMINATOR_POLICY
         );
     }

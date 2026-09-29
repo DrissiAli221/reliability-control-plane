@@ -53,6 +53,8 @@ class ReliabilityReportApiTest {
                 .andExpect(jsonPath("$.schemaVersion").value("rcp-report-v1"))
                 .andExpect(jsonPath("$.availability.measuredAvailabilityPercent").value(50))
                 .andExpect(jsonPath("$.availability.evidenceCoveragePercent").value(100))
+                .andExpect(jsonPath("$.availability.expectedOpportunities").value(2))
+                .andExpect(jsonPath("$.availability.missingExecutions").value(0))
                 .andExpect(jsonPath("$.availability.sloMet").value(false))
                 .andExpect(jsonPath("$.errorBudget.observedBadExecutions").value(1))
                 .andExpect(jsonPath("$.latency.sampleCount").value(4))
@@ -80,6 +82,22 @@ class ReliabilityReportApiTest {
                         .queryParam("from", WINDOW_START.toString())
                         .queryParam("to", WINDOW_START.plusSeconds(120).toString()))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void reportDoesNotCallSparseGreenEvidenceAnSloPass() throws Exception {
+        Monitor monitor = monitor("ali-subject", "Sparse evidence");
+        execution(monitor, WINDOW_START, "UP", 200);
+
+        mockMvc.perform(get("/api/monitors/{id}/reliability-report", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject")))
+                        .queryParam("from", WINDOW_START.toString())
+                        .queryParam("to", WINDOW_START.plusSeconds(600).toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.availability.measuredAvailabilityPercent").value(100))
+                .andExpect(jsonPath("$.availability.evidenceCoveragePercent").value(10))
+                .andExpect(jsonPath("$.availability.missingExecutions").value(9))
+                .andExpect(jsonPath("$.availability.sloMet").value(org.hamcrest.Matchers.nullValue()));
     }
 
     @Test

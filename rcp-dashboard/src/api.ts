@@ -44,6 +44,13 @@ export function createMonitor(input: CreateMonitorInput): Promise<CreatedMonitor
   return request("/api/monitors", { method: "POST", body: JSON.stringify(input) });
 }
 
+export async function setMonitorEnabled(monitorId: string, enabled: boolean): Promise<void> {
+  await request(`/api/monitors/${encodeURIComponent(monitorId)}/enabled`, {
+    method: "PATCH",
+    body: JSON.stringify({ enabled }),
+  });
+}
+
 export function availability(monitorId: string, days = 7): Promise<AvailabilityReport> {
   const to = new Date();
   const from = new Date(to.getTime() - days * 86_400_000);
@@ -66,9 +73,11 @@ export async function reliabilityReportHtml(monitorId: string, days = 7): Promis
   return response.blob();
 }
 
-export async function publicStatus(slug: string): Promise<PublicStatusPage> {
+export async function publicStatus(slug: string, signal?: AbortSignal): Promise<PublicStatusPage> {
   const response = await fetch(`${apiBase}/status/${encodeURIComponent(slug)}`, {
     headers: { Accept: "application/json" },
+    cache: "no-store",
+    signal,
   });
   if (!response.ok) throw new Error(response.status === 404 ? "Status page not found" : "Status page unavailable");
   return response.json() as Promise<PublicStatusPage>;

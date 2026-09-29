@@ -3,7 +3,6 @@ package dev.ali.rcp.statuspage;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -12,7 +11,6 @@ import java.util.UUID;
 @Service
 public class StatusPageService {
     private final StatusPageRepository repository;
-    private final Clock clock = Clock.systemUTC();
 
     public StatusPageService(StatusPageRepository repository) {
         this.repository = Objects.requireNonNull(repository);
@@ -49,26 +47,15 @@ public class StatusPageService {
     public PublicStatusPage findPublic(String slug) {
         StoredStatusPage page = repository.findPublishedPage(slug)
                 .orElseThrow(StatusPageNotFoundException::new);
-        List<PublicStatusComponent> components = repository.findPublicComponents(page.id());
+        // Probe scheduling uses PostgreSQL time; assess freshness on the same clock.
+        var asOf = repository.databaseNow();
+        List<PublicStatusComponent> components = repository.findPublicComponents(page.id(), asOf);
         return new PublicStatusPage(
                 page.name(),
                 page.slug(),
-                overallStatus(components),
-                clock.instant(),
+                StatusPageHealthPolicy.overallStatus(components),
+                asOf,
                 components
         );
-    }
-
-    private String overallStatus(List<PublicStatusComponent> components) {
-        if (components.stream().anyMatch(component -> "OUTAGE".equals(component.status()))) {
-            return "OUTAGE";
-        }
-        if (components.stream().anyMatch(component -> "DEGRADED".equals(component.status()))) {
-            return "DEGRADED";
-        }
-        if (components.stream().anyMatch(component -> "UNKNOWN".equals(component.status()))) {
-            return "UNKNOWN";
-        }
-        return "OPERATIONAL";
     }
 }

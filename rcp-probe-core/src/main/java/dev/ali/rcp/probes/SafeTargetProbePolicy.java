@@ -15,7 +15,8 @@ public final class SafeTargetProbePolicy implements ProbeTargetPolicy {
     @Override
     public String validateAndNormalize(String targetUrl) throws UnsafeProbeTargetException {
         try {
-            return safeTargetPolicy.validateAndNormalize(targetUrl);
+            // The HTTP adapter validates the one DNS answer set actually used to connect.
+            return safeTargetPolicy.validateSyntaxAndNormalize(targetUrl);
         } catch (UnsafeTargetException exception) {
             throw new UnsafeProbeTargetException(exception.getMessage());
         }

@@ -1,7 +1,7 @@
 package dev.ali.rcp.probes.local;
 
 import dev.ali.rcp.monitors.SafeTargetPolicy;
-import dev.ali.rcp.probes.JdkProbeHttpClient;
+import dev.ali.rcp.probes.ValidatedProbeHttpClient;
 import dev.ali.rcp.probes.ProbeEngine;
 import dev.ali.rcp.probes.ProbeMessageCodec;
 import dev.ali.rcp.probes.ProbeResultTransport;
@@ -52,7 +52,7 @@ public class LocalProbeWorkerConfiguration {
         ProbeEngine engine = new ProbeEngine(
                 new SafeTargetProbePolicy(safeTargetPolicy),
                 new FaultInjectingProbeHttpClient(
-                        new JdkProbeHttpClient(Duration.ofSeconds(3)),
+                        new ValidatedProbeHttpClient(safeTargetPolicy, Duration.ofSeconds(3)),
                         faults
                 )
         );

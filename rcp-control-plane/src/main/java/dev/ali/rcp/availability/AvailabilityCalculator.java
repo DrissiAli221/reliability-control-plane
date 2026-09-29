@@ -9,14 +9,19 @@ public final class AvailabilityCalculator {
 
     public AvailabilityMeasurement calculate(
             VerdictCounts counts,
+            long expectedOpportunities,
             BigDecimal sloTargetPercent,
             BigDecimal minimumEvidenceCoveragePercent
     ) {
         Objects.requireNonNull(counts, "counts must not be null");
+        if (expectedOpportunities < 0) {
+            throw new IllegalArgumentException("expectedOpportunities must not be negative");
+        }
         validatePercentage(sloTargetPercent, "sloTargetPercent");
         validatePercentage(minimumEvidenceCoveragePercent, "minimumEvidenceCoveragePercent");
 
-        BigDecimal coverage = percentage(counts.conclusive(), counts.total());
+        // An inconsistent history must never produce a green SLO or coverage above 100%.
+        BigDecimal coverage = percentage(counts.conclusive(), Math.max(expectedOpportunities, counts.totalCreated()));
         if (counts.conclusive() == 0) {
             return new AvailabilityMeasurement(null, coverage, null);
         }
@@ -25,7 +30,8 @@ public final class AvailabilityCalculator {
         return new AvailabilityMeasurement(
                 availability,
                 coverage,
-                coverage.compareTo(minimumEvidenceCoveragePercent) >= 0
+                counts.totalCreated() <= expectedOpportunities
+                        && coverage.compareTo(minimumEvidenceCoveragePercent) >= 0
                         ? availability.compareTo(sloTargetPercent) >= 0
                         : null
         );

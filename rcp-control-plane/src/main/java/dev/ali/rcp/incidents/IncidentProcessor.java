@@ -32,9 +32,26 @@ public class IncidentProcessor {
     }
 
     private void process(FinalizedExecution execution) {
+        // Serialize with owner pause/resume, which locks this monitor row.
+        MonitorRunState run = repository.lockMonitorRun(execution.monitorId());
+        if (!run.enabled() || execution.monitorBehaviorVersion() != run.behaviorVersion()) {
+            repository.recordEvaluation(execution, IncidentDecision.Transition.IGNORED_STALE);
+            return;
+        }
+
         PersistedIncidentState current = repository.findState(execution.monitorId());
+        var currentState = current.state();
+        if (currentState.lastEvaluatedAt() != null
+                && repository.behaviorVersionAt(execution.monitorId(), currentState.lastEvaluatedAt())
+                        != execution.monitorBehaviorVersion()) {
+            // Preserve an open incident, but never carry old DOWN/UP streaks into a new run.
+            currentState = new IncidentState(
+                    currentState.status(), 0, 0,
+                    currentState.lastEvaluatedAt(), currentState.openedAt()
+            );
+        }
         IncidentDecision decision = policy.evaluate(
-                current.state(),
+                currentState,
                 execution.verdict(),
                 execution.scheduledAt()
         );

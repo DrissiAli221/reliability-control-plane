@@ -3,6 +3,7 @@ package dev.ali.rcp.probes;
 import javax.net.ssl.SSLException;
 import java.io.IOException;
 import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpTimeoutException;
@@ -70,7 +71,13 @@ public final class ProbeEngine {
         } catch (HttpConnectTimeoutException exception) {
             return failure(job, startedAt, clock.instant(), ProbeOutcome.CONNECT_TIMEOUT,
                     elapsedMillis(startedNanos), "connect_timeout");
+        } catch (org.apache.hc.client5.http.ConnectTimeoutException exception) {
+            return failure(job, startedAt, clock.instant(), ProbeOutcome.CONNECT_TIMEOUT,
+                    elapsedMillis(startedNanos), "connect_timeout");
         } catch (HttpTimeoutException exception) {
+            return failure(job, startedAt, clock.instant(), ProbeOutcome.REQUEST_TIMEOUT,
+                    elapsedMillis(startedNanos), "request_timeout");
+        } catch (SocketTimeoutException exception) {
             return failure(job, startedAt, clock.instant(), ProbeOutcome.REQUEST_TIMEOUT,
                     elapsedMillis(startedNanos), "request_timeout");
         } catch (SSLException exception) {
@@ -81,6 +88,10 @@ public final class ProbeEngine {
             return failure(job, startedAt, clock.instant(), ProbeOutcome.INTERRUPTED,
                     elapsedMillis(startedNanos), "interrupted");
         } catch (IOException exception) {
+            if (hasCause(exception, ValidatedDnsResolver.UnsafeTargetDnsException.class)) {
+                return failure(job, startedAt, clock.instant(), ProbeOutcome.UNSAFE_TARGET,
+                        elapsedMillis(startedNanos), "unsafe_target");
+            }
             String errorType = hasCause(exception, UnknownHostException.class)
                     ? "dns_failure"
                     : hasCause(exception, ConnectException.class) ? "connection_failure" : "io_failure";

@@ -1,5 +1,11 @@
 # Reliability Control Plane
 
+The [implementation status](docs/implementation-status.md) separates working code from architecture decisions and unverified AWS plans. Do not treat [the original architecture plan](docs/architecture-decisions.md) as a list of completed features.
+For local failure triage, use the [operator runbook](docs/local-operator-runbook.md).
+The [threat model](docs/threat-model.md) records the trust boundaries and deployment security gates; it does not claim those gates have been met.
+The [OpenAPI contract](docs/openapi.yaml) covers the implemented HTTP endpoints; the [local fault-drill postmortem](docs/local-fault-drill-postmortem.md) records one simulated incident and its proof boundary.
+The [accepted ADRs](docs/accepted-adrs.md) record the choices and reconsideration triggers separately from the original plan.
+
 RCP accepts HTTP(S) monitors, schedules one probe job per configured region, transports work through SQS-compatible queues, evaluates regional evidence, and maintains availability and incident state in PostgreSQL.
 
 The local profile runs the real control-plane pipeline with PostgreSQL and ElasticMQ. For convenience, local probe adapters run in the same JVM; the AWS design replaces them with isolated regional Lambda workers. Region names in local logs are simulation labels, not evidence of geographic execution.
@@ -38,6 +44,12 @@ docker compose ps
 ```
 
 The project uses host port `15432` for PostgreSQL to avoid common collisions with locally installed databases. ElasticMQ exposes its SQS-compatible API on `9324`.
+
+From the repository root, install the sibling probe-core module into your local Maven cache before running Spring Boot from the control-plane directory. A reactor `verify` builds it for tests but does not install it, so skipping this step on a fresh checkout makes `spring-boot:run` fail to resolve `rcp-probe-core`:
+
+```bash
+JAVA_HOME=$(/usr/libexec/java_home -v 21) ./rcp-control-plane/mvnw -q -DskipTests install
+```
 
 In the first terminal, download the OpenTelemetry Java agent and start Spring Boot with tracing plus an ephemeral local JWT signing secret:
 
@@ -78,6 +90,8 @@ export RCP_TOKEN="$(curl -fsS -X POST http://localhost:8080/local/token | jq -r 
 ```
 
 Create a monitor. Use a public endpoint you are authorized to probe; localhost and private/reserved addresses are intentionally rejected by the SSRF policy.
+Targets with query strings are also rejected because queries commonly contain secrets. The probe's connection-time DNS resolver revalidates every answer, but network egress denial remains a separate, unproven defense until an AWS worker environment is deployed and tested.
+Registration is capped at 25 monitors per owner by default, including paused monitors. Override `RCP_MONITORS_MAX_PER_OWNER` for a different local limit; exceeding it returns HTTP 409. This cap is not a request-rate limit.
 
 ```bash
 curl -fsS -X POST http://localhost:8080/api/monitors \
@@ -97,6 +111,17 @@ After a few seconds, inspect the finalized regional verdict and incident state:
 curl -fsS http://localhost:8080/api/monitors \
   -H "Authorization: Bearer $RCP_TOKEN" | jq
 ```
+
+Pause a monitor without deleting its historical evidence (replace `RCP_MONITOR_ID` with the ID returned by creation):
+
+```bash
+curl -fsS -X PATCH "http://localhost:8080/api/monitors/$RCP_MONITOR_ID/enabled" \
+  -H "Authorization: Bearer $RCP_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data '{"enabled":false}' | jq
+```
+
+Use `{"enabled":true}` to resume. Only the owner can change this state. Pausing prevents new jobs after the in-flight scheduling transaction commits; it does not cancel already-created jobs or erase incidents. The database records each enabled interval so paused time is excluded from expected-check coverage.
 
 ## Exercise incident opening and recovery
 
@@ -222,7 +247,7 @@ docker compose down
 
 ## Availability evidence policy
 
-The availability endpoint reports measured availability separately from evidence coverage. The reference policy requires at least 95% conclusive evidence among finalized executions before `sloMet` may be `true` or `false`; below that threshold it is `null` (insufficient evidence), even when the measured percentage looks good. The response includes the threshold. This coverage metric does **not** yet detect executions the scheduler never created, so it is not a production-grade contractual SLO proof.
+The availability endpoint reports measured availability separately from evidence coverage. Expected opportunities come from versioned enabled scheduling periods in the requested end-exclusive window, capped at the database's current time; paused time contributes no slots. Coverage divides conclusive finalized executions by those expected slots, so pending executions and slots the scheduler never created lower coverage. The response exposes `expectedOpportunities`, `pendingExecutions`, and `missingExecutions`. Below 95% coverage, `sloMet` is `null` (insufficient evidence), even when measured availability looks good. This remains a reference policy, not a production-grade contractual SLO: maintenance windows, configured/versioned SLO targets, and late correction policy are not implemented.
 
 ## Generate an owner-only reliability report
 

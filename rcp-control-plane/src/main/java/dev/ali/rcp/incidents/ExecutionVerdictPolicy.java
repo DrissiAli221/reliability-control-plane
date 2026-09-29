@@ -33,6 +33,14 @@ public final class ExecutionVerdictPolicy {
             return Optional.of(ExecutionVerdict.DISAGREEMENT);
         }
 
+        long validTargetFacts = facts.stream().filter(RegionalProbeFact::isTargetEvidence).count();
+        if (validTargetFacts == 0) {
+            return Optional.of(ExecutionVerdict.NO_DATA);
+        }
+        if (validTargetFacts < expectedRegionCount) {
+            return Optional.of(ExecutionVerdict.DISAGREEMENT);
+        }
+
         long successfulRegions = facts.stream()
                 .filter(RegionalProbeFact::isSuccessfulHttpResponse)
                 .count();

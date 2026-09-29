@@ -5,12 +5,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/monitors")
@@ -48,5 +51,19 @@ public class MonitorController {
         );
 
         return ResponseEntity.created(location).body(response);
+    }
+
+    @GetMapping("/{monitorId}")
+    public MonitorResponse get(@PathVariable UUID monitorId, Authentication authentication) {
+        return monitorService.get(authentication.getName(), monitorId);
+    }
+
+    @PatchMapping("/{monitorId}/enabled")
+    public MonitorResponse setEnabled(
+            @PathVariable UUID monitorId,
+            @Valid @RequestBody SetMonitorEnabledRequest request,
+            Authentication authentication
+    ) {
+        return monitorService.setEnabled(authentication.getName(), monitorId, request.enabled());
     }
 }

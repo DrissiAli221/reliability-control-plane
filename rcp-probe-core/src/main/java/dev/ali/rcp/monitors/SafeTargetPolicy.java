@@ -9,24 +9,54 @@ import java.net.UnknownHostException;
 import java.util.Locale;
 
 public class SafeTargetPolicy {
+    private final Resolver resolver;
+
+    public SafeTargetPolicy() {
+        this(InetAddress::getAllByName);
+    }
+
+    public SafeTargetPolicy(Resolver resolver) {
+        this.resolver = java.util.Objects.requireNonNull(resolver);
+    }
+
+    @FunctionalInterface
+    public interface Resolver {
+        InetAddress[] resolve(String host) throws UnknownHostException;
+    }
 
     public String validateAndNormalize(String rawTargetUrl) {
+        NormalizedTarget target = normalizeSyntax(rawTargetUrl);
+        resolvePublicAddresses(target.host());
+        return target.url();
+    }
+
+    /** Syntax only: workers must pair this with connection-time DNS validation. */
+    public String validateSyntaxAndNormalize(String rawTargetUrl) {
+        return normalizeSyntax(rawTargetUrl).url();
+    }
+
+    private NormalizedTarget normalizeSyntax(String rawTargetUrl) {
         URI uri = parse(rawTargetUrl);
 
         String scheme = normalizeScheme(uri);
         rejectCredentials(uri);
         rejectFragment(uri);
+        rejectQuery(uri);
 
         String host = normalizeHost(uri);
         validatePort(scheme, uri.getPort());
-        validateResolvedAddresses(host);
+        return new NormalizedTarget(host, normalizedUrl(uri, scheme, host));
+    }
 
-        return normalizedUrl(uri, scheme, host);
+    private record NormalizedTarget(String host, String url) {
     }
 
     private URI parse(String rawTargetUrl) {
+        if (rawTargetUrl == null || !rawTargetUrl.equals(rawTargetUrl.trim())) {
+            throw new UnsafeTargetException("Target URL must be present without surrounding whitespace");
+        }
         try {
-            return new URI(rawTargetUrl.trim());
+            return new URI(rawTargetUrl);
         } catch (URISyntaxException exception) {
             throw new UnsafeTargetException("Target URL is malformed", exception);
         }
@@ -63,6 +93,12 @@ public class SafeTargetPolicy {
             throw new UnsafeTargetException(
                     "URL fragments are not allowed"
             );
+        }
+    }
+
+    private void rejectQuery(URI uri) {
+        if (uri.getRawQuery() != null) {
+            throw new UnsafeTargetException("Query strings in target URLs are not allowed");
         }
     }
 
@@ -109,11 +145,12 @@ public class SafeTargetPolicy {
         }
     }
 
-    private void validateResolvedAddresses(String host) {
+    /** Reused by the HTTP client's connection-time DNS resolver. */
+    public InetAddress[] resolvePublicAddresses(String host) {
         InetAddress[] addresses;
 
         try {
-            addresses = InetAddress.getAllByName(host);
+            addresses = resolver.resolve(host);
         } catch (UnknownHostException exception) {
             throw new UnsafeTargetException(
                     "Target host could not be resolved",
@@ -134,6 +171,7 @@ public class SafeTargetPolicy {
                 );
             }
         }
+        return addresses.clone();
     }
 
     private boolean isForbidden(InetAddress address) {
@@ -154,6 +192,8 @@ public class SafeTargetPolicy {
         return isForbiddenIpv6(bytes);
     }
 
+    // IANA IPv4 Special-Purpose Address Space, reviewed 2026-09-27:
+    // https://www.iana.org/assignments/iana-ipv4-special-registry
     private boolean isForbiddenIpv4(byte[] bytes) {
         int first = unsigned(bytes[0]);
         int second = unsigned(bytes[1]);
@@ -166,9 +206,12 @@ public class SafeTargetPolicy {
                 || (first == 100 && second >= 64 && second <= 127)
                 || (first == 169 && second == 254)
                 || (first == 172 && second >= 16 && second <= 31)
-                || (first == 192 && second == 0)
+                || (first == 192 && second == 0 && (third == 0 || third == 2))
+                || (first == 192 && second == 31 && third == 196)
+                || (first == 192 && second == 52 && third == 193)
                 || (first == 192 && second == 168)
                 || (first == 192 && second == 88 && third == 99)
+                || (first == 192 && second == 175 && third == 48)
                 || (first == 198 && (second == 18 || second == 19))
                 || (first == 198 && second == 51 && third == 100)
                 || (first == 203 && second == 0 && third == 113);
@@ -180,7 +223,17 @@ public class SafeTargetPolicy {
         int third = unsigned(bytes[2]);
         int fourth = unsigned(bytes[3]);
 
-        boolean uniqueLocal = (first & 0xFE) == 0xFC;
+        // Conservatively accept only current global-unicast space (2000::/3).
+        // This also blocks IPv4-translation, discard, dummy, ULA, and link-local
+        // prefixes. Revisit if public IPv6 allocation expands beyond this range.
+        // IANA IPv6 Special-Purpose Address Space, reviewed 2026-09-27:
+        // https://www.iana.org/assignments/iana-ipv6-special-registry
+        if ((first & 0xE0) != 0x20) {
+            return true;
+        }
+
+        boolean ietfProtocolAssignments = first == 0x20
+                && second == 0x01 && (third & 0xFE) == 0;
         boolean documentation =
                 first == 0x20
                         && second == 0x01
@@ -188,39 +241,20 @@ public class SafeTargetPolicy {
                         && fourth == 0xB8;
         boolean sixToFour = first == 0x20 && second == 0x02;
         boolean documentationV2 =
-                first == 0x3F && (second & 0xF0) == 0xF0;
+                first == 0x3F && second == 0xFF && (third & 0xF0) == 0;
+        boolean as112 = first == 0x26 && second == 0x20
+                && third == 0 && fourth == 0x4F
+                && unsigned(bytes[4]) == 0x80 && unsigned(bytes[5]) == 0;
 
-        if (first == 0
-                || uniqueLocal
+        if (ietfProtocolAssignments
                 || documentation
                 || sixToFour
-                || documentationV2) {
+                || documentationV2
+                || as112) {
             return true;
         }
 
-        if (isIpv4Mapped(bytes)) {
-            byte[] ipv4 = {
-                    bytes[12],
-                    bytes[13],
-                    bytes[14],
-                    bytes[15]
-            };
-
-            return isForbiddenIpv4(ipv4);
-        }
-
         return false;
-    }
-
-    private boolean isIpv4Mapped(byte[] bytes) {
-        for (int index = 0; index < 10; index++) {
-            if (bytes[index] != 0) {
-                return false;
-            }
-        }
-
-        return unsigned(bytes[10]) == 255
-                && unsigned(bytes[11]) == 255;
     }
 
     private int unsigned(byte value) {
@@ -246,10 +280,6 @@ public class SafeTargetPolicy {
             path = "/";
         }
 
-        String query = original.getRawQuery() == null
-                ? ""
-                : "?" + original.getRawQuery();
-
-        return scheme + "://" + authorityHost + port + path + query;
+        return scheme + "://" + authorityHost + port + path;
     }
 }

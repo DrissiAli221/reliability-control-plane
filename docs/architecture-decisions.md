@@ -13,6 +13,8 @@ At the start of this assignment, <code>/Users/rini/Projects/RCP</code> was empty
 
 The words “chosen” and “will” below describe the review baseline, not completed implementation. Any future AWS deployment or destructive exercise requires separate explicit authorization.
 
+For current implementation and verification status, see [implementation-status.md](implementation-status.md). The original-assignment snapshot above is historical, not a claim that this directory is still empty.
+
 ## 2. Product and learning goal
 
 RCP will be an uptime and reliability control plane that:
@@ -316,6 +318,8 @@ Finalized executions enter the incident state machine in <code>scheduled_at</cod
 The operator API reads monitor state, regional evidence, incidents, queue/scheduler health, measured availability, SLO target, and evidence coverage. The frontend remains thin: it renders server-owned truth and does not recompute incident logic in TypeScript.
 
 A status page is anonymous only for an explicitly published projection. Private monitor configuration and owner details never leak into that projection. CloudFront serves the same static React application or a dedicated public route; REST supplies the current data.
+
+The public projection must not treat the last successful probe as perpetual proof of health. Paused monitoring is shown explicitly; an enabled monitor with evidence older than its cadence plus processing grace is stale; and a resumed or edited monitor needs a result from its current behavior version. These states contribute unknown overall health, not a green claim. The current reference freshness threshold is the larger of two check intervals and one interval plus the probe timeout (rounded up to seconds) plus 60 seconds; a later production policy should make this threshold and delayed-result behavior explicit to operators. The public API sends `Cache-Control: no-store`; an open page refreshes periodically and replaces the old status with an unavailable state if refresh fails or times out.
 
 #### Step 8 — availability is calculated without confusing objective and measurement
 
@@ -1088,6 +1092,8 @@ Ali's answer should cover more than the happy path. For any component he present
 A strong answer has the shape: “I owned X; input crossed boundary Y; failure Z leaves durable state Q; test/telemetry P proves it; alternative A lost because B; under changed constraint C I would redesign D.” If Ali cannot produce that chain, the topic needs a smaller rebuild or failure exercise.
 
 ## 13. ADR backlog
+
+The candidates below were later recorded as reference-architecture decisions in [the accepted ADR record](accepted-adrs.md). Their acceptance does not mean AWS deployment or production proof exists; see [implementation status](implementation-status.md).
 
 Each ADR will contain context, decision, alternatives, consequences, verification, rollback/reconsideration trigger, and status. These candidates are numbered now so implementation discussions have stable references.
 

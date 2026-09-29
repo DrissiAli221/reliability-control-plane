@@ -20,7 +20,7 @@ public class ReliabilityReportService {
     private static final int MINIMUM_LATENCY_SAMPLES = 20;
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
     private static final List<String> LIMITATIONS = List.of(
-            "Coverage counts conclusive finalized executions, not opportunities the scheduler never created.",
+            "Coverage includes due schedule slots without an execution and excludes recorded paused periods; maintenance and late-correction policies remain incomplete.",
             "Maintenance windows and regional SLIs are not implemented.",
             "Incident timeline contains transitions in the requested window; an incident opened earlier may still be active.",
             "Latency percentiles use HTTP-response samples only and require at least 20 samples.",

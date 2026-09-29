@@ -19,6 +19,9 @@ public record AvailabilityReport(
         long noDataExecutions,
         long conclusiveExecutions,
         long totalFinalizedExecutions,
+        long pendingExecutions,
+        long missingExecutions,
+        long expectedOpportunities,
         String denominatorPolicy
 ) {
 }

@@ -47,7 +47,7 @@ class AvailabilityApiTest {
         mockMvc.perform(get("/api/monitors/{id}/availability", monitor.getId())
                         .with(jwt().jwt(token -> token.subject("ali-subject")))
                         .queryParam("from", "2026-09-07T12:00:00Z")
-                        .queryParam("to", "2026-09-07T13:00:00Z")
+                        .queryParam("to", "2026-09-07T12:05:00Z")
                         .queryParam("sloTargetPercent", "99.9"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.measuredAvailabilityPercent").value(66.66667))
@@ -56,11 +56,60 @@ class AvailabilityApiTest {
                 .andExpect(jsonPath("$.minimumEvidenceCoveragePercent").value(95))
                 .andExpect(jsonPath("$.conclusiveExecutions").value(3))
                 .andExpect(jsonPath("$.totalFinalizedExecutions").value(5))
+                .andExpect(jsonPath("$.expectedOpportunities").value(5))
+                .andExpect(jsonPath("$.missingExecutions").value(0))
                 .andExpect(jsonPath("$.disagreementExecutions").value(1))
                 .andExpect(jsonPath("$.noDataExecutions").value(1))
                 .andExpect(jsonPath("$.denominatorPolicy").value(
-                        "UP_AND_DOWN_ONLY; DISAGREEMENT_AND_NO_DATA_EXCLUDED; MAINTENANCE_WINDOWS_NOT_YET_IMPLEMENTED"
+                        "UP_AND_DOWN_ONLY; COVERAGE_INCLUDES_MISSING_AND_PENDING_SCHEDULE_SLOTS; MAINTENANCE_WINDOWS_NOT_YET_IMPLEMENTED"
                 ));
+    }
+
+    @Test
+    void missingSchedulerSlotsLowerCoverageWithoutLoweringMeasuredAvailability() throws Exception {
+        Monitor monitor = createMonitor("ali-subject");
+        insertVerdict(monitor, 0, ExecutionVerdict.UP);
+
+        mockMvc.perform(get("/api/monitors/{id}/availability", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject")))
+                        .queryParam("from", "2026-09-07T12:00:00Z")
+                        .queryParam("to", "2026-09-07T12:10:00Z"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.measuredAvailabilityPercent").value(100))
+                .andExpect(jsonPath("$.evidenceCoveragePercent").value(10))
+                .andExpect(jsonPath("$.expectedOpportunities").value(10))
+                .andExpect(jsonPath("$.missingExecutions").value(9))
+                .andExpect(jsonPath("$.sloMet").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    void pausedTimeIsExcludedFromExpectedScheduleCoverage() throws Exception {
+        Monitor monitor = createMonitor("ali-subject");
+        Instant start = Instant.parse("2026-09-07T12:00:00Z");
+        jdbcTemplate.update(
+                "UPDATE monitor_schedule_periods SET stopped_at = ? WHERE monitor_id = ? AND stopped_at IS NULL",
+                start.plusSeconds(180).atOffset(ZoneOffset.UTC), monitor.getId()
+        );
+        jdbcTemplate.update(
+                """
+                INSERT INTO monitor_schedule_periods (monitor_id, first_check_at, interval_seconds)
+                VALUES (?, ?, 60)
+                """,
+                monitor.getId(), start.plusSeconds(600).atOffset(ZoneOffset.UTC)
+        );
+        insertVerdict(monitor, 0, ExecutionVerdict.UP);
+        insertVerdict(monitor, 10, ExecutionVerdict.UP);
+
+        mockMvc.perform(get("/api/monitors/{id}/availability", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject")))
+                        .queryParam("from", start.toString())
+                        .queryParam("to", start.plusSeconds(900).toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.expectedOpportunities").value(8))
+                .andExpect(jsonPath("$.missingExecutions").value(6))
+                .andExpect(jsonPath("$.evidenceCoveragePercent").value(25))
+                .andExpect(jsonPath("$.measuredAvailabilityPercent").value(100))
+                .andExpect(jsonPath("$.sloMet").value(org.hamcrest.Matchers.nullValue()));
     }
 
     @Test

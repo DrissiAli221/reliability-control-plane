@@ -25,7 +25,7 @@ public class IncidentRepository {
         }
         return jdbcTemplate.query(
                 """
-                SELECT execution_id, monitor_id, scheduled_at, verdict
+                SELECT execution_id, monitor_id, scheduled_at, verdict, monitor_behavior_version
                 FROM probe_executions executions
                 WHERE status = 'FINALIZED'
                   AND NOT EXISTS (
@@ -51,10 +51,33 @@ public class IncidentRepository {
                         resultSet.getObject("execution_id", UUID.class),
                         resultSet.getObject("monitor_id", UUID.class),
                         resultSet.getObject("scheduled_at", OffsetDateTime.class).toInstant(),
-                        ExecutionVerdict.valueOf(resultSet.getString("verdict"))
+                        ExecutionVerdict.valueOf(resultSet.getString("verdict")),
+                        resultSet.getLong("monitor_behavior_version")
                 ),
                 batchSize
         );
+    }
+
+    public MonitorRunState lockMonitorRun(UUID monitorId) {
+        return Objects.requireNonNull(jdbcTemplate.queryForObject(
+                "SELECT behavior_version, enabled FROM monitors WHERE monitor_id = ? FOR UPDATE",
+                (resultSet, rowNumber) -> new MonitorRunState(
+                        resultSet.getLong("behavior_version"), resultSet.getBoolean("enabled")
+                ),
+                monitorId
+        ));
+    }
+
+    public long behaviorVersionAt(UUID monitorId, Instant scheduledAt) {
+        return Objects.requireNonNull(jdbcTemplate.queryForObject(
+                """
+                SELECT monitor_behavior_version
+                FROM probe_executions
+                WHERE monitor_id = ? AND scheduled_at = ?
+                """,
+                Long.class,
+                monitorId, timestamp(scheduledAt)
+        ));
     }
 
     public PersistedIncidentState findState(UUID monitorId) {

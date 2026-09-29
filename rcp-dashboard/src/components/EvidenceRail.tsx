@@ -1,12 +1,14 @@
 import type { AvailabilityReport } from "../types";
 
 export function EvidenceRail({ report }: { report: AvailabilityReport }) {
-  const total = report.totalFinalizedExecutions;
+  const total = Math.max(report.expectedOpportunities, report.totalFinalizedExecutions + report.pendingExecutions);
   const pieces = [
     ["up", report.upExecutions, "UP"],
     ["down", report.downExecutions, "DOWN"],
     ["disagreement", report.disagreementExecutions, "DISAGREE"],
     ["missing", report.noDataExecutions, "NO DATA"],
+    ["pending", report.pendingExecutions, "PENDING"],
+    ["unscheduled", report.missingExecutions, "NOT SCHEDULED"],
   ] as const;
   const availability = report.measuredAvailabilityPercent == null ? "—" : `${Number(report.measuredAvailabilityPercent).toFixed(3)}%`;
 

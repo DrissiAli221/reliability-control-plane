@@ -3,6 +3,7 @@ package dev.ali.rcp.statuspage;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -68,20 +69,31 @@ public class StatusPageRepository {
         ).stream().findFirst();
     }
 
-    public List<PublicStatusComponent> findPublicComponents(UUID pageId) {
+    public Instant databaseNow() {
+        return Objects.requireNonNull(jdbcTemplate.queryForObject(
+                "SELECT clock_timestamp()", OffsetDateTime.class
+        )).toInstant();
+    }
+
+    public List<PublicStatusComponent> findPublicComponents(UUID pageId, Instant asOf) {
         return jdbcTemplate.query(
                 """
                 SELECT
                     monitors.name,
+                    monitors.enabled,
+                    monitors.check_interval_seconds,
+                    monitors.timeout_ms,
+                    monitors.behavior_version,
                     COALESCE(incident_state.status, 'HEALTHY') AS incident_status,
                     latest.verdict AS latest_verdict,
-                    latest.scheduled_at AS latest_checked_at
+                    latest.scheduled_at AS latest_checked_at,
+                    latest.monitor_behavior_version AS result_behavior_version
                 FROM status_page_monitors membership
                 JOIN monitors ON monitors.monitor_id = membership.monitor_id
                 LEFT JOIN monitor_incident_state incident_state
                   ON incident_state.monitor_id = monitors.monitor_id
                 LEFT JOIN LATERAL (
-                    SELECT verdict, scheduled_at
+                    SELECT verdict, scheduled_at, monitor_behavior_version
                     FROM probe_executions executions
                     WHERE executions.monitor_id = monitors.monitor_id
                       AND executions.status = 'FINALIZED'
@@ -95,27 +107,23 @@ public class StatusPageRepository {
                     String incidentStatus = resultSet.getString("incident_status");
                     String latestVerdict = resultSet.getString("latest_verdict");
                     OffsetDateTime checkedAt = resultSet.getObject("latest_checked_at", OffsetDateTime.class);
+                    Instant latestScheduledAt = checkedAt == null ? null : checkedAt.toInstant();
                     return new PublicStatusComponent(
                             resultSet.getString("name"),
-                            componentStatus(incidentStatus, latestVerdict),
+                            StatusPageHealthPolicy.componentStatus(
+                                    resultSet.getBoolean("enabled"), incidentStatus, latestVerdict,
+                                    latestScheduledAt,
+                                    resultSet.getLong("behavior_version"),
+                                    resultSet.getObject("result_behavior_version", Long.class),
+                                    resultSet.getInt("check_interval_seconds"),
+                                    resultSet.getInt("timeout_ms"), asOf
+                            ),
                             latestVerdict,
-                            checkedAt == null ? null : checkedAt.toInstant()
+                            latestScheduledAt
                     );
                 },
                 pageId
         );
     }
 
-    private String componentStatus(String incidentStatus, String latestVerdict) {
-        if ("OPEN".equals(incidentStatus)) {
-            return "OUTAGE";
-        }
-        if (latestVerdict == null || "DISAGREEMENT".equals(latestVerdict) || "NO_DATA".equals(latestVerdict)) {
-            return "UNKNOWN";
-        }
-        if ("DOWN".equals(latestVerdict)) {
-            return "DEGRADED";
-        }
-        return "OPERATIONAL";
-    }
 }

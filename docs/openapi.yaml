@@ -1,0 +1,620 @@
+openapi: 3.0.3
+info:
+  title: RCP local reference API
+  version: 1.0.0-reference
+  description: |
+    Contract for the implemented local reference endpoints, not an AWS deployment
+    or a promise of production compatibility. Bearer tokens identify an operator;
+    monitor and report resources are owner-scoped. The /local endpoints exist only
+    under the Spring `local` profile. Actuator's operational endpoints are excluded.
+servers:
+  - url: http://localhost:8080
+security:
+  - bearerAuth: []
+paths:
+  /api/monitors:
+    get:
+      operationId: listMonitors
+      summary: List the authenticated owner's monitors with current operational state
+      responses:
+        '200':
+          description: Owner-scoped monitor overview
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MonitorOverview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createMonitor
+      summary: Register a safe HTTP(S) target
+      description: |
+        Target policy rejects credentials, query strings, fragments, non-default
+        ports, private/special-purpose destinations, and unsafe DNS answers.
+        The owner is limited to 25 registered monitors by default, including paused ones.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMonitorRequest'
+      responses:
+        '201':
+          description: Monitor created; Location points to its owner-scoped GET resource
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Monitor'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/monitors/{monitorId}:
+    parameters:
+      - $ref: '#/components/parameters/MonitorId'
+    get:
+      operationId: getMonitor
+      summary: Read one owned monitor
+      responses:
+        '200':
+          description: Monitor configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Monitor'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/monitors/{monitorId}/enabled:
+    parameters:
+      - $ref: '#/components/parameters/MonitorId'
+    patch:
+      operationId: setMonitorEnabled
+      summary: Pause or resume an owned monitor without deleting history
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated monitor configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Monitor'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/monitors/{monitorId}/availability:
+    parameters:
+      - $ref: '#/components/parameters/MonitorId'
+      - $ref: '#/components/parameters/From'
+      - $ref: '#/components/parameters/To'
+      - $ref: '#/components/parameters/SloTarget'
+    get:
+      operationId: getAvailability
+      summary: Calculate measured availability and evidence coverage
+      responses:
+        '200':
+          description: Reference measurement, not a contractual SLO
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Availability'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/monitors/{monitorId}/reliability-report:
+    parameters:
+      - $ref: '#/components/parameters/MonitorId'
+      - $ref: '#/components/parameters/From'
+      - $ref: '#/components/parameters/To'
+      - $ref: '#/components/parameters/SloTarget'
+    get:
+      operationId: getReliabilityReport
+      summary: Generate an owner-only JSON reliability report
+      responses:
+        '200':
+          description: Versioned report with source watermark and limitations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReliabilityReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/monitors/{monitorId}/reliability-report/html:
+    parameters:
+      - $ref: '#/components/parameters/MonitorId'
+      - $ref: '#/components/parameters/From'
+      - $ref: '#/components/parameters/To'
+      - $ref: '#/components/parameters/SloTarget'
+    get:
+      operationId: downloadReliabilityReportHtml
+      summary: Download the same report model rendered as restrictive HTML
+      responses:
+        '200':
+          description: HTML attachment; Content-Security-Policy is sandboxed
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/status-pages:
+    post:
+      operationId: createStatusPage
+      summary: Publish a status page for monitors owned by the authenticated subject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStatusPageRequest'
+      responses:
+        '201':
+          description: Created status page
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /status/{slug}:
+    parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getPublicStatusPage
+      summary: Read an explicitly published status page without a token
+      security: []
+      responses:
+        '200':
+          description: Public status projection; response is no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicStatusPage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /local/token:
+    post:
+      operationId: issueLocalToken
+      summary: Issue a development JWT (local profile only)
+      x-local-only: true
+      security: []
+      parameters:
+        - name: subject
+          in: query
+          required: false
+          schema:
+            type: string
+            default: local-user
+            maxLength: 120
+      responses:
+        '200':
+          description: One-hour local test token
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accessToken, tokenType, expiresInSeconds]
+                properties:
+                  accessToken:
+                    type: string
+                  tokenType:
+                    type: string
+                    example: Bearer
+                  expiresInSeconds:
+                    type: integer
+                    format: int64
+                    example: 3600
+  /api/local/probe-fault:
+    get:
+      operationId: getLocalProbeFault
+      summary: Read local fault-injection mode
+      x-local-only: true
+      responses:
+        '200':
+          description: Current mode
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocalFaultMode'
+    put:
+      operationId: setLocalProbeFault
+      summary: Change local simulated probe behavior
+      x-local-only: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocalFaultMode'
+      responses:
+        '200':
+          description: New mode
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocalFaultMode'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    MonitorId:
+      name: monitorId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    From:
+      name: from
+      in: query
+      required: true
+      description: UTC inclusive start instant
+      schema:
+        type: string
+        format: date-time
+    To:
+      name: to
+      in: query
+      required: true
+      description: UTC exclusive end instant
+      schema:
+        type: string
+        format: date-time
+    SloTarget:
+      name: sloTargetPercent
+      in: query
+      required: false
+      schema:
+        type: number
+        default: 99.9
+  responses:
+    BadRequest:
+      description: Invalid request or unsafe target
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: Missing or invalid bearer token
+    NotFound:
+      description: Missing resource, including a resource owned by another subject
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: Monitor quota or status-page slug conflict
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    Problem:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+    CreateMonitorRequest:
+      type: object
+      required: [name, targetUrl, checkIntervalSeconds, timeoutMs]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        targetUrl:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: SafeTargetPolicy applies stricter rules than URI syntax alone.
+        checkIntervalSeconds:
+          type: integer
+          minimum: 30
+          maximum: 86400
+        timeoutMs:
+          type: integer
+          minimum: 100
+          maximum: 30000
+    Monitor:
+      type: object
+      required: [id, name, targetUrl, checkIntervalSeconds, timeoutMs, enabled, nextCheckAt, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        targetUrl:
+          type: string
+          format: uri
+        checkIntervalSeconds:
+          type: integer
+        timeoutMs:
+          type: integer
+        enabled:
+          type: boolean
+        nextCheckAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    MonitorOverview:
+      type: object
+      required: [id, name, targetUrl, enabled, nextCheckAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        targetUrl:
+          type: string
+          format: uri
+        enabled:
+          type: boolean
+        nextCheckAt:
+          type: string
+          format: date-time
+        incidentStatus:
+          type: string
+          nullable: true
+        latestVerdict:
+          type: string
+          nullable: true
+        latestCheckedAt:
+          type: string
+          format: date-time
+          nullable: true
+    Availability:
+      type: object
+      required: [monitorId, from, to, sloTargetPercent, evidenceCoveragePercent, minimumEvidenceCoveragePercent, upExecutions, downExecutions, disagreementExecutions, noDataExecutions, conclusiveExecutions, totalFinalizedExecutions, pendingExecutions, missingExecutions, expectedOpportunities, denominatorPolicy]
+      properties:
+        monitorId:
+          type: string
+          format: uuid
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        sloTargetPercent:
+          type: number
+        measuredAvailabilityPercent:
+          type: number
+          nullable: true
+        evidenceCoveragePercent:
+          type: number
+        minimumEvidenceCoveragePercent:
+          type: number
+        sloMet:
+          type: boolean
+          nullable: true
+          description: Null when evidence is insufficient to decide.
+        upExecutions:
+          type: integer
+          format: int64
+        downExecutions:
+          type: integer
+          format: int64
+        disagreementExecutions:
+          type: integer
+          format: int64
+        noDataExecutions:
+          type: integer
+          format: int64
+        conclusiveExecutions:
+          type: integer
+          format: int64
+        totalFinalizedExecutions:
+          type: integer
+          format: int64
+        pendingExecutions:
+          type: integer
+          format: int64
+        missingExecutions:
+          type: integer
+          format: int64
+        expectedOpportunities:
+          type: integer
+          format: int64
+        denominatorPolicy:
+          type: string
+    ReliabilityReport:
+      type: object
+      required: [schemaVersion, generatedAt, monitorName, targetUrl, availability, errorBudget, latency, incidentTimeline, incidentTimelineTruncated, limitations]
+      properties:
+        schemaVersion:
+          type: string
+          example: rcp-report-v1
+        generatedAt:
+          type: string
+          format: date-time
+        sourceDataWatermark:
+          type: string
+          format: date-time
+          nullable: true
+        monitorName:
+          type: string
+        targetUrl:
+          type: string
+          format: uri
+        availability:
+          $ref: '#/components/schemas/Availability'
+        errorBudget:
+          type: object
+          properties:
+            allowedBadExecutions:
+              type: number
+            observedBadExecutions:
+              type: integer
+              format: int64
+            remainingExecutions:
+              type: number
+        latency:
+          type: object
+          properties:
+            sampleCount:
+              type: integer
+              format: int64
+            p50Ms:
+              type: integer
+              format: int64
+              nullable: true
+            p95Ms:
+              type: integer
+              format: int64
+              nullable: true
+            minimumSamples:
+              type: integer
+        incidentTimeline:
+          type: array
+          items:
+            type: object
+            properties:
+              incidentId:
+                type: string
+                format: uuid
+              eventType:
+                type: string
+              occurredAt:
+                type: string
+                format: date-time
+        incidentTimelineTruncated:
+          type: boolean
+        limitations:
+          type: array
+          items:
+            type: string
+    CreateStatusPageRequest:
+      type: object
+      required: [name, slug, monitorIds]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        slug:
+          type: string
+          maxLength: 80
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+        monitorIds:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: string
+            format: uuid
+        published:
+          type: boolean
+    StatusPage:
+      type: object
+      required: [id, name, slug, published, monitorIds]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        published:
+          type: boolean
+        monitorIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    PublicStatusPage:
+      type: object
+      required: [name, slug, overallStatus, generatedAt, components]
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        overallStatus:
+          type: string
+          example: OPERATIONAL
+        generatedAt:
+          type: string
+          format: date-time
+        components:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+              latestVerdict:
+                type: string
+                nullable: true
+              latestCheckedAt:
+                type: string
+                format: date-time
+                nullable: true
+    LocalFaultMode:
+      type: object
+      required: [mode]
+      properties:
+        mode:
+          type: string
+          enum: [PASS_THROUGH, HTTP_503, CONNECTION_FAILURE, REQUEST_TIMEOUT, RESPONSE_TOO_LARGE]

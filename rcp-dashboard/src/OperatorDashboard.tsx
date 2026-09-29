@@ -1,8 +1,9 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { availability, createMonitor, listMonitors } from "./api";
+import { availability, createMonitor, listMonitors, setMonitorEnabled } from "./api";
 import { isLocalAuth } from "./auth";
 import { EvidenceRail } from "./components/EvidenceRail";
 import { DownloadReportButton } from "./components/DownloadReportButton";
+import { MonitorToggleButton } from "./components/MonitorToggleButton";
 import type { AvailabilityReport, CreateMonitorInput, MonitorOverview } from "./types";
 
 type LoadState = "loading" | "ready" | "error";
@@ -48,6 +49,11 @@ export function OperatorDashboard({ onLogout }: { onLogout: () => void }) {
   async function handleCreated(input: CreateMonitorInput) {
     await createMonitor(input);
     setShowCreate(false);
+    await load();
+  }
+
+  async function handleToggle(monitor: MonitorOverview) {
+    await setMonitorEnabled(monitor.id, !monitor.enabled);
     await load();
   }
 
@@ -100,12 +106,12 @@ export function OperatorDashboard({ onLogout }: { onLogout: () => void }) {
             <div className="fleet-heading fleet-row">
               <span>Target</span><span>Current state</span><span>7-day evidence</span><span>Next check</span>
             </div>
-            {monitors.map((monitor) => <MonitorRow key={monitor.id} monitor={monitor} report={reports[monitor.id]} />)}
+            {monitors.map((monitor) => <MonitorRow key={monitor.id} monitor={monitor} report={reports[monitor.id]} onToggle={() => handleToggle(monitor)} />)}
           </section>
         )}
         <footer className="method-note">
           <span>Measurement rule</span>
-          <p>Availability uses conclusive UP and DOWN executions. Disagreement and missing data reduce coverage rather than counting as uptime; an SLO decision needs at least 95% coverage among finalized checks. Scheduler gaps are not yet counted.</p>
+          <p>Availability uses conclusive UP and DOWN executions. Disagreement, pending checks, and unscheduled due slots reduce evidence coverage; paused periods create no expected checks. An SLO decision needs at least 95% coverage.</p>
         </footer>
       </main>
 
@@ -118,7 +124,7 @@ function PostureCell({ label, value, tone }: { label: string; value: number; ton
   return <div className={`posture-cell ${tone}`}><span>{label}</span><strong>{String(value).padStart(2, "0")}</strong></div>;
 }
 
-function MonitorRow({ monitor, report }: { monitor: MonitorOverview; report?: AvailabilityReport }) {
+function MonitorRow({ monitor, report, onToggle }: { monitor: MonitorOverview; report?: AvailabilityReport; onToggle: () => Promise<void> }) {
   const state = monitor.incidentStatus === "OPEN" ? "Incident open" : verdictLabel(monitor.latestVerdict);
   const tone = monitor.incidentStatus === "OPEN" || monitor.latestVerdict === "DOWN" ? "fault"
     : monitor.latestVerdict === "DISAGREEMENT" ? "warn"
@@ -127,7 +133,7 @@ function MonitorRow({ monitor, report }: { monitor: MonitorOverview; report?: Av
     <article className="fleet-row monitor-row">
       <div className="target-cell">
         <span className={`target-beacon ${tone}`} aria-hidden="true" />
-        <div><strong>{monitor.name}</strong><a href={monitor.targetUrl} target="_blank" rel="noreferrer">{compactUrl(monitor.targetUrl)}</a><DownloadReportButton monitorId={monitor.id} /></div>
+        <div><strong>{monitor.name}</strong><a href={monitor.targetUrl} target="_blank" rel="noreferrer">{compactUrl(monitor.targetUrl)}</a><DownloadReportButton monitorId={monitor.id} /><MonitorToggleButton enabled={monitor.enabled} onToggle={onToggle} /></div>
       </div>
       <div className="state-cell"><span className={`state-chip ${tone}`}>{state}</span><small>{relativeTime(monitor.latestCheckedAt)}</small></div>
       <div>{report ? <EvidenceRail report={report} /> : <span className="waiting-copy">Collecting finalized checks…</span>}</div>

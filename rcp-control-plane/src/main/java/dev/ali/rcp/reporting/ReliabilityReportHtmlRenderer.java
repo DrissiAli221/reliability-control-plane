@@ -31,6 +31,9 @@ public class ReliabilityReportHtmlRenderer {
         item(html, "UP / DOWN", availability.upExecutions() + " / " + availability.downExecutions());
         item(html, "DISAGREEMENT / NO_DATA",
                 availability.disagreementExecutions() + " / " + availability.noDataExecutions());
+        item(html, "Expected / pending / missing schedule slots",
+                availability.expectedOpportunities() + " / " + availability.pendingExecutions()
+                        + " / " + availability.missingExecutions());
         item(html, "Denominator policy", availability.denominatorPolicy());
         html.append("</dl><h2>Observed error budget</h2><dl>");
         item(html, "Allowed bad executions", report.errorBudget().allowedBadExecutions().toPlainString());

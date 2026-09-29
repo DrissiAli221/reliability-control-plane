@@ -8,12 +8,16 @@ public record FinalizedExecution(
         UUID executionId,
         UUID monitorId,
         Instant scheduledAt,
-        ExecutionVerdict verdict
+        ExecutionVerdict verdict,
+        long monitorBehaviorVersion
 ) {
     public FinalizedExecution {
         Objects.requireNonNull(executionId, "executionId must not be null");
         Objects.requireNonNull(monitorId, "monitorId must not be null");
         Objects.requireNonNull(scheduledAt, "scheduledAt must not be null");
         Objects.requireNonNull(verdict, "verdict must not be null");
+        if (monitorBehaviorVersion < 1) {
+            throw new IllegalArgumentException("monitorBehaviorVersion must be positive");
+        }
     }
 }

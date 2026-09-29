@@ -38,6 +38,9 @@ export type AvailabilityReport = {
   noDataExecutions: number;
   conclusiveExecutions: number;
   totalFinalizedExecutions: number;
+  pendingExecutions: number;
+  missingExecutions: number;
+  expectedOpportunities: number;
   denominatorPolicy: string;
 };
 

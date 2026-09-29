@@ -2,6 +2,7 @@ package dev.ali.rcp.statuspage;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -13,7 +14,9 @@ public class StatusPageExceptionHandler {
     public ResponseEntity<ProblemDetail> notFound() {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "status page not found");
         problem.setTitle("Status page not found");
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .cacheControl(CacheControl.noStore())
+                .body(problem);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

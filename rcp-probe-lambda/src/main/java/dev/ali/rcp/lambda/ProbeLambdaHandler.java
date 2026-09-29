@@ -5,7 +5,7 @@ import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
 import com.amazonaws.services.lambda.runtime.events.SQSBatchResponse;
 import dev.ali.rcp.monitors.SafeTargetPolicy;
-import dev.ali.rcp.probes.JdkProbeHttpClient;
+import dev.ali.rcp.probes.ValidatedProbeHttpClient;
 import dev.ali.rcp.probes.ProbeEngine;
 import dev.ali.rcp.probes.ProbeMessageCodec;
 import dev.ali.rcp.probes.ProbeWorker;
@@ -63,9 +63,10 @@ public final class ProbeLambdaHandler implements RequestHandler<SQSEvent, SQSBat
                 .region(resultQueueRegion)
                 .build();
         ProbeMessageCodec codec = new ProbeMessageCodec(new ObjectMapper());
+        SafeTargetPolicy targetPolicy = new SafeTargetPolicy();
         ProbeEngine engine = new ProbeEngine(
-                new SafeTargetProbePolicy(new SafeTargetPolicy()),
-                new JdkProbeHttpClient(CONNECT_TIMEOUT)
+                new SafeTargetProbePolicy(targetPolicy),
+                new ValidatedProbeHttpClient(targetPolicy, CONNECT_TIMEOUT)
         );
 
         return new ProbeWorker(

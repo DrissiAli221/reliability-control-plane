@@ -1,6 +1,7 @@
 package dev.ali.rcp.statuspage;
 
 import jakarta.validation.Valid;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,7 +31,9 @@ public class StatusPageController {
     }
 
     @GetMapping("/status/{slug}")
-    public PublicStatusPage publicPage(@PathVariable String slug) {
-        return service.findPublic(slug);
+    public ResponseEntity<PublicStatusPage> publicPage(@PathVariable String slug) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(service.findPublic(slug));
     }
 }

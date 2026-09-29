@@ -71,6 +71,62 @@ class IncidentProcessorIntegrationTest {
         assertThat(consecutiveDown(monitor)).isEqualTo(1);
     }
 
+    @Test
+    void oldFailureStreakDoesNotCarryIntoResumedMonitor() {
+        Monitor monitor = createMonitor();
+        insertFinalizedExecution(monitor, minute(0), ExecutionVerdict.DOWN);
+        assertThat(processor.processBatch()).isEqualTo(1);
+        assertThat(consecutiveDown(monitor)).isEqualTo(1);
+
+        monitor.changeEnabled(false, minute(0).plusSeconds(30));
+        monitorRepository.flush();
+        monitor.changeEnabled(true, minute(1));
+        monitorRepository.flush();
+        insertFinalizedExecution(monitor, minute(2), ExecutionVerdict.DOWN);
+
+        assertThat(processor.processBatch()).isEqualTo(1);
+        assertThat(consecutiveDown(monitor)).isEqualTo(1);
+        assertThat(count("incidents")).isZero();
+    }
+
+    @Test
+    void pendingOldExecutionCannotOpenIncidentAfterPause() {
+        Monitor monitor = createMonitor();
+        insertFinalizedExecution(monitor, minute(0), ExecutionVerdict.DOWN);
+        monitor.changeEnabled(false, minute(0).plusSeconds(30));
+        monitorRepository.flush();
+
+        assertThat(processor.processBatch()).isEqualTo(1);
+        assertThat(count("incidents")).isZero();
+        assertThat(count("monitor_incident_state")).isZero();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT transition FROM incident_evaluations", String.class
+        )).isEqualTo("IGNORED_STALE");
+    }
+
+    @Test
+    void openIncidentPersistsThroughPauseAndNeedsTwoFreshUpsToResolve() {
+        Monitor monitor = createMonitor();
+        insertFinalizedExecution(monitor, minute(0), ExecutionVerdict.DOWN);
+        insertFinalizedExecution(monitor, minute(1), ExecutionVerdict.DOWN);
+        assertThat(processor.processBatch()).isEqualTo(1);
+        assertThat(processor.processBatch()).isEqualTo(1);
+        assertThat(currentState(monitor)).isEqualTo("OPEN");
+
+        monitor.changeEnabled(false, minute(1).plusSeconds(30));
+        monitorRepository.flush();
+        monitor.changeEnabled(true, minute(2));
+        monitorRepository.flush();
+        insertFinalizedExecution(monitor, minute(3), ExecutionVerdict.UP);
+        insertFinalizedExecution(monitor, minute(4), ExecutionVerdict.UP);
+
+        assertThat(processor.processBatch()).isEqualTo(1);
+        assertThat(currentState(monitor)).isEqualTo("OPEN");
+        assertThat(processor.processBatch()).isEqualTo(1);
+        assertThat(currentState(monitor)).isEqualTo("HEALTHY");
+        assertThat(eventTypes()).isEqualTo("OPENED,RESOLVED");
+    }
+
     private Monitor createMonitor() {
         Monitor monitor = Monitor.create(
                 "incident-processor-test",

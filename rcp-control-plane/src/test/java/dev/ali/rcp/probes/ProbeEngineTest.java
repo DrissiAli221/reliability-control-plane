@@ -61,6 +61,21 @@ class ProbeEngineTest {
     }
 
     @Test
+    void connectionTimeDnsRejectionIsNotReportedAsTargetDowntime() {
+        ProbeEngine engine = engine(
+                target -> target,
+                (url, timeout, maximumBodyBytes) -> {
+                    throw new ValidatedDnsResolver.UnsafeTargetDnsException();
+                }
+        );
+
+        ProbeResult result = engine.execute(job(NOW.plusSeconds(30)));
+
+        assertThat(result.outcome()).isEqualTo(ProbeOutcome.UNSAFE_TARGET);
+        assertThat(result.errorType()).isEqualTo("unsafe_target");
+    }
+
+    @Test
     void responseLimitAndTimeoutBecomeStableOutcomeCategories() {
         ProbeEngine oversizedEngine = engine(
                 target -> target,

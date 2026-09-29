@@ -91,6 +91,16 @@ public class Monitor {
         );
     }
 
+    public void changeEnabled(boolean requestedEnabled, Instant changedAt) {
+        if (enabled == requestedEnabled) {
+            return;
+        }
+        enabled = requestedEnabled;
+        nextCheckAt = requestedEnabled ? changedAt : null;
+        behaviorVersion++;
+        updatedAt = changedAt;
+    }
+
     public UUID getId() {
         return id;
     }

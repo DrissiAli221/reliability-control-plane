@@ -46,11 +46,39 @@ class ExecutionVerdictPolicyTest {
                 .contains(ExecutionVerdict.NO_DATA);
     }
 
+    @Test
+    void allSecurityRejectionsAreNoDataNotTargetDown() {
+        assertThat(policy.evaluate(2, false, List.of(
+                failure("eu", ProbeOutcome.UNSAFE_TARGET),
+                failure("us", ProbeOutcome.UNSAFE_TARGET)
+        ))).contains(ExecutionVerdict.NO_DATA);
+    }
+
+    @Test
+    void securityRejectionCannotJoinTargetFailuresToOpenAnIncident() {
+        assertThat(policy.evaluate(2, false, List.of(
+                failure("eu", ProbeOutcome.UNSAFE_TARGET),
+                http("us", 503)
+        ))).contains(ExecutionVerdict.DISAGREEMENT);
+    }
+
+    @Test
+    void internalWorkerFailureDoesNotCountAsTargetDown() {
+        assertThat(policy.evaluate(2, false, List.of(
+                failure("eu", ProbeOutcome.INTERNAL_ERROR),
+                failure("us", ProbeOutcome.INTERRUPTED)
+        ))).contains(ExecutionVerdict.NO_DATA);
+    }
+
     private RegionalProbeFact http(String region, int status) {
         return new RegionalProbeFact(region, ProbeOutcome.HTTP_RESPONSE, status);
     }
 
     private RegionalProbeFact timeout(String region) {
         return new RegionalProbeFact(region, ProbeOutcome.REQUEST_TIMEOUT, null);
+    }
+
+    private RegionalProbeFact failure(String region, ProbeOutcome outcome) {
+        return new RegionalProbeFact(region, outcome, null);
     }
 }
