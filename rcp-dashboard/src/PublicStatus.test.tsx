@@ -33,8 +33,8 @@ describe("PublicStatus", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("PAUSED")).toBeInTheDocument();
-    expect(screen.getByText("UNKNOWN")).toHaveClass("muted");
+    expect(await screen.findByText("Paused")).toBeInTheDocument();
+    expect(screen.getByText("Status unknown").closest(".status-banner")).toHaveClass("muted");
     expect(screen.getByText("Portfolio API").previousElementSibling).toHaveClass("muted");
     expect(screen.getByText(/paused or stale components are not currently measured/)).toBeInTheDocument();
     expect(publicStatus).toHaveBeenCalledWith("ali-systems", expect.any(AbortSignal));
@@ -53,7 +53,7 @@ describe("PublicStatus", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("STALE")).toBeInTheDocument();
+    expect(await screen.findByText("Stale")).toBeInTheDocument();
     expect(screen.getByText("Portfolio API").previousElementSibling).toHaveClass("muted");
   });
 
@@ -79,15 +79,17 @@ describe("PublicStatus", () => {
         </MemoryRouter>,
       );
     });
-    expect(screen.getAllByText("OPERATIONAL")).toHaveLength(2);
+    expect(screen.getByText("All systems operational")).toBeInTheDocument();
+    expect(screen.getByText("Operational")).toBeInTheDocument();
 
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
     expect(screen.getByText("Status unavailable")).toBeInTheDocument();
-    expect(screen.queryAllByText("OPERATIONAL")).toHaveLength(0);
+    expect(screen.queryByText("All systems operational")).not.toBeInTheDocument();
+    expect(screen.queryByText("Operational")).not.toBeInTheDocument();
 
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
-    expect(screen.getByText("UNKNOWN")).toBeInTheDocument();
-    expect(screen.getByText("STALE")).toBeInTheDocument();
+    expect(screen.getByText("Status unknown")).toBeInTheDocument();
+    expect(screen.getByText("Stale")).toBeInTheDocument();
     expect(publicStatus).toHaveBeenCalledTimes(3);
   });
 
@@ -108,10 +110,12 @@ describe("PublicStatus", () => {
         </MemoryRouter>,
       );
     });
-    expect(screen.getAllByText("OPERATIONAL")).toHaveLength(2);
+    expect(screen.getByText("All systems operational")).toBeInTheDocument();
+    expect(screen.getByText("Operational")).toBeInTheDocument();
 
     await act(async () => { await vi.advanceTimersByTimeAsync(40_000); });
     expect(screen.getByText("Status page refresh timed out")).toBeInTheDocument();
-    expect(screen.queryAllByText("OPERATIONAL")).toHaveLength(0);
+    expect(screen.queryByText("All systems operational")).not.toBeInTheDocument();
+    expect(screen.queryByText("Operational")).not.toBeInTheDocument();
   });
 });

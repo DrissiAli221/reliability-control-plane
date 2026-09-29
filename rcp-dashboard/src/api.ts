@@ -3,6 +3,7 @@ import type {
   AvailabilityReport,
   CreateMonitorInput,
   CreatedMonitor,
+  MonitorHistory,
   MonitorOverview,
   PublicStatusPage,
 } from "./types";
@@ -40,6 +41,10 @@ export function listMonitors(): Promise<MonitorOverview[]> {
   return request("/api/monitors");
 }
 
+export function monitorHistory(monitorId: string, days = 45): Promise<MonitorHistory> {
+  return request(`/api/monitors/${encodeURIComponent(monitorId)}/history?days=${days}`);
+}
+
 export function createMonitor(input: CreateMonitorInput): Promise<CreatedMonitor> {
   return request("/api/monitors", { method: "POST", body: JSON.stringify(input) });
 }
@@ -59,7 +64,7 @@ export function availability(monitorId: string, days = 7): Promise<AvailabilityR
     to: to.toISOString(),
     sloTargetPercent: "99.9",
   });
-  return request(`/api/monitors/${monitorId}/availability?${query}`);
+  return request(`/api/monitors/${encodeURIComponent(monitorId)}/availability?${query}`);
 }
 
 export async function reliabilityReportHtml(monitorId: string, days = 7): Promise<Blob> {

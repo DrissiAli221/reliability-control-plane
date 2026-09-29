@@ -26,7 +26,7 @@ describe("EvidenceRail", () => {
       denominatorPolicy: "UP_AND_DOWN_ONLY",
     }} />);
 
-    expect(screen.getByText("DISAGREE 20")).toBeInTheDocument();
+    expect(screen.getByText("Disagree 20")).toBeInTheDocument();
     expect(screen.getByLabelText(/99.000% availability with 80% evidence coverage/)).toBeInTheDocument();
   });
 
@@ -52,8 +52,8 @@ describe("EvidenceRail", () => {
       denominatorPolicy: "UP_AND_DOWN_ONLY",
     }} />);
 
-    expect(screen.getByText("NO DATA 0")).toBeInTheDocument();
-    expect(screen.getByText("NOT SCHEDULED 9")).toBeInTheDocument();
+    expect(screen.getByText("No data 0")).toBeInTheDocument();
+    expect(screen.getByText("Not scheduled 9")).toBeInTheDocument();
     expect(screen.getByLabelText(/100.000% availability with 10% evidence coverage/)).toBeInTheDocument();
   });
 });

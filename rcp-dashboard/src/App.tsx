@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { completeLogin, isLocalAuth, login, logout } from "./auth";
-import { OperatorDashboard } from "./OperatorDashboard";
+import { AppShell, BrandMark } from "./components/AppShell";
+import { MonitorsPage } from "./pages/MonitorsPage";
 import { PublicStatus } from "./PublicStatus";
 
 function AuthCallback() {
@@ -21,7 +22,7 @@ function SignIn() {
   if (isLocalAuth()) return <Navigate to="/" replace />;
   return (
     <CenteredMessage title="Operator access" detail="Use the configured Cognito operator account to continue.">
-      <button className="primary-button" onClick={() => void login()}>Sign in</button>
+      <button type="button" className="button primary" onClick={() => void login()}>Sign in</button>
     </CenteredMessage>
   );
 }
@@ -38,8 +39,7 @@ function CenteredMessage({
   return (
     <main className="centered-shell">
       <section className="message-card">
-        <div className="brand-mark" aria-hidden="true"><span /><span /><span /></div>
-        <p className="eyebrow">Reliability control plane</p>
+        <BrandMark />
         <h1>{title}</h1>
         <p>{detail}</p>
         {children}
@@ -51,7 +51,7 @@ function CenteredMessage({
 export function App() {
   return (
     <Routes>
-      <Route path="/" element={<OperatorDashboard onLogout={() => void logout()} />} />
+      <Route path="/" element={<AppShell onLogout={() => void logout()}><MonitorsPage /></AppShell>} />
       <Route path="/signin" element={<SignIn />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/public/:slug" element={<PublicStatus />} />

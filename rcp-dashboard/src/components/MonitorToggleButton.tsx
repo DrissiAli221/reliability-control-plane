@@ -1,3 +1,4 @@
+import { Pause, Play } from "lucide-react";
 import { useState } from "react";
 
 export function MonitorToggleButton({ enabled, onToggle }: {
@@ -19,10 +20,13 @@ export function MonitorToggleButton({ enabled, onToggle }: {
     }
   }
 
-  return <div className="monitor-toggle">
-    <button type="button" disabled={busy} onClick={() => void toggle()}>
-      {busy ? "Saving…" : enabled ? "Pause checks" : "Resume checks"}
-    </button>
-    {error && <span role="alert">{error}</span>}
-  </div>;
+  return (
+    <div className="inline-action">
+      <button type="button" className="button secondary" disabled={busy} onClick={() => void toggle()}>
+        {enabled ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}
+        {busy ? "Saving…" : enabled ? "Pause checks" : "Resume checks"}
+      </button>
+      {error && <span className="inline-error" role="alert">{error}</span>}
+    </div>
+  );
 }

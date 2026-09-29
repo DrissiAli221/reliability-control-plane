@@ -1,5 +1,6 @@
+import { Download } from "lucide-react";
 import { useState } from "react";
-import { reliabilityReportHtml } from "../api";
+import { downloadReport } from "../reportDownload";
 
 export function DownloadReportButton({ monitorId }: { monitorId: string }) {
   const [downloading, setDownloading] = useState(false);
@@ -9,15 +10,7 @@ export function DownloadReportButton({ monitorId }: { monitorId: string }) {
     setDownloading(true);
     setError(null);
     try {
-      const blob = await reliabilityReportHtml(monitorId);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `rcp-reliability-${monitorId}.html`;
-      document.body.append(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+      await downloadReport(monitorId);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "The report could not be downloaded");
     } finally {
@@ -26,11 +19,12 @@ export function DownloadReportButton({ monitorId }: { monitorId: string }) {
   }
 
   return (
-    <div className="report-download">
-      <button type="button" onClick={() => void download()} disabled={downloading}>
+    <div className="inline-action">
+      <button type="button" className="button secondary" onClick={() => void download()} disabled={downloading}>
+        <Download size={14} aria-hidden="true" />
         {downloading ? "Preparing report…" : "Download 7-day report"}
       </button>
-      {error && <span role="alert">{error}</span>}
+      {error && <span className="inline-error" role="alert">{error}</span>}
     </div>
   );
 }
