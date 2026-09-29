@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { completeLogin, isLocalAuth, login, logout } from "./auth";
 import { AppShell, BrandMark } from "./components/AppShell";
+import { MonitorDetailPage } from "./pages/MonitorDetailPage";
 import { MonitorsPage } from "./pages/MonitorsPage";
 import { PublicStatus } from "./PublicStatus";
 
@@ -52,6 +53,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/" element={<AppShell onLogout={() => void logout()}><MonitorsPage /></AppShell>} />
+      <Route path="/monitors/:monitorId" element={<AppShell onLogout={() => void logout()}><MonitorDetailPage /></AppShell>} />
       <Route path="/signin" element={<SignIn />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/public/:slug" element={<PublicStatus />} />

@@ -42,6 +42,10 @@ export function milliseconds(value: number | null | undefined): string {
   return value >= 1000 ? `${(value / 1000).toFixed(2)} s` : `${Math.round(value)} ms`;
 }
 
+export function interval(seconds: number): string {
+  return seconds % 60 === 0 ? `${seconds / 60} min` : `${seconds} s`;
+}
+
 export function count(value: number): string {
   return value.toLocaleString("en-US");
 }
@@ -69,3 +73,16 @@ export const dayStatusLabel: Record<DayStatus, string> = {
   OUTAGE: "Confirmed downtime",
   NO_DATA: "No data",
 };
+
+export function outcomeLabel(outcome: string, httpStatus: number | null): string {
+  if (outcome === "HTTP_RESPONSE") return String(httpStatus);
+  return outcome.toLowerCase().replaceAll("_", " ");
+}
+
+// Mirrors RegionalProbeFact: only network failures and HTTP responses are evidence about the target.
+const TARGET_FAILURES = new Set(["CONNECT_TIMEOUT", "REQUEST_TIMEOUT", "TLS_FAILURE", "CONNECTION_FAILURE"]);
+
+export function outcomeTone(outcome: string, httpStatus: number | null): Tone {
+  if (outcome === "HTTP_RESPONSE") return httpStatus != null && httpStatus >= 200 && httpStatus < 400 ? "good" : "fault";
+  return TARGET_FAILURES.has(outcome) ? "fault" : "muted";
+}

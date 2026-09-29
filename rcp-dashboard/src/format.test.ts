@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monitorState, relativeTime } from "./format";
+import { monitorState, outcomeTone, relativeTime } from "./format";
 import type { MonitorOverview } from "./types";
 
 const monitor: MonitorOverview = {
@@ -14,6 +14,14 @@ const monitor: MonitorOverview = {
 };
 
 describe("format", () => {
+  it("treats only target-facing failures as faults, matching the backend verdict policy", () => {
+    expect(outcomeTone("HTTP_RESPONSE", 204)).toBe("good");
+    expect(outcomeTone("HTTP_RESPONSE", 503)).toBe("fault");
+    expect(outcomeTone("CONNECT_TIMEOUT", null)).toBe("fault");
+    expect(outcomeTone("UNSAFE_TARGET", null)).toBe("muted");
+    expect(outcomeTone("RESPONSE_TOO_LARGE", null)).toBe("muted");
+  });
+
   it("lets an open incident outrank a recovered latest check, and a pause outrank both", () => {
     expect(monitorState({ ...monitor, incidentStatus: "OPEN" })).toEqual({ label: "Incident", tone: "fault" });
     expect(monitorState({ ...monitor, incidentStatus: "OPEN", enabled: false }).label).toBe("Paused");
