@@ -3,6 +3,7 @@ import type {
   AvailabilityReport,
   CreateMonitorInput,
   CreatedMonitor,
+  ExecutionTrace,
   MonitorDetail,
   MonitorHistory,
   MonitorOverview,
@@ -56,6 +57,10 @@ export function reliabilityReport(monitorId: string, days = 7): Promise<Reliabil
   const from = new Date(to.getTime() - days * 86_400_000);
   const query = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
   return request(`/api/monitors/${encodeURIComponent(monitorId)}/reliability-report?${query}`);
+}
+
+export function executionTrace(monitorId: string, executionId: string): Promise<ExecutionTrace> {
+  return request(`/api/monitors/${encodeURIComponent(monitorId)}/executions/${encodeURIComponent(executionId)}/trace`);
 }
 
 export function createMonitor(input: CreateMonitorInput): Promise<CreatedMonitor> {

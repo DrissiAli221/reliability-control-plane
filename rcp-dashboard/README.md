@@ -24,8 +24,9 @@ The dashboard currently supports:
 - a monitor table (`/`) with search, status filters, 30-day day bars, seven-day uptime and coverage, slowest-region latency, and a row menu to pause/resume or download the report;
 - a monitor detail page (`/monitors/:id`) with seven-day uptime/SLO/latency/error-budget cards, 45-day day bars, per-region 24-hour latency, the latest checks per region, incidents, and the report's stated limitations;
 - monitor creation, with the backend's SSRF rejection shown inline;
-- read-only public status pages (`/public/:slug`) with 45-day history.
+- read-only public status pages (`/public/:slug`) with 45-day history;
+- a check trace on the detail page: select any recent check to see its timeline (staging, outbox, queue, probe, result delivery, finalization, incident evaluation) or its event history, built from real timestamps.
 
-Incident state transitions, day statuses, availability calculations, and report generation remain backend responsibilities. The browser obtains the report with its existing bearer token and downloads the returned HTML attachment; it does not calculate report values. Pages refresh every 30 seconds; a failed refresh keeps the last data but marks it as stale.
+Incident state transitions, day statuses, availability calculations, and report generation remain backend responsibilities. The browser obtains the report with its existing bearer token and downloads the returned HTML attachment; it does not calculate report values. The monitor list refreshes every 30 seconds and a monitor page every 10; a failed refresh keeps the last data but marks it as stale.
 
 The visual system is a dark, Vercel-inspired console (Geist Sans/Mono, neutral surfaces, colour reserved for evidence) with an OpenStatus-style monitor table and an OpenAI-status-style public page. OpenStatus is AGPL-3.0, so only its layout ideas are borrowed; no code is copied.
