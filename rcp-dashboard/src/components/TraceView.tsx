@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties, type MouseEvent } from "react";
+import { createPortal } from "react-dom";
 import { milliseconds, verdictState } from "../format";
-import { spanLabel, traceEvents, traceRows, verdictRule, type SpanKind } from "../trace";
+import { spanLabel, traceEvents, traceRows, verdictRule, type SpanKind, type TraceRow } from "../trace";
 import type { ExecutionTrace } from "../types";
 import { StatusBadge } from "./StatusBadge";
 
@@ -17,6 +18,13 @@ function ticks(totalMs: number): number[] {
   return values;
 }
 
+function tickLabel(value: number): string {
+  if (value === 0) return "0";
+  return value < 1000 ? `${value} ms` : `${Number((value / 1000).toFixed(2))} s`;
+}
+
+type RowHover = { row: TraceRow; style: CSSProperties };
+
 function clock(value: string): string {
   const date = new Date(value);
   return `${date.toLocaleTimeString("en-GB", { hour12: false })}.${String(date.getMilliseconds()).padStart(3, "0")}`;
@@ -28,6 +36,20 @@ export function TraceView({ trace }: { trace: ExecutionTrace }) {
   const events = useMemo(() => traceEvents(trace), [trace]);
   const verdict = trace.verdict ? verdictState(trace.verdict) : { label: "Pending", tone: "info" as const };
   const t0 = new Date(trace.scheduledAt).getTime();
+  const [hover, setHover] = useState<RowHover | null>(null);
+
+  // The breakdown follows the pointer along the row and flips below it near the top of the viewport.
+  function showRow(row: TraceRow, event: MouseEvent<HTMLDivElement>) {
+    if (row.spans.length === 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const left = Math.min(Math.max(event.clientX, 132), window.innerWidth - 132);
+    setHover({
+      row,
+      style: rect.top > 180
+        ? { left, top: rect.top - 8, transform: "translate(-50%, -100%)" }
+        : { left, top: rect.bottom + 8, transform: "translate(-50%, 0)" },
+    });
+  }
 
   return (
     <div className="trace">
@@ -52,7 +74,7 @@ export function TraceView({ trace }: { trace: ExecutionTrace }) {
             <span role="columnheader" />
             <div className="waterfall-track">
               {ticks(totalMs).map((value) => (
-                <span key={value} className="tick" style={{ left: `${(value / totalMs) * 100}%` }}>{milliseconds(value)}</span>
+                <span key={value} className="tick" style={{ left: `${(value / totalMs) * 100}%` }}>{tickLabel(value)}</span>
               ))}
             </div>
             <span role="columnheader" />
@@ -62,19 +84,23 @@ export function TraceView({ trace }: { trace: ExecutionTrace }) {
             return (
               <div className="waterfall-row" role="row" key={row.label}>
                 <span role="rowheader" className={row.mono ? "mono" : undefined}>{row.label}</span>
-                <div className="waterfall-track" role="cell">
+                <div
+                  className={`waterfall-track${hover?.row === row ? " hovered" : ""}`}
+                  role="cell"
+                  onMouseMove={(event) => showRow(row, event)}
+                  onMouseLeave={() => setHover(null)}
+                >
                   {ticks(totalMs).map((value) => <i key={value} className="gridline" style={{ left: `${(value / totalMs) * 100}%` }} />)}
-                  {row.spans.map((item) => {
+                  {row.spans.map((item, index) => {
                     const width = ((item.endMs - item.startMs) / totalMs) * 100;
+                    // One continuous bar per row: only its outer ends are rounded.
+                    const edges = `${index === 0 ? " first" : ""}${index === row.spans.length - 1 ? " last" : ""}`;
                     return (
                       <span
                         key={item.kind}
-                        className={`span ${item.kind}${item.tone ? ` ${item.tone}` : ""}`}
+                        className={`span ${item.kind}${item.tone ? ` ${item.tone}` : ""}${edges}`}
                         style={{ left: `${(item.startMs / totalMs) * 100}%`, width: `max(${width}%, 3px)`, animationDelay: `${rowIndex * 70}ms` }}
-                        title={`${spanLabel[item.kind]} · ${milliseconds(item.endMs - item.startMs)}`}
-                      >
-                        {width > 14 && <em>{milliseconds(item.endMs - item.startMs)}</em>}
-                      </span>
+                      />
                     );
                   })}
                 </div>
@@ -83,8 +109,25 @@ export function TraceView({ trace }: { trace: ExecutionTrace }) {
             );
           })}
           <ul className="span-legend">
-            {LEGEND.map((kind) => <li key={kind}><i className={`span ${kind}`} />{spanLabel[kind]}</li>)}
+            {LEGEND.map((kind) => <li key={kind}><i className={`span ${kind} first last`} />{spanLabel[kind]}</li>)}
           </ul>
+          {hover && createPortal(
+            <div className="trace-tooltip" role="tooltip" style={hover.style}>
+              <strong className={hover.row.mono ? "mono" : undefined}>{hover.row.label}</strong>
+              <dl>
+                {hover.row.spans.map((item) => (
+                  <div key={item.kind}>
+                    <dt><i className={`span ${item.kind}${item.tone ? ` ${item.tone}` : ""} first last`} />{spanLabel[item.kind]}</dt>
+                    <dd>{milliseconds(item.endMs - item.startMs)}</dd>
+                  </div>
+                ))}
+              </dl>
+              <span>
+                +{milliseconds(hover.row.spans[0].startMs)} to +{milliseconds(hover.row.spans[hover.row.spans.length - 1].endMs)} after the due time
+              </span>
+            </div>,
+            document.body,
+          )}
         </div>
       ) : (
         <div className="table-scroll">
