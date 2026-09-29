@@ -1,12 +1,15 @@
 import { AlertTriangle, ChevronLeft, ExternalLink, Info, PauseCircle, RefreshCw } from "lucide-react";
 import { useCallback } from "react";
-import { Link, useParams } from "react-router-dom";
-import { availability, getMonitor, listMonitors, monitorHistory, reliabilityReport, setMonitorEnabled } from "../api";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import {
+  availability, executionTrace, getMonitor, listMonitors, monitorHistory, reliabilityReport, setMonitorEnabled,
+} from "../api";
 import { isLocalAuth } from "../auth";
 import { DownloadReportButton } from "../components/DownloadReportButton";
 import { EvidenceRail } from "../components/EvidenceRail";
 import { MonitorToggleButton } from "../components/MonitorToggleButton";
 import { StatusBadge, StatusDot } from "../components/StatusBadge";
+import { TraceView } from "../components/TraceView";
 import { Tracker } from "../components/Tracker";
 import {
   absoluteTime, compactUrl, count, interval, milliseconds, monitorState, outcomeLabel, outcomeTone, percent,
@@ -45,8 +48,9 @@ export function MonitorDetailPage() {
       report: report.status === "fulfilled" ? report.value : undefined,
     };
   }, [monitorId]);
-  const detail = useLiveData(load);
+  const detail = useLiveData(load, 10_000);
   const now = useNow();
+  const [params, setParams] = useSearchParams();
 
   if (!detail.data) {
     return (
@@ -58,6 +62,8 @@ export function MonitorDetailPage() {
   }
 
   const { monitor, overview, history, availability: evidence, report } = detail.data;
+  const selectedCheck = params.get("check") ?? history?.recentChecks[0]?.executionId ?? null;
+  const selectCheck = (executionId: string) => setParams({ check: executionId }, { replace: true });
   const state = overview ? monitorState(overview) : { label: monitor.enabled ? "Awaiting evidence" : "Paused", tone: "muted" as const };
   const incidents = pairIncidents(report);
   const ongoing = incidents.find((incident) => !incident.resolvedAt);
@@ -165,6 +171,59 @@ export function MonitorDetailPage() {
         </div>
       </section>
 
+      <section className="panel">
+        <header className="panel-header">
+          <h2>Recent checks</h2>
+          <span className="subtle">Select a check to trace it</span>
+        </header>
+        {history && history.recentChecks.length > 0 ? (
+          <div className="table-scroll">
+            <table className="table compact">
+              <thead>
+                <tr>
+                  <th scope="col">Scheduled</th>
+                  <th scope="col">Verdict</th>
+                  {history.regions.map((region) => <th scope="col" key={region.region} className="mono">{region.region}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {history.recentChecks.map((check) => {
+                  const verdict = verdictState(check.verdict);
+                  const selected = check.executionId === selectedCheck;
+                  return (
+                    <tr
+                      key={check.executionId}
+                      className={`row-link${selected ? " selected" : ""}`}
+                      tabIndex={0}
+                      aria-selected={selected}
+                      onClick={() => selectCheck(check.executionId)}
+                      onKeyDown={(event) => { if (event.key === "Enter") selectCheck(check.executionId); }}
+                    >
+                      <td><time className="subtle" dateTime={check.scheduledAt} title={absoluteTime(check.scheduledAt)}>{relativeTime(check.scheduledAt, now)}</time></td>
+                      <td><StatusBadge label={verdict.label} tone={verdict.tone} /></td>
+                      {history.regions.map((region) => {
+                        const result = check.results.find((item) => item.region === region.region);
+                        return (
+                          <td key={region.region} className="mono">
+                            {result ? (
+                              <>
+                                <span className={`result ${outcomeTone(result.outcome, result.httpStatus)}`}>{outcomeLabel(result.outcome, result.httpStatus)}</span>
+                                <span className="subtle"> {milliseconds(result.latencyMs)}</span>
+                              </>
+                            ) : <span className="subtle">no result</span>}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : <p className="panel-body subtle">No finalized checks yet.</p>}
+        {selectedCheck && <CheckTrace monitorId={monitor.id} executionId={selectedCheck} />}
+      </section>
+
       <div className="split">
         <section className="panel">
           <header className="panel-header">
@@ -217,50 +276,6 @@ export function MonitorDetailPage() {
 
       <section className="panel">
         <header className="panel-header">
-          <h2>Recent checks</h2>
-          <span className="subtle">Newest first</span>
-        </header>
-        {history && history.recentChecks.length > 0 ? (
-          <div className="table-scroll">
-            <table className="table compact">
-              <thead>
-                <tr>
-                  <th scope="col">Scheduled</th>
-                  <th scope="col">Verdict</th>
-                  {history.regions.map((region) => <th scope="col" key={region.region} className="mono">{region.region}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {history.recentChecks.map((check) => {
-                  const verdict = verdictState(check.verdict);
-                  return (
-                    <tr key={check.executionId}>
-                      <td><time className="subtle" dateTime={check.scheduledAt} title={absoluteTime(check.scheduledAt)}>{relativeTime(check.scheduledAt, now)}</time></td>
-                      <td><StatusBadge label={verdict.label} tone={verdict.tone} /></td>
-                      {history.regions.map((region) => {
-                        const result = check.results.find((item) => item.region === region.region);
-                        return (
-                          <td key={region.region} className="mono">
-                            {result ? (
-                              <>
-                                <span className={`result ${outcomeTone(result.outcome, result.httpStatus)}`}>{outcomeLabel(result.outcome, result.httpStatus)}</span>
-                                <span className="subtle"> {milliseconds(result.latencyMs)}</span>
-                              </>
-                            ) : <span className="subtle">no result</span>}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : <p className="panel-body subtle">No finalized checks yet.</p>}
-      </section>
-
-      <section className="panel">
-        <header className="panel-header">
           <h2>Incidents</h2>
           <span className="subtle">Last 7 days</span>
         </header>
@@ -303,6 +318,18 @@ function Breadcrumb({ name }: { name: string }) {
       <span aria-hidden="true">/</span>
       <span aria-current="page">{name}</span>
     </nav>
+  );
+}
+
+function CheckTrace({ monitorId, executionId }: { monitorId: string; executionId: string }) {
+  const load = useCallback(() => executionTrace(monitorId, executionId), [monitorId, executionId]);
+  const trace = useLiveData(load, 5_000);
+  return (
+    <div className="trace-panel">
+      {trace.data && trace.data.executionId === executionId
+        ? <TraceView trace={trace.data} />
+        : trace.error ? <p className="inline-error" role="alert">{trace.error}</p> : <div className="skeleton" />}
+    </div>
   );
 }
 

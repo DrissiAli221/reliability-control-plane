@@ -120,3 +120,37 @@ export type PublicStatusPage = {
     history?: DailyEvidence[];
   }>;
 };
+
+export type JobTrace = {
+  jobId: string;
+  region: string;
+  createdAt: string | null;
+  publishedAt: string | null;
+  failedPublishAttempts: number;
+  publishFailedAt: string | null;
+  publishLastError: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  receivedAt: string | null;
+  outcome: string | null;
+  httpStatus: number | null;
+  latencyMs: number | null;
+  responseBytes: number | null;
+  errorType: string | null;
+};
+
+export type ExecutionTrace = {
+  executionId: string;
+  monitorId: string;
+  scheduledAt: string;
+  createdAt: string;
+  resultDeadlineAt: string;
+  status: "PENDING" | "FINALIZED";
+  verdict: Verdict | null;
+  finalizedAt: string | null;
+  expectedRegionCount: number;
+  jobs: JobTrace[];
+  evaluation: { verdict: Verdict; transition: Transition; evaluatedAt: string } | null;
+};
+
+export type Transition = "NONE" | "OPENED" | "RESOLVED" | "IGNORED_STALE";
