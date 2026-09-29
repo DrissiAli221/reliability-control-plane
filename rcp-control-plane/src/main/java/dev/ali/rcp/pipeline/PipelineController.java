@@ -15,6 +15,11 @@ public class PipelineController {
         this.service = service;
     }
 
+    @GetMapping("/api/pipeline")
+    public PipelineSnapshot snapshot(Authentication authentication) {
+        return service.snapshot(authentication.getName());
+    }
+
     @GetMapping("/api/monitors/{monitorId}/incident-state")
     public IncidentStateView incidentState(@PathVariable UUID monitorId, Authentication authentication) {
         return service.incidentState(authentication.getName(), monitorId);

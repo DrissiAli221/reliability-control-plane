@@ -17,6 +17,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -84,6 +86,8 @@ class PipelineApiTest {
         mockMvc.perform(get("/api/monitors/{monitorId}/incident-state", owned.getId())
                         .with(jwt().jwt(token -> token.subject("other-subject"))))
                 .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/pipeline"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -107,6 +111,20 @@ class PipelineApiTest {
                 .andExpect(jsonPath("$.failuresToOpen").value(2))
                 .andExpect(jsonPath("$.successesToResolve").value(2))
                 .andExpect(jsonPath("$.recentEvaluations[0].verdict").value("DOWN"));
+    }
+
+    @Test
+    void pipelineSnapshotCountsOnlyTheCallersWork() throws Exception {
+        mockMvc.perform(get("/api/pipeline")
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.enabledMonitors").value(1))
+                .andExpect(jsonPath("$.regions.length()").value(2))
+                .andExpect(jsonPath("$.regions[0].jobsPublished").value(1))
+                .andExpect(jsonPath("$.regions[0].resultsReceived").value(1))
+                .andExpect(jsonPath("$.recentActivity.length()").value(1))
+                .andExpect(jsonPath("$.recentActivity[0].monitorName").value("Traced monitor"))
+                .andExpect(jsonPath("$.recentActivity[*].monitorName", not(hasItem("Someone else's monitor"))));
     }
 
     private Monitor monitor(String owner, String name) {
