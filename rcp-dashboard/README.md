@@ -28,6 +28,7 @@ The dashboard currently supports:
 - a check trace on the detail page: select any recent check to see its timeline (staging, outbox, queue, probe, result delivery, finalization, incident evaluation) or its event history, built from real timestamps;
 - the incident state machine (Healthy, Suspect, Incident open, Recovering) lit from the persisted streak counters, with the latest evaluations;
 - a Pipeline page (`/pipeline`) with owner-scoped counts for each stage, per-region throughput, and the latest checks across monitors; a pulse runs along the map only when a new check has been finalized;
+- "How is this calculated?" popovers on the detail metrics, showing each formula with the monitor's own numbers;
 - in local mode, a fault drill (HTTP 503, timeout, refused connection, oversized body) that drives `/api/local/probe-fault` and states which faults can open an incident.
 
 Incident state transitions, day statuses, availability calculations, and report generation remain backend responsibilities. The browser obtains the report with its existing bearer token and downloads the returned HTML attachment; it does not calculate report values. The monitor list refreshes every 30 seconds, a monitor page every 10, and the Pipeline page every 5; a failed refresh keeps the last data but marks it as stale.

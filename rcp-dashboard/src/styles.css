@@ -477,6 +477,26 @@ a { color: inherit; }
   .monitor-cell .mono { overflow-wrap: anywhere; }
 }
 
+/* ---------- Explain popover ---------- */
+.metric-label .explain-trigger { margin-left: auto; }
+.explain-trigger {
+  display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 5px;
+  background: none; color: var(--text-3);
+}
+.explain-trigger:hover, .explain-trigger[aria-expanded="true"] { background: var(--surface-hover); color: var(--text); }
+.explain {
+  position: fixed; z-index: 70; width: 320px; padding: 14px 16px; background: var(--surface-2); border-radius: var(--radius);
+  box-shadow: var(--shadow-pop); font-size: 12.5px; animation: pop 120ms ease-out;
+}
+.explain > strong { display: block; margin-bottom: 10px; font-size: 13px; }
+.explain dl { display: grid; gap: 7px; margin: 0; }
+.explain dl div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; }
+.explain dt { color: var(--text-3); }
+.explain dd { margin: 0; font-family: var(--font-mono); font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.explain dl div.strong { padding-top: 7px; border-top: 1px solid var(--border); }
+.explain dl div.strong dd { color: var(--text); font-weight: 500; }
+.explain p { margin-top: 10px; color: var(--text-3); line-height: 1.45; }
+
 /* ---------- Layout helpers ---------- */
 .split.wide-left { grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); }
 .row-link.selected { background: var(--surface-2); box-shadow: inset 2px 0 0 var(--text); }

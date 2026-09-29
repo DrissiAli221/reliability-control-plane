@@ -1,5 +1,5 @@
 import { ArrowUpRight, Download, Pause, Play, Plus, RefreshCw, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { availability, createMonitor, listMonitors, monitorHistory, setMonitorEnabled } from "../api";
 import { ActionMenu } from "../components/ActionMenu";
@@ -248,16 +248,17 @@ function aggregateLatency(history?: MonitorHistory): string {
   return `${milliseconds(p50)} · ${milliseconds(p95)}`;
 }
 
-export function Metric({ label, value, suffix, hint, tone }: {
+export function Metric({ label, value, suffix, hint, tone, explain }: {
   label: string;
   value: string;
   suffix?: string;
   hint?: string;
   tone: Tone;
+  explain?: ReactNode;
 }) {
   return (
     <div className="metric">
-      <span className="metric-label"><StatusDot tone={tone} />{label}</span>
+      <span className="metric-label"><StatusDot tone={tone} />{label}{explain}</span>
       <span className="metric-value">{value}{suffix && <small>{suffix}</small>}</span>
       {hint && <span className="metric-hint">{hint}</span>}
     </div>
