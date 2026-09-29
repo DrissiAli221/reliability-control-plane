@@ -22,6 +22,7 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.SqsClientBuilder;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -60,7 +61,20 @@ public class RcpRuntimeConfiguration {
 
     @Bean
     ProbeJobTransport probeJobTransport(RegionalSqsClients clients, RcpRuntimeProperties properties) {
+        requireQueueForEveryScheduledRegion(properties.getProbeJobQueueUrls().keySet());
         return new SqsProbeJobTransport(clients.asMap(), properties.getProbeJobQueueUrls());
+    }
+
+    // A region mismatch would otherwise leave outbox events retrying forever and
+    // every execution short of evidence, so refuse to start instead.
+    static void requireQueueForEveryScheduledRegion(Set<String> configuredQueueRegions) {
+        Set<String> scheduledRegions = DueMonitorScheduler.probeRegions();
+        if (!scheduledRegions.equals(configuredQueueRegions)) {
+            throw new IllegalStateException(
+                    "Probe-job queue regions " + configuredQueueRegions
+                            + " must match scheduled probe regions " + scheduledRegions
+            );
+        }
     }
 
     @Bean

@@ -21,13 +21,13 @@ variable "environment" {
 }
 
 variable "central_region" {
-  description = "AWS region that owns the control plane, result queue, and source-of-truth database."
+  description = "AWS region that owns the control plane, result queue, and source-of-truth database. It also hosts a probe queue, so it must be one of the control plane's scheduled probe regions (eu-west-1, us-east-1); the application refuses to start otherwise."
   type        = string
   default     = "eu-west-1"
 }
 
 variable "secondary_probe_region" {
-  description = "Second real probe region. Terraform provider instances are static, so another region requires another explicit provider/module instance."
+  description = "Second real probe region. Terraform provider instances are static, so another region requires another explicit provider/module instance. Together with central_region it must equal the control plane's scheduled probe regions (eu-west-1, us-east-1)."
   type        = string
   default     = "us-east-1"
 }
