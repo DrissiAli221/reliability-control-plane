@@ -639,6 +639,15 @@ components:
                 type: string
                 format: date-time
                 nullable: true
+              measuredUptimePercent:
+                type: number
+                nullable: true
+                description: UP share of conclusive verdicts across the history window; null without conclusive evidence.
+              history:
+                type: array
+                description: The last 45 UTC days, oldest first. Monitor identifiers and target URLs are never exposed.
+                items:
+                  $ref: '#/components/schemas/DailyEvidence'
     DailyEvidence:
       type: object
       required: [day, up, down, disagreement, noData, status]

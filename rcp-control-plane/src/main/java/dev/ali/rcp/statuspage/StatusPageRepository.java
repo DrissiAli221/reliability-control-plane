@@ -75,10 +75,11 @@ public class StatusPageRepository {
         )).toInstant();
     }
 
-    public List<PublicStatusComponent> findPublicComponents(UUID pageId, Instant asOf) {
+    public List<StatusComponentSnapshot> findComponentSnapshots(UUID pageId, Instant asOf) {
         return jdbcTemplate.query(
                 """
                 SELECT
+                    monitors.monitor_id,
                     monitors.name,
                     monitors.enabled,
                     monitors.check_interval_seconds,
@@ -108,7 +109,8 @@ public class StatusPageRepository {
                     String latestVerdict = resultSet.getString("latest_verdict");
                     OffsetDateTime checkedAt = resultSet.getObject("latest_checked_at", OffsetDateTime.class);
                     Instant latestScheduledAt = checkedAt == null ? null : checkedAt.toInstant();
-                    return new PublicStatusComponent(
+                    return new StatusComponentSnapshot(
+                            resultSet.getObject("monitor_id", UUID.class),
                             resultSet.getString("name"),
                             StatusPageHealthPolicy.componentStatus(
                                     resultSet.getBoolean("enabled"), incidentStatus, latestVerdict,

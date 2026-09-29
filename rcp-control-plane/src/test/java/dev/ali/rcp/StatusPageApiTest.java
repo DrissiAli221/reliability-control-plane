@@ -68,6 +68,33 @@ class StatusPageApiTest {
     }
 
     @Test
+    void publicComponentsCarryDailyHistoryWithoutMonitorIdentifiers() throws Exception {
+        Monitor monitor = createMonitor("ali-subject", "History component");
+        insertVerdict(monitor, ExecutionVerdict.DOWN, Instant.now().minusSeconds(60));
+        insertVerdict(monitor, ExecutionVerdict.UP);
+
+        mockMvc.perform(post("/api/status-pages")
+                        .with(jwt().jwt(token -> token.subject("ali-subject")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "History systems",
+                                  "slug": "history-systems",
+                                  "monitorIds": ["%s"],
+                                  "published": true
+                                }
+                                """.formatted(monitor.getId())))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/status/history-systems"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.components[0].history.length()").value(45))
+                .andExpect(jsonPath("$.components[0].measuredUptimePercent").value(50.0))
+                .andExpect(jsonPath("$.components[0].monitorId").doesNotExist())
+                .andExpect(jsonPath("$.components[0].history[0].status").value("NO_DATA"));
+    }
+
+    @Test
     void pausedMonitorDoesNotAdvertiseItsLastUpVerdictAsCurrentHealth() throws Exception {
         Monitor monitor = createMonitor("ali-subject", "Paused component");
         insertVerdict(monitor, ExecutionVerdict.UP);

@@ -1,19 +1,28 @@
 package dev.ali.rcp.statuspage;
 
+import dev.ali.rcp.monitors.DailyEvidence;
+import dev.ali.rcp.monitors.MonitorHistoryRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
 @Service
 public class StatusPageService {
-    private final StatusPageRepository repository;
+    private static final int PUBLIC_HISTORY_DAYS = 45;
 
-    public StatusPageService(StatusPageRepository repository) {
+    private final StatusPageRepository repository;
+    private final MonitorHistoryRepository historyRepository;
+
+    public StatusPageService(StatusPageRepository repository, MonitorHistoryRepository historyRepository) {
         this.repository = Objects.requireNonNull(repository);
+        this.historyRepository = Objects.requireNonNull(historyRepository);
     }
 
     @Transactional
@@ -49,7 +58,26 @@ public class StatusPageService {
                 .orElseThrow(StatusPageNotFoundException::new);
         // Probe scheduling uses PostgreSQL time; assess freshness on the same clock.
         var asOf = repository.databaseNow();
-        List<PublicStatusComponent> components = repository.findPublicComponents(page.id(), asOf);
+        List<StatusComponentSnapshot> snapshots = repository.findComponentSnapshots(page.id(), asOf);
+        LocalDate today = asOf.atOffset(ZoneOffset.UTC).toLocalDate();
+        Map<UUID, List<DailyEvidence>> history = historyRepository.dailyEvidence(
+                snapshots.stream().map(StatusComponentSnapshot::monitorId).toList(),
+                today.minusDays(PUBLIC_HISTORY_DAYS - 1L),
+                today
+        );
+        List<PublicStatusComponent> components = snapshots.stream()
+                .map(snapshot -> {
+                    List<DailyEvidence> days = history.getOrDefault(snapshot.monitorId(), List.of());
+                    return new PublicStatusComponent(
+                            snapshot.name(),
+                            snapshot.status(),
+                            snapshot.latestVerdict(),
+                            snapshot.latestCheckedAt(),
+                            DailyEvidence.measuredUptimePercent(days),
+                            days
+                    );
+                })
+                .toList();
         return new PublicStatusPage(
                 page.name(),
                 page.slug(),
