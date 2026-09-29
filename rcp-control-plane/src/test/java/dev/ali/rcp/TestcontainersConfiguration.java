@@ -11,11 +11,12 @@ import org.testcontainers.utility.DockerImageName;
 @TestConfiguration(proxyBeanMethods = false)
 class TestcontainersConfiguration {
 
+    // Match Compose, the restore exercise, and the planned RDS engine version.
     @Bean
     @ServiceConnection
     PostgreSQLContainer postgresContainer() {
         return new PostgreSQLContainer(
-                DockerImageName.parse("postgres:latest")
+                DockerImageName.parse("postgres:17.6")
         );
     }
 
