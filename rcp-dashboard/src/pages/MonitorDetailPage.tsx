@@ -10,6 +10,7 @@ import { DownloadReportButton } from "../components/DownloadReportButton";
 import { EvidenceRail } from "../components/EvidenceRail";
 import { Explain } from "../components/Explain";
 import { IncidentMachine } from "../components/IncidentMachine";
+import { BudgetMeter, CoverageMeter, LatencyRange } from "../components/MetricVisuals";
 import { MonitorToggleButton } from "../components/MonitorToggleButton";
 import { StatusBadge, StatusDot } from "../components/StatusBadge";
 import { TraceView } from "../components/TraceView";
@@ -136,6 +137,7 @@ export function MonitorDetailPage() {
         <Metric
           label="Uptime · 7d"
           explain={evidence && <UptimeExplain report={evidence} />}
+          visual={history && <Tracker days={history.days.slice(-7)} size="compact" label="Uptime by day, last 7 days" />}
           value={percent(evidence?.measuredAvailabilityPercent, 3)}
           hint={evidence ? `${percent(evidence.evidenceCoveragePercent, 1)} of expected checks were conclusive` : undefined}
           tone={evidence?.measuredAvailabilityPercent == null ? "muted" : evidence.measuredAvailabilityPercent >= evidence.sloTargetPercent ? "good" : "fault"}
@@ -143,6 +145,7 @@ export function MonitorDetailPage() {
         <SloMetric report={evidence} />
         <Metric
           label="Latency · 7d"
+          visual={report?.latency.p50Ms != null && report.latency.p95Ms != null && <LatencyRange p50={report.latency.p50Ms} p95={report.latency.p95Ms} />}
           explain={report && (
             <Explain
               title="Latency"
@@ -162,6 +165,7 @@ export function MonitorDetailPage() {
         />
         <Metric
           label="Error budget · 7d"
+          visual={report && <BudgetMeter spent={report.errorBudget.observedBadExecutions} allowed={Number(report.errorBudget.allowedBadExecutions)} />}
           explain={report && (
             <Explain
               title="Error budget"
@@ -418,6 +422,7 @@ function SloMetric({ report }: { report?: AvailabilityReport }) {
       <Metric
         label={`SLO · ${report.sloTargetPercent}%`}
         explain={<SloExplain report={report} />}
+        visual={<CoverageMeter coverage={report.evidenceCoveragePercent} minimum={report.minimumEvidenceCoveragePercent} />}
         value="Unproven"
         hint={`Coverage ${percent(report.evidenceCoveragePercent, 1)} is below the ${report.minimumEvidenceCoveragePercent}% needed to judge`}
         tone="warn"
@@ -428,6 +433,7 @@ function SloMetric({ report }: { report?: AvailabilityReport }) {
     <Metric
       label={`SLO · ${report.sloTargetPercent}%`}
       explain={<SloExplain report={report} />}
+      visual={<CoverageMeter coverage={report.evidenceCoveragePercent} minimum={report.minimumEvidenceCoveragePercent} />}
       value={report.sloMet ? "Met" : "Missed"}
       hint={`Based on ${count(report.conclusiveExecutions)} conclusive checks`}
       tone={report.sloMet ? "good" : "fault"}
