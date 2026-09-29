@@ -8,6 +8,7 @@ import { isLocalAuth } from "../auth";
 import { ChaosPanel } from "../components/ChaosPanel";
 import { DownloadReportButton } from "../components/DownloadReportButton";
 import { EvidenceRail } from "../components/EvidenceRail";
+import { Explain } from "../components/Explain";
 import { IncidentMachine } from "../components/IncidentMachine";
 import { MonitorToggleButton } from "../components/MonitorToggleButton";
 import { StatusBadge, StatusDot } from "../components/StatusBadge";
@@ -134,6 +135,7 @@ export function MonitorDetailPage() {
       <section className="metric-grid" aria-label="Seven-day summary">
         <Metric
           label="Uptime · 7d"
+          explain={evidence && <UptimeExplain report={evidence} />}
           value={percent(evidence?.measuredAvailabilityPercent, 3)}
           hint={evidence ? `${percent(evidence.evidenceCoveragePercent, 1)} of expected checks were conclusive` : undefined}
           tone={evidence?.measuredAvailabilityPercent == null ? "muted" : evidence.measuredAvailabilityPercent >= evidence.sloTargetPercent ? "good" : "fault"}
@@ -141,6 +143,18 @@ export function MonitorDetailPage() {
         <SloMetric report={evidence} />
         <Metric
           label="Latency · 7d"
+          explain={report && (
+            <Explain
+              title="Latency"
+              lines={[
+                { label: "Samples", value: `${count(report.latency.sampleCount)} HTTP responses, both regions` },
+                { label: "Excluded", value: "timeouts, refused connections, other failures" },
+                { label: "Minimum", value: `${report.latency.minimumSamples} samples before showing percentiles` },
+                { label: "p50 · p95", value: `${milliseconds(report.latency.p50Ms)} · ${milliseconds(report.latency.p95Ms)}`, strong: true },
+              ]}
+              note="Nearest-rank percentiles (PostgreSQL percentile_disc), so every value is a latency that was actually measured."
+            />
+          )}
           value={report?.latency.p50Ms != null ? milliseconds(report.latency.p50Ms) : "—"}
           suffix={report?.latency.p95Ms != null ? `p95 ${milliseconds(report.latency.p95Ms)}` : undefined}
           hint={report ? (report.latency.p50Ms != null ? `p50 of ${count(report.latency.sampleCount)} HTTP responses` : `Needs ${report.latency.minimumSamples} HTTP responses`) : undefined}
@@ -148,6 +162,17 @@ export function MonitorDetailPage() {
         />
         <Metric
           label="Error budget · 7d"
+          explain={report && (
+            <Explain
+              title="Error budget"
+              lines={[
+                { label: "Allowed", value: `${count(report.availability.conclusiveExecutions)} conclusive × ${(100 - report.availability.sloTargetPercent).toFixed(1)}% = ${Number(report.errorBudget.allowedBadExecutions).toFixed(2)}` },
+                { label: "Spent", value: `${count(report.errorBudget.observedBadExecutions)} confirmed DOWN checks` },
+                { label: "Remaining", value: Number(report.errorBudget.remainingExecutions).toFixed(2), strong: true },
+              ]}
+              note="Only DOWN counts against the budget. Disagreement and no-data checks are inconclusive, not failures."
+            />
+          )}
           value={report ? count(report.errorBudget.observedBadExecutions) : "—"}
           suffix={report ? `/ ${Number(report.errorBudget.allowedBadExecutions).toFixed(1)} allowed` : undefined}
           hint={report ? `Confirmed DOWN checks vs. allowed at ${report.availability.sloTargetPercent}%` : undefined}
@@ -351,12 +376,48 @@ function CheckTrace({ monitorId, executionId }: { monitorId: string; executionId
   );
 }
 
+function UptimeExplain({ report }: { report: AvailabilityReport }) {
+  return (
+    <Explain
+      title="Uptime"
+      lines={[
+        { label: "Formula", value: "UP ÷ (UP + DOWN)" },
+        { label: "This week", value: `${count(report.upExecutions)} ÷ (${count(report.upExecutions)} + ${count(report.downExecutions)})` },
+        { label: "Excluded", value: `${count(report.disagreementExecutions)} disagree · ${count(report.noDataExecutions)} no data · ${count(report.pendingExecutions)} pending` },
+        { label: "Uptime", value: percent(report.measuredAvailabilityPercent, 3), strong: true },
+      ]}
+      note="A check counts only when every region agreed. Inconclusive checks lower coverage instead of uptime."
+    />
+  );
+}
+
+function SloExplain({ report }: { report: AvailabilityReport }) {
+  const denominator = Math.max(report.expectedOpportunities, report.totalFinalizedExecutions + report.pendingExecutions);
+  return (
+    <Explain
+      title="SLO decision"
+      lines={[
+        { label: "Coverage", value: `${count(report.conclusiveExecutions)} conclusive ÷ ${count(denominator)} expected = ${percent(report.evidenceCoveragePercent, 1)}` },
+        { label: "Needed", value: `≥ ${report.minimumEvidenceCoveragePercent}% coverage to judge` },
+        { label: "Uptime vs target", value: `${percent(report.measuredAvailabilityPercent, 3)} vs ${report.sloTargetPercent}%` },
+        {
+          label: "Decision",
+          value: report.sloMet == null ? "Unproven: not enough evidence" : report.sloMet ? "Met" : "Missed",
+          strong: true,
+        },
+      ]}
+      note="Expected checks come from enabled scheduling periods; paused time creates none, and slots the scheduler never ran still count as missing."
+    />
+  );
+}
+
 function SloMetric({ report }: { report?: AvailabilityReport }) {
   if (!report) return <Metric label="SLO · 99.9%" value="—" tone="muted" />;
   if (report.sloMet == null) {
     return (
       <Metric
         label={`SLO · ${report.sloTargetPercent}%`}
+        explain={<SloExplain report={report} />}
         value="Unproven"
         hint={`Coverage ${percent(report.evidenceCoveragePercent, 1)} is below the ${report.minimumEvidenceCoveragePercent}% needed to judge`}
         tone="warn"
@@ -366,6 +427,7 @@ function SloMetric({ report }: { report?: AvailabilityReport }) {
   return (
     <Metric
       label={`SLO · ${report.sloTargetPercent}%`}
+      explain={<SloExplain report={report} />}
       value={report.sloMet ? "Met" : "Missed"}
       hint={`Based on ${count(report.conclusiveExecutions)} conclusive checks`}
       tone={report.sloMet ? "good" : "fault"}
