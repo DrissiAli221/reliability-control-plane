@@ -9,13 +9,13 @@ COPY rcp-probe-lambda/pom.xml ./rcp-probe-lambda/pom.xml
 COPY rcp-control-plane/.mvn ./rcp-control-plane/.mvn
 COPY rcp-control-plane/mvnw ./rcp-control-plane/mvnw
 
-RUN chmod +x ./rcp-control-plane/mvnw \
-    && ./rcp-control-plane/mvnw -pl rcp-control-plane -am dependency:go-offline
-
 COPY rcp-probe-core/src ./rcp-probe-core/src
 COPY rcp-control-plane/src ./rcp-control-plane/src
 
-RUN ./rcp-control-plane/mvnw -pl rcp-control-plane -am package -DskipTests
+RUN --mount=type=cache,target=/root/.m2 \
+    chmod +x ./rcp-control-plane/mvnw \
+    && ./rcp-control-plane/mvnw --batch-mode --no-transfer-progress \
+        -pl rcp-control-plane -am -DskipTests package
 
 FROM eclipse-temurin:21-jre-jammy
 
