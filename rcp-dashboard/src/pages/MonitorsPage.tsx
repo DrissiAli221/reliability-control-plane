@@ -120,10 +120,14 @@ export function MonitorsPage() {
       </header>
 
       <section className="metric-grid" aria-label="Fleet summary">
-        <Metric label="Operational" value={`${summary.operational}`} suffix={`/ ${summary.total - summary.paused}`} tone="good" />
-        <Metric label="Open incidents" value={`${summary.incidents}`} tone={summary.incidents ? "fault" : "muted"} />
-        <Metric label="Needs attention" value={`${summary.attention}`} hint="Down, disagreement or no data" tone={summary.attention ? "warn" : "muted"} />
-        <Metric label="Paused" value={`${summary.paused}`} tone="muted" />
+        <Metric label="Operational" value={`${summary.operational}`} suffix={`/ ${summary.total - summary.paused}`} tone="good"
+          visual={<FleetCells rows={rows} lit={(monitor) => monitor.enabled && monitor.incidentStatus !== "OPEN" && monitor.latestVerdict === "UP"} tone="good" />} />
+        <Metric label="Open incidents" value={`${summary.incidents}`} tone={summary.incidents ? "fault" : "muted"}
+          visual={<FleetCells rows={rows} lit={(monitor) => monitor.incidentStatus === "OPEN"} tone="fault" />} />
+        <Metric label="Needs attention" value={`${summary.attention}`} hint="Down, disagreement or no data" tone={summary.attention ? "warn" : "muted"}
+          visual={<FleetCells rows={rows} lit={(monitor) => monitor.enabled && monitor.incidentStatus !== "OPEN" && monitor.latestVerdict !== "UP" && monitor.latestVerdict !== null} tone="warn" />} />
+        <Metric label="Paused" value={`${summary.paused}`} tone="muted"
+          visual={<FleetCells rows={rows} lit={(monitor) => !monitor.enabled} tone="muted" />} />
       </section>
 
       {notice && <p className="notice fault" role="alert">{notice}</p>}
@@ -246,6 +250,15 @@ function FleetTableRow({ row, now, index, changed, onOpen, onToggle, onDownload 
         />
       </td>
     </tr>
+  );
+}
+
+/** One square per monitor, lit when that monitor belongs to the card's category. */
+function FleetCells({ rows, lit, tone }: { rows: FleetRow[]; lit: (monitor: MonitorOverview) => boolean; tone: Tone }) {
+  return (
+    <div className="fleet-cells" aria-hidden="true">
+      {rows.map(({ monitor }) => <i key={monitor.id} className={lit(monitor) ? tone : undefined} title={monitor.name} />)}
+    </div>
   );
 }
 
