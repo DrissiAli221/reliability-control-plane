@@ -19,7 +19,7 @@ function pageName(pathname: string): string {
   if (pathname.startsWith("/monitors/")) return "Monitor";
   if (pathname.startsWith("/monitors")) return "Monitors";
   if (pathname.startsWith("/pipeline")) return "Pipeline";
-  return "Overview";
+  return pathname === "/" ? "Overview" : "Not found";
 }
 
 /**

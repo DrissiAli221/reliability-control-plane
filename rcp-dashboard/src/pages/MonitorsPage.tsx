@@ -323,6 +323,7 @@ function SkeletonRows() {
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="empty">
+      <p className="dot-glyph small" aria-hidden="true">0</p>
       <h2>No monitors yet</h2>
       <p>Add a public HTTP(S) endpoint. Each check runs in every region, and the control plane only calls it down when the regions agree.</p>
       <button type="button" className="button primary" onClick={onCreate}><Plus size={15} aria-hidden="true" /> Create monitor</button>
