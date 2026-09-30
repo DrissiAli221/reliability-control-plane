@@ -169,6 +169,35 @@ public class MonitorHistoryRepository {
                 .toList();
     }
 
+    /**
+     * Counts HTTP responses by region, time column and latency band in one grouped query; the caller zero-fills.
+     * The band index comes from PostgreSQL's width_bucket over the bounds.
+     */
+    public List<LatencyCell> latencyCells(UUID monitorId, Instant from, Instant to, int bucketSeconds, List<Long> boundsMs) {
+        String bounds = String.join(",", boundsMs.stream().map(String::valueOf).toList());
+        return jdbcTemplate.query(
+                """
+                SELECT probe_region,
+                       FLOOR(EXTRACT(EPOCH FROM (scheduled_at - ?)) / ?)::int AS column_index,
+                       width_bucket(latency_ms, ARRAY[%s]::bigint[]) AS band,
+                       COUNT(*) AS samples
+                FROM probe_results
+                WHERE monitor_id = ? AND scheduled_at >= ? AND scheduled_at < ? AND outcome = 'HTTP_RESPONSE'
+                GROUP BY 1, 2, 3
+                """.formatted(bounds),
+                (resultSet, rowNumber) -> new LatencyCell(
+                        resultSet.getString("probe_region"),
+                        resultSet.getInt("column_index"),
+                        resultSet.getInt("band"),
+                        resultSet.getLong("samples")
+                ),
+                timestamp(from), bucketSeconds, monitorId, timestamp(from), timestamp(to)
+        );
+    }
+
+    public record LatencyCell(String region, int column, int band, long samples) {
+    }
+
     private OffsetDateTime timestamp(Instant instant) {
         return instant.atOffset(ZoneOffset.UTC);
     }

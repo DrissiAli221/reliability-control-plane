@@ -131,6 +131,33 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /api/monitors/{monitorId}/latency-heatmap:
+    parameters:
+      - $ref: '#/components/parameters/MonitorId'
+      - name: hours
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 168
+          default: 24
+    get:
+      operationId: getLatencyHeatmap
+      summary: HTTP-response latency counts per region, time column (48 per window) and latency band
+      responses:
+        '200':
+          description: Zero-filled counts; band i covers [bound i-1, bound i) ms, the last band is open-ended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LatencyHeatmap'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/monitors/{monitorId}/incident-state:
     parameters:
       - $ref: '#/components/parameters/MonitorId'
@@ -792,6 +819,40 @@ components:
                       nullable: true
                     latencyMs:
                       type: integer
+    LatencyHeatmap:
+      type: object
+      properties:
+        monitorId:
+          type: string
+          format: uuid
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        bucketSeconds:
+          type: integer
+        latencyBoundsMs:
+          type: array
+          items:
+            type: integer
+        regions:
+          type: array
+          items:
+            type: object
+            properties:
+              region:
+                type: string
+              samples:
+                type: integer
+              counts:
+                type: array
+                description: One entry per time column, oldest first; each holds one count per latency band.
+                items:
+                  type: array
+                  items:
+                    type: integer
     IncidentState:
       type: object
       properties:
