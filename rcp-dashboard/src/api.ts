@@ -6,6 +6,7 @@ import type {
   ExecutionTrace,
   FaultMode,
   IncidentStateView,
+  LatencyHeatmap,
   MonitorDetail,
   MonitorHistory,
   MonitorOverview,
@@ -53,6 +54,10 @@ export function getMonitor(monitorId: string): Promise<MonitorDetail> {
 
 export function monitorHistory(monitorId: string, days = 45): Promise<MonitorHistory> {
   return request(`/api/monitors/${encodeURIComponent(monitorId)}/history?days=${days}`);
+}
+
+export function latencyHeatmap(monitorId: string, hours = 24): Promise<LatencyHeatmap> {
+  return request(`/api/monitors/${encodeURIComponent(monitorId)}/latency-heatmap?hours=${hours}`);
 }
 
 export function reliabilityReport(monitorId: string, days = 7): Promise<ReliabilityReport> {

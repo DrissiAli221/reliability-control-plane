@@ -2,7 +2,7 @@ import { AlertTriangle, ChevronLeft, ExternalLink, Info, PauseCircle, RefreshCw 
 import { useCallback } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
-  availability, executionTrace, getMonitor, incidentState, listMonitors, monitorHistory, reliabilityReport, setMonitorEnabled,
+  availability, executionTrace, getMonitor, incidentState, latencyHeatmap, listMonitors, monitorHistory, reliabilityReport, setMonitorEnabled,
 } from "../api";
 import { isLocalAuth } from "../auth";
 import { ChaosPanel } from "../components/ChaosPanel";
@@ -10,6 +10,7 @@ import { DownloadReportButton } from "../components/DownloadReportButton";
 import { EvidenceRail } from "../components/EvidenceRail";
 import { Explain } from "../components/Explain";
 import { IncidentMachine } from "../components/IncidentMachine";
+import { LatencyHeatmap } from "../components/LatencyHeatmap";
 import { BudgetMeter, CoverageMeter, LatencyRange } from "../components/MetricVisuals";
 import { MonitorToggleButton } from "../components/MonitorToggleButton";
 import { StatusBadge, StatusDot } from "../components/StatusBadge";
@@ -19,7 +20,7 @@ import {
   absoluteTime, compactUrl, count, interval, milliseconds, monitorState, outcomeLabel, outcomeTone, percent,
   relativeTime, verdictState,
 } from "../format";
-import type { AvailabilityReport, IncidentStateView, MonitorDetail, MonitorHistory, MonitorOverview, ReliabilityReport } from "../types";
+import type { AvailabilityReport, IncidentStateView, LatencyHeatmap as Heatmap, MonitorDetail, MonitorHistory, MonitorOverview, ReliabilityReport } from "../types";
 import { useLiveData, useNow } from "../useLiveData";
 import { CoverageNote, ErrorState, LiveIndicator, Metric } from "./MonitorsPage";
 
@@ -33,18 +34,20 @@ type DetailData = {
   availability?: AvailabilityReport;
   report?: ReliabilityReport;
   incident?: IncidentStateView;
+  heatmap?: Heatmap;
 };
 
 export function MonitorDetailPage() {
   const { monitorId = "" } = useParams();
   const load = useCallback(async (): Promise<DetailData> => {
     const monitor = await getMonitor(monitorId);
-    const [overviews, history, report7d, report, incident] = await Promise.allSettled([
+    const [overviews, history, report7d, report, incident, heatmap] = await Promise.allSettled([
       listMonitors(),
       monitorHistory(monitorId, HISTORY_DAYS),
       availability(monitorId),
       reliabilityReport(monitorId),
       incidentState(monitorId),
+      latencyHeatmap(monitorId),
     ]);
     return {
       monitor,
@@ -53,6 +56,7 @@ export function MonitorDetailPage() {
       availability: report7d.status === "fulfilled" ? report7d.value : undefined,
       report: report.status === "fulfilled" ? report.value : undefined,
       incident: incident.status === "fulfilled" ? incident.value : undefined,
+      heatmap: heatmap.status === "fulfilled" ? heatmap.value : undefined,
     };
   }, [monitorId]);
   const detail = useLiveData(load, 10_000);
@@ -68,7 +72,7 @@ export function MonitorDetailPage() {
     );
   }
 
-  const { monitor, overview, history, availability: evidence, report, incident } = detail.data;
+  const { monitor, overview, history, availability: evidence, report, incident, heatmap } = detail.data;
   const selectedCheck = params.get("check") ?? history?.recentChecks[0]?.executionId ?? null;
   const selectCheck = (executionId: string) => setParams({ check: executionId }, { replace: true });
   const state = overview ? monitorState(overview) : { label: monitor.enabled ? "Awaiting evidence" : "Paused", tone: "muted" as const };
@@ -202,6 +206,16 @@ export function MonitorDetailPage() {
               </ul>
             </>
           ) : <p className="subtle">History unavailable.</p>}
+        </div>
+      </section>
+
+      <section className="panel">
+        <header className="panel-header">
+          <h2>Latency</h2>
+          <span className="subtle">HTTP responses · last 24 h</span>
+        </header>
+        <div className="panel-body">
+          {heatmap ? <LatencyHeatmap heatmap={heatmap} /> : <p className="subtle">Latency heatmap unavailable.</p>}
         </div>
       </section>
 
