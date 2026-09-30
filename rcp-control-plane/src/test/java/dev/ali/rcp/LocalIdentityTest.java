@@ -53,4 +53,20 @@ class LocalIdentityTest {
                                 """))
                 .andExpect(status().isCreated());
     }
+
+    @Test
+    void aLocalGroupClaimBehavesLikeCognitoGroups() throws Exception {
+        String tokenResponse = mockMvc.perform(post("/local/token").param("subject", "local-demo").param("group", "demo"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String accessToken = objectMapper.readTree(tokenResponse).get("accessToken").asText();
+
+        mockMvc.perform(post("/api/monitors")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Blocked","targetUrl":"https://1.1.1.1","checkIntervalSeconds":60,"timeoutMs":5000}
+                                """))
+                .andExpect(status().isForbidden());
+    }
 }
