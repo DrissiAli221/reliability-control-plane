@@ -31,11 +31,11 @@ function describe(event: PipelineEvent): { text: string; tone?: Tone } {
 }
 
 /** A `tail -f` of the control plane: every line is a real, timestamped step, and only new lines light up. */
-export function EventStream() {
+export function EventStream({ limit }: { limit?: number } = {}) {
   const events = useLiveData(pipelineEvents, 2_000);
   const seen = useRef<Set<string> | null>(null);
   const log = useRef<HTMLOListElement>(null);
-  const lines = [...(events.data ?? [])].reverse();
+  const lines = [...(events.data ?? [])].slice(0, limit).reverse();
   const fresh = new Set(seen.current ? lines.map(key).filter((value) => !seen.current!.has(value)) : []);
 
   useEffect(() => {

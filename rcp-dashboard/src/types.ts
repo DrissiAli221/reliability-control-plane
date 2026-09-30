@@ -212,3 +212,22 @@ export type PipelineEvent = {
   latencyMs: number | null;
   detail: string | null;
 };
+
+export type VerdictBucket = { up: number; down: number; disagreement: number; noData: number };
+
+export type IncidentSpan = {
+  incidentId: string;
+  monitorId: string;
+  monitorName: string;
+  openedAt: string;
+  resolvedAt: string | null;
+};
+
+export type FleetOverview = {
+  from: string;
+  to: string;
+  bucketSeconds: number;
+  buckets: VerdictBucket[];
+  incidentsFrom: string;
+  incidents: IncidentSpan[];
+};

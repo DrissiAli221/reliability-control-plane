@@ -1,4 +1,4 @@
-import { Activity, BookOpen, ExternalLink, LayoutList, LogOut, Workflow } from "lucide-react";
+import { Activity, BookOpen, ExternalLink, Gauge, LayoutList, LogOut, Workflow } from "lucide-react";
 import type { ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { isLocalAuth } from "../auth";
@@ -31,7 +31,10 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
 
         <nav className="nav" aria-label="Primary">
           <p className="nav-label">Monitoring</p>
-          <NavLink to="/" end className={({ isActive }) => `nav-item${isActive || pathname.startsWith("/monitors/") ? " active" : ""}`}>
+          <NavLink to="/" end className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
+            <Gauge size={16} aria-hidden="true" /> Overview
+          </NavLink>
+          <NavLink to="/monitors" className={() => `nav-item${pathname.startsWith("/monitors") ? " active" : ""}`}>
             <LayoutList size={16} aria-hidden="true" /> Monitors
           </NavLink>
           <NavLink to="/pipeline" className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
