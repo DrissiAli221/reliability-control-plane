@@ -1,7 +1,11 @@
 import { X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { useSession } from "../session";
 import type { CreateMonitorInput } from "../types";
 import { useFocusTrap } from "../useFocusTrap";
+
+const INTERVALS: Array<[number, string]> = [[30, "30 seconds"], [60, "1 minute"], [300, "5 minutes"], [900, "15 minutes"]];
+const TIMEOUTS: Array<[number, string]> = [[2_000, "2 seconds"], [5_000, "5 seconds"], [10_000, "10 seconds"]];
 
 export function CreateMonitorDialog({ onClose, onCreate }: {
   onClose: () => void;
@@ -10,6 +14,12 @@ export function CreateMonitorDialog({ onClose, onCreate }: {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dialog = useFocusTrap<HTMLElement>();
+  // Offer only what this deployment accepts; the server enforces the same limits either way.
+  const limits = useSession()?.limits;
+  const intervals = INTERVALS.filter(([seconds]) => !limits || seconds >= limits.minIntervalSeconds);
+  const timeouts = TIMEOUTS.filter(([ms]) => !limits || ms <= limits.maxTimeoutMs);
+  const defaultInterval = intervals.find(([seconds]) => seconds >= 60)?.[0] ?? intervals[0]?.[0] ?? 60;
+  const defaultTimeout = [...timeouts].reverse().find(([ms]) => ms <= 5_000)?.[0] ?? timeouts[0]?.[0] ?? 5_000;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
@@ -58,18 +68,14 @@ export function CreateMonitorDialog({ onClose, onCreate }: {
           <div className="field-pair">
             <label className="field">
               <span>Check every</span>
-              <select name="checkIntervalSeconds" defaultValue="60">
-                <option value="30">30 seconds</option>
-                <option value="60">1 minute</option>
-                <option value="300">5 minutes</option>
+              <select name="checkIntervalSeconds" defaultValue={String(defaultInterval)} key={`interval-${defaultInterval}`}>
+                {intervals.map(([seconds, label]) => <option key={seconds} value={seconds}>{label}</option>)}
               </select>
             </label>
             <label className="field">
               <span>Timeout</span>
-              <select name="timeoutMs" defaultValue="5000">
-                <option value="2000">2 seconds</option>
-                <option value="5000">5 seconds</option>
-                <option value="10000">10 seconds</option>
+              <select name="timeoutMs" defaultValue={String(defaultTimeout)} key={`timeout-${defaultTimeout}`}>
+                {timeouts.map(([ms, label]) => <option key={ms} value={ms}>{label}</option>)}
               </select>
             </label>
           </div>
