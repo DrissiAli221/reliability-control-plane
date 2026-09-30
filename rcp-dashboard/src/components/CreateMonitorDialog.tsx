@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import type { CreateMonitorInput } from "../types";
+import { useFocusTrap } from "../useFocusTrap";
 
 export function CreateMonitorDialog({ onClose, onCreate }: {
   onClose: () => void;
@@ -8,6 +9,7 @@ export function CreateMonitorDialog({ onClose, onCreate }: {
 }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialog = useFocusTrap<HTMLElement>();
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
@@ -35,7 +37,7 @@ export function CreateMonitorDialog({ onClose, onCreate }: {
 
   return (
     <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section className="dialog" role="dialog" aria-modal="true" aria-labelledby="create-title">
+      <section className="dialog" role="dialog" aria-modal="true" aria-labelledby="create-title" ref={dialog}>
         <header className="dialog-header">
           <div>
             <h2 id="create-title">Create monitor</h2>
