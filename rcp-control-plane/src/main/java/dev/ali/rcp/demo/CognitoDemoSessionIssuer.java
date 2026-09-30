@@ -1,5 +1,6 @@
 package dev.ali.rcp.demo;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
@@ -28,6 +29,8 @@ class CognitoDemoSessionIssuer implements DemoSessionIssuer, AutoCloseable {
     private final String username;
     private final String password;
 
+    // Two constructors: Spring must be told which one to use, or it looks for a no-argument one and fails.
+    @Autowired
     CognitoDemoSessionIssuer(
             @Value("${rcp.identity.issuer-uri}") String issuerUri,
             @Value("${rcp.identity.client-id}") String clientId,
