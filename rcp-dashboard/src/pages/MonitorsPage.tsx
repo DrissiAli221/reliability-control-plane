@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { availability, createMonitor, listMonitors, monitorHistory, setMonitorEnabled } from "../api";
 import { ActionMenu } from "../components/ActionMenu";
 import { RollingText } from "../components/RollingText";
+import { RowPreview } from "../components/RowPreview";
 import { CreateMonitorDialog } from "../components/CreateMonitorDialog";
 import { LiveLed, StatusBadge, StatusDot } from "../components/StatusBadge";
 import { downloadReport } from "../reportDownload";
@@ -214,9 +215,31 @@ function FleetTableRow({ row, now, index, changed, onOpen, onToggle, onDownload 
   const { monitor, availability: report, history } = row;
   const state = monitorState(monitor);
   const latency = aggregateLatency(history);
+  const [preview, setPreview] = useState<DOMRect | null>(null);
+  const hoverTimer = useRef<number | undefined>(undefined);
+
+  // A short hover delay keeps the preview from flickering while the pointer crosses the table.
+  function hoverStart(event: React.MouseEvent<HTMLTableRowElement>) {
+    const row = event.currentTarget;
+    window.clearTimeout(hoverTimer.current);
+    hoverTimer.current = window.setTimeout(() => setPreview(row.getBoundingClientRect()), 380);
+  }
+  function hoverEnd() {
+    window.clearTimeout(hoverTimer.current);
+    setPreview(null);
+  }
+
+  useEffect(() => {
+    if (!preview) return;
+    window.addEventListener("scroll", hoverEnd, true);
+    return () => window.removeEventListener("scroll", hoverEnd, true);
+  }, [preview]);
+  useEffect(() => () => window.clearTimeout(hoverTimer.current), []);
 
   return (
     <tr
+      onMouseEnter={hoverStart}
+      onMouseLeave={hoverEnd}
       className={`row-link${changed ? ` status-changed ${state.tone}` : ""}`}
       tabIndex={0}
       style={{ animationDelay: `${index * 35}ms` }}
@@ -248,6 +271,7 @@ function FleetTableRow({ row, now, index, changed, onOpen, onToggle, onDownload 
         <span className="subtle" title={monitor.latestCheckedAt ?? undefined}>{monitor.enabled ? relativeTime(monitor.latestCheckedAt, now) : "Paused"}</span>
       </td>
       <td className="actions">
+        {preview && history && <RowPreview history={history} now={now} anchor={preview} />}
         <ActionMenu
           label={`Actions for ${monitor.name}`}
           actions={[
