@@ -81,6 +81,7 @@ describe("PublicStatus", () => {
     });
     expect(screen.getByText("All systems operational")).toBeInTheDocument();
     expect(screen.getByText("Operational")).toBeInTheDocument();
+    expect(document.title).toBe("Ali Systems status");
 
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
     expect(screen.getByText("Couldn't refresh status")).toBeInTheDocument();
