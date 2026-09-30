@@ -199,3 +199,16 @@ export type LatencyHeatmap = {
   latencyBoundsMs: number[];
   regions: Array<{ region: string; samples: number; counts: number[][] }>;
 };
+
+export type PipelineEvent = {
+  at: string;
+  type: "OutboxPublished" | "ResultIngested" | "ExecutionFinalized" | "IncidentOpened" | "IncidentResolved";
+  monitorId: string;
+  monitorName: string;
+  executionId: string;
+  region: string | null;
+  outcome: string | null;
+  httpStatus: number | null;
+  latencyMs: number | null;
+  detail: string | null;
+};

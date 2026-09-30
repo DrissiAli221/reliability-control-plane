@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { pipelineSnapshot } from "../api";
 import { isLocalAuth } from "../auth";
 import { ChaosPanel } from "../components/ChaosPanel";
+import { EventStream } from "../components/EventStream";
 import { PipelineMap } from "../components/PipelineMap";
 import { StatusBadge } from "../components/StatusBadge";
 import { absoluteTime, durationBetween, relativeTime, verdictState } from "../format";
@@ -42,6 +43,8 @@ export function PipelinePage() {
             </header>
             <div className="panel-body"><PipelineMap snapshot={snapshot.data} local={local} /></div>
           </section>
+
+          <EventStream />
 
           <div className={local ? "split wide-left" : undefined}>
             <section className="panel">
