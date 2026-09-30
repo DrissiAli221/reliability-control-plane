@@ -213,6 +213,10 @@ export type PipelineEvent = {
   detail: string | null;
 };
 
+export type MonitorLimits = { maxPerOwner: number; maxTotal: number; minIntervalSeconds: number; maxTimeoutMs: number };
+
+export type Session = { subject: string; readOnly: boolean; limits: MonitorLimits };
+
 export type VerdictBucket = { up: number; down: number; disagreement: number; noData: number };
 
 export type IncidentSpan = {

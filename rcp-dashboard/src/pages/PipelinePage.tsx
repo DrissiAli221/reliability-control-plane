@@ -5,6 +5,7 @@ import { ChaosPanel } from "../components/ChaosPanel";
 import { DecisionTimes } from "../components/DecisionTimes";
 import { EventStream } from "../components/EventStream";
 import { PipelineMap } from "../components/PipelineMap";
+import { useReadOnly } from "../session";
 import { useLiveData, useNow } from "../useLiveData";
 import { ErrorState, LiveIndicator } from "./MonitorsPage";
 
@@ -12,6 +13,7 @@ export function PipelinePage() {
   const snapshot = useLiveData(pipelineSnapshot, 5_000);
   const now = useNow();
   const local = isLocalAuth();
+  const readOnly = useReadOnly();
 
   return (
     <>
@@ -38,7 +40,7 @@ export function PipelinePage() {
               <h2>Stages</h2>
               <span className="subtle">Throughput over the last {Math.round(snapshot.data.windowSeconds / 60)} min · refreshes every 5 s</span>
             </header>
-            {local && <div data-tour="drill"><ChaosPanel inline /></div>}
+            {local && !readOnly && <div data-tour="drill"><ChaosPanel inline /></div>}
             <div className="panel-body"><PipelineMap snapshot={snapshot.data} local={local} /></div>
           </section>
 
