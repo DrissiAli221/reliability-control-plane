@@ -250,6 +250,23 @@ paths:
           description: This deployment does not offer a demo account
         '429':
           description: Too many demo sign-ins in the current minute
+  /api/onboarding:
+    post:
+      operationId: onboard
+      summary: Give a brand-new account one example monitor, at most once
+      description: >-
+        Creates a monitor named "Example" for `rcp.demo.example-monitor-url` the first time an identity calls it,
+        if it owns no monitors yet. Every later call, or any call when the URL is unset, is a no-op.
+        Refused (403) for the read-only demo account.
+      responses:
+        '201':
+          description: Example monitor created
+        '204':
+          description: Nothing to do
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Read-only account
   /api/me:
     get:
       operationId: getSession
