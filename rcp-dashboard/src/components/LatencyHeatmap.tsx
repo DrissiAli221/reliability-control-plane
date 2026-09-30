@@ -10,6 +10,16 @@ function bandLabel(bounds: number[], band: number): string {
   return `${milliseconds(bounds[band - 1])} – ${milliseconds(bounds[band])}`;
 }
 
+// Compact axis labels: each row is named by its lower bound so every row fits a narrow column.
+function shortBound(ms: number): string {
+  return ms >= 1000 ? `${Number((ms / 1000).toFixed(1))}s` : `${ms}ms`;
+}
+
+function axisLabel(bounds: number[], band: number): string {
+  if (band === 0) return `<${shortBound(bounds[0])}`;
+  return band === bounds.length ? `${shortBound(bounds[band - 1])}+` : shortBound(bounds[band - 1]);
+}
+
 function clock(value: number): string {
   return new Date(value).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
@@ -44,7 +54,7 @@ export function LatencyHeatmap({ heatmap }: { heatmap: Heatmap }) {
           <div className="heatmap-body">
             <div className="heatmap-axis" aria-hidden="true">
               {Array.from({ length: bands }, (_, band) => bands - 1 - band).map((band) => (
-                <span key={band}>{band % 2 === 0 ? bandLabel(heatmap.latencyBoundsMs, band) : ""}</span>
+                <span key={band}>{axisLabel(heatmap.latencyBoundsMs, band)}</span>
               ))}
             </div>
             <div
