@@ -190,3 +190,12 @@ export type PipelineSnapshot = {
 };
 
 export type FaultMode = "PASS_THROUGH" | "HTTP_503" | "CONNECTION_FAILURE" | "REQUEST_TIMEOUT" | "RESPONSE_TOO_LARGE";
+
+export type LatencyHeatmap = {
+  monitorId: string;
+  from: string;
+  to: string;
+  bucketSeconds: number;
+  latencyBoundsMs: number[];
+  regions: Array<{ region: string; samples: number; counts: number[][] }>;
+};
