@@ -24,8 +24,8 @@ def outputs():
             region: f"https://sqs.{region}.amazonaws.com/123456789012/jobs" for region in ["eu-west-1", "us-east-1"]},
             "probe-result-queue-region": "us-east-1", "probe-result-queue-url": "https://sqs.us-east-1.amazonaws.com/123456789012/results",
             "result-wait-time-seconds": 20, "result-visibility-timeout-seconds": 60},
-        "monitors": {"max-per-owner": 3, "min-interval-seconds": 60, "max-total": 25},
-        "demo": {"seed-example-monitor": True},
+        "monitors": {"max-per-owner": 3, "min-interval-seconds": 60, "max-total": 25, "max-timeout-ms": 10000},
+        "demo": {"monitors": "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org", "example-monitor-url": "https://example.com"},
     }}
     return {
         "identity": {"value": {"issuer_uri": issuer, "client_id": "fake-client"}},
@@ -48,6 +48,8 @@ class ConfigurationContract(unittest.TestCase):
             lambda c: c["rcp"]["runtime"]["probe-job-queue-urls"].pop("eu-west-1"),
             lambda c: c["rcp"]["runtime"]["probe-job-queue-urls"].update({"eu-west-1": "https://sqs.us-east-1.amazonaws.com/123456789012/jobs"}),
             lambda c: c["rcp"]["monitors"].update({"min-interval-seconds": 30}),
+            lambda c: c["rcp"]["monitors"].update({"max-timeout-ms": 30000}),
+            lambda c: c["rcp"]["demo"].update({"seed-example-monitor": True}),
             lambda c: c["rcp"]["identity"].update({"allowed-origins": "*"}),
             lambda c: c["rcp"]["identity"].update({"read-only-group": "operators"}),
             lambda c: c["rcp"]["runtime"].update({"result-wait-time-seconds": 0}),

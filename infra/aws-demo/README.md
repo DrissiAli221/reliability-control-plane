@@ -47,8 +47,13 @@ costs. Local validation proves configuration, not AWS deployment or availability
   attributes only on the result queue; `AdminInitiateAuth` only on this user pool.
 - The output `server_application_json` preserves the region keys exactly. It also
   wires 3 monitors/owner, 60-second minimum interval, 25 monitors globally, demo
-  group enforcement, and automatic example seeding. Those new settings and
-  `/api/demo/session` must exist in the final backend before deployment.
+  group enforcement, and a 10,000 ms maximum timeout. `rcp.demo.monitors` seeds
+  Example Domain and Wikipedia for the shared account, and
+  `rcp.demo.example-monitor-url=https://example.com` enables one-time onboarding.
+  Provisioning captures the Cognito UUID `sub` in a host file supplied through
+  `RCP_DEMO_OWNER_SUBJECT`; an email/username is not a valid substitute. The earlier
+  `seed-example-monitor` flag is removed because PR #4 does not implement it.
+  Merge PRs #3 then #4 before deploying the application.
 - Lambda uses Java 21/ARM64/512 MiB, 30-second timeout, one job per invocation,
   a maximum of ten SQS invocations per region, and partial failures.
   The current handler is sequential, and scheduled jobs have a 30-second result
@@ -96,8 +101,8 @@ includes provider checksums for Linux and both Mac architectures.
    the matching name when creating it. This root does not enforce resource
    creation ordering; a full apply is not a substitute for the initial alarm.
 2. Finish and merge Claude's session fixes, read-only backend role, demo login,
-   quotas, and seeding. Verify the 10-second **maximum monitor timeout**, too;
-   the provided handoff supplies no configuration property for that maximum.
+   quotas, and seeding. PR #4 implements `rcp.monitors.max-timeout-ms`; this root
+   supplies 10000. Verify the final merged backend actually reads those values.
 3. Build and verify the shaded probe artifact with Java 21:
 
    ```sh

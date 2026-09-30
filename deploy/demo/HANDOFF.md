@@ -5,10 +5,10 @@ Branch: `codex/demo-hosting`. Changes are confined to `infra/aws-demo/` and
 `deploy/demo/`; no application source, production infrastructure, root README,
 or shared CI workflow was edited.
 
-The infrastructure feature is commit `7d873ff`; the following commit adds the
-server deployment, local verification and this handoff. Integrate both commits
-locally after finishing the Phase 1–2 application work. They are not pushed and
-no cloud deployment has been performed.
+The infrastructure feature is commit `7d873ff`; server deployment is `17bf5e9`.
+The compatibility commit aligns the contract with PR #4. Integrate this
+hosting branch locally after merging the Phase 1–2 application work. It is not
+pushed and no cloud deployment has been performed.
 
 ## What is ready
 
@@ -26,41 +26,61 @@ no cloud deployment has been performed.
   private actuator routes; consistent dumps, daily systemd timer and isolated restore.
 - Deployment/build/configuration runbooks and a parameterized illustrative cost model.
 
-## Points to preserve in the application integration
+## Blocking application fix found during compatibility checks
 
-1. Implement and test the supplied Phase 2 property contract. The earlier backend
-   silently ignores new unknown guardrail properties; wiring values is not proof
-   of enforcement. `max-per-owner=3`, `min-interval-seconds=60`, `max-total=25`,
-   `read-only-group=demo`, and `seed-example-monitor=true` are supplied in JSON.
-2. The merged base still allows `timeoutMs` up to **30,000** in `CreateMonitorRequest`.
-   The proposed demo limit is **10,000**. Enforce the 10-second maximum server-side
-   before enabling public registration; there is no maximum-timeout property in
-   the agreed contract. Do not assume Terraform enforces individual monitor timeouts.
-3. `/api/demo/session` must authenticate via `AdminInitiateAuth`, keep the shared
-   password on the server, enforce demo-group writes on every mutation, and avoid
-   unbounded public login traffic. Stock Caddy does not add a login rate limiter.
-4. Provide a trusted bootstrap path for the shared demo's three running monitors.
-   Group membership is established before the demo user's permanent password is
-   enabled. Do not remove read-only membership from an accessible shared account
-   to seed it. Self-sign-up accounts must not be automatically placed in `demo`.
-5. Cognito logout URL is the CloudFront origin **without a slash**, matching current
-   `window.location.origin`. Callback is `/auth/callback`. Keep both ends aligned.
-6. Refresh rotation is on, so `ALLOW_REFRESH_TOKEN_AUTH` is intentionally absent.
-   Access/ID tokens expire after 15 minutes. Optional TOTP is for individual users;
-   do not enroll the shared demo identity unless the button handles MFA challenges.
-7. One probe job per Lambda invocation, no batching delay, SQS max concurrency 10
-   per region, timeout 30 seconds, job visibility 180 seconds, result visibility
-   60 seconds. Sequential larger batches threaten the scheduler's result grace.
-   Reserved concurrency is opt-in because new accounts may not have capacity to
-   leave AWS's required 100 slots unreserved; confirm actual regional quotas.
-8. Before a long-running public demo, define database history retention/disk alerts
-   and choose an off-host encrypted backup destination. VM-local backups alone do
-   not survive instance/disk loss. Actual AWS polling/deadline behavior needs live
-   verification after an authorized deployment.
-9. Current CI validates only `infra/aws/`. Run `infra/aws-demo/validate.sh` explicitly,
-   or add a separate CI step in a later change permitted to edit the workflow.
+**Do not deploy or merge PR #4's tested head until this is fixed.** The `aws`
+profile fails to start with demo credentials configured: Spring reports
+`CognitoDemoSessionIssuer: No default constructor found`. The component has both
+its production constructor and a test constructor, but neither is annotated for
+Spring injection. Local demo tests select a different issuer and miss this failure.
 
-## Verification completed (2026-09-30)
+`patches/pr4-cognito-constructor.patch` contains the explicit `@Autowired` on the
+production constructor plus a Spring-context regression test. This patch is a
+review artifact for Claude's application branch; no backend source in either Git
+checkout was edited. A temporary test snapshot reproduced the failure before the
+patch and passed the new context test after it. Apply/review the patch on PR #4
+and rerun its checks, including the `aws`-profile Compose smoke with fake credentials.
+
+## Phase 2 contract aligned with PR #4
+
+Application reference: PR #4 head `1513158e1f8e0ae0e0fbe164966f8af4f6a4fc3c`.
+PR #4 is stacked on PR #3; merge #3 first. This hosting branch stays based on
+merged PR #2 and does not import or modify Claude's application commits.
+
+1. Runtime JSON supplies `max-per-owner=3`, `min-interval-seconds=60`,
+   `max-total=25`, `max-timeout-ms=10000` and `read-only-group=demo`. PR #4 now
+   implements those limits, including the maximum timeout; the earlier unresolved
+   30-second timeout concern is addressed by this configuration plus PR #4.
+2. `rcp.demo.monitors` supplies Example Domain and Wikipedia for the shared demo;
+   `rcp.demo.example-monitor-url=https://example.com` enables one-time onboarding.
+   The previously proposed `seed-example-monitor` boolean is removed because the
+   actual implementation uses the URL property.
+3. The provisioning helper captures `User.Attributes[sub]` from the same
+   `AdminCreateUser` response and saves the Cognito UUID to
+   `secrets/demo_owner_subject`, not Terraform state. Compose mounts that file;
+   the entrypoint exports `RCP_DEMO_OWNER_SUBJECT`. The UUID must match the token's
+   subject; using the email would seed an unrelated owner and show an empty demo.
+4. The helper still adds `demo` membership before enabling a permanent password.
+   PR #4 seeds monitors internally on startup, so there is no need to remove
+   read-only membership or grant the runtime key group-management privileges.
+   Startup defaults create two monitors, matching Claude's implementation.
+5. The existing `AdminInitiateAuth` permission and
+   `ALLOW_ADMIN_USER_PASSWORD_AUTH` app-client flow already match PR #4.
+   Shared user must have no MFA or forced password change. PR #4's demo endpoint
+   returns no refresh token; it has a 30/minute limit for the single backend.
+6. Keep Cognito callback `/auth/callback` and logout origin **without a slash**.
+   Refresh rotation is enabled; `ALLOW_REFRESH_TOKEN_AUTH` is intentionally absent.
+   Individual sign-up accounts are not placed in the `demo` group.
+7. One probe job per invocation, no batching delay, SQS max concurrency 10/region,
+   timeout 30 seconds, job visibility 180 seconds, result visibility 60 seconds.
+   Reserved concurrency remains opt-in due to new-account regional quotas.
+8. Define database history retention/disk alerts and choose off-host encrypted
+   backups before long-running public use. VM-local backups do not survive disk
+   loss. Confirm actual AWS probe deadlines and Cognito behavior after deployment.
+9. Current CI validates only `infra/aws/`. Run `infra/aws-demo/validate.sh`
+   explicitly, or add a separate CI step in a later workflow-authorized change.
+
+## Initial verification against merged PR #2 (2026-09-30)
 
 - Terraform format/init with readonly provider lockfile/validate: PASS.
 - Fake-variable/fake-credential plan against isolated empty state: 50 resources;
@@ -75,10 +95,33 @@ no cloud deployment has been performed.
   public management 404; expected CORS origin; backup and isolated PostgreSQL restore;
   synthetic marker queried successfully in the restored database; temporary project/volumes cleaned up.
 
-The local smoke deliberately disables SQS runtime and uses a fake Cognito issuer
-with loopback HTTP Caddy. It proves packaging and server wiring, not live Cognito,
-AWS Lambda/SQS operation, real HTTPS issuance, x86 execution, Phase 2 features,
-or deployment to Oracle/EC2. Rebuild/retest the final merged application image.
+## Compatibility verification against PR #4 (2026-09-30)
+
+- Immutable application snapshot: `1513158e1f8e0ae0e0fbe164966f8af4f6a4fc3c`.
+  Application source was read from Git into a temporary directory; neither
+  Claude's active checkout nor this branch's application source was changed.
+- Snapshot's Java 21 reactor `verify`: 164 tests (161 control plane, 3 Lambda),
+  zero failures/errors/skips. Existing Dockerfile built that snapshot on ARM64.
+- Updated Terraform validate/fake-variable plan: PASS, same 50-resource boundary.
+- Eleven configuration/backup/provisioning tests plus one CloudFront routing test:
+  PASS. Provisioning tests mock AWS CLI and verify group-before-password ordering,
+  UUID capture, no password in arguments, private file modes, and failure handling.
+- Unpatched PR #4 `aws`-profile Compose startup: FAIL, reproduced missing constructor
+  injection. The supplied regression test fails before the patch and passes after it.
+  A patched temporary image passed full `aws`-profile startup, private management,
+  anonymous 401, CORS, backup and isolated restore, with no Cognito API calls.
+- Phase 2 Compose integration with local JWTs and polling/workers disabled: PASS.
+  Correct subject owns Example Domain and Wikipedia; `/api/me` reads the configured
+  3-owner/25-global/60-second/10,000-ms limits; demo write/onboarding requests return
+  403; ordinary accounts reject sub-60-second intervals and >10,000-ms timeouts;
+  onboarding creates one monitor once. V10 migrations, private management, CORS,
+  backup and isolated restore passed; temporary containers/volumes cleaned up.
+
+The default smoke uses `aws` profile with fake identity and disabled polling;
+`--phase2` uses local JWTs solely inside a temporary loopback project. Neither
+mode verifies live Cognito/AWS probes, real HTTPS issuance, x86 execution, or
+Oracle/EC2 deployment. Production Compose still uses the `aws` profile. Rebuild
+and rerun the checks on the final merged application commit before deployment.
 
 ## Cost correction
 

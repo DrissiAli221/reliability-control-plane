@@ -57,6 +57,7 @@ services:
         target: application.json
       - demo_username
       - demo_password
+      - demo_owner_subject
     volumes:
       - ./scripts/entrypoint.sh:/opt/demo/entrypoint.sh:ro
     depends_on:
@@ -126,6 +127,8 @@ secrets:
     file: ./secrets/demo_username
   demo_password:
     file: ./secrets/demo_password
+  demo_owner_subject:
+    file: ./secrets/demo_owner_subject
 
 networks:
   database:

@@ -36,8 +36,15 @@ def render(outputs, api_domain, acme_email):
         raise ValueError("Read-only group must be demo")
     if rcp["identity"]["allowed-origins"] != dashboard["origin"]:
         raise ValueError("CORS origin differs from the dashboard")
-    if rcp["monitors"] != {"max-per-owner": 3, "min-interval-seconds": 60, "max-total": 25}:
+    if rcp["monitors"] != {"max-per-owner": 3, "min-interval-seconds": 60, "max-total": 25, "max-timeout-ms": 10000}:
         raise ValueError("Unexpected demo quotas")
+    demo = rcp["demo"]
+    if "seed-example-monitor" in demo:
+        raise ValueError("The old seed-example-monitor flag is unsupported; regenerate outputs")
+    if demo.get("monitors") != "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org":
+        raise ValueError("Unexpected shared demo seed targets")
+    if demo.get("example-monitor-url") != "https://example.com":
+        raise ValueError("Unexpected onboarding example URL")
     if rcp["runtime"]["result-wait-time-seconds"] != 20:
         raise ValueError("Use 20-second result long polling")
     env = f"RCP_API_DOMAIN={api_domain}\nACME_EMAIL={acme_email}\nRCP_CONTROL_PLANE_IMAGE=rcp-control-plane:demo\n"

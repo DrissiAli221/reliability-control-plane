@@ -11,16 +11,22 @@ half is documented in [`infra/aws-demo`](../../infra/aws-demo/README.md).
 
 ## Before going live
 
+Compatibility checks against PR #4 head `1513158` found an AWS-profile startup
+failure in `CognitoDemoSessionIssuer` (two constructors without `@Autowired`).
+See [the handoff](HANDOFF.md) and the reviewed patch artifact in `patches/`.
+Claude must integrate that application fix before deployment.
+
 - Merge and verify Claude's Phase 1–2 implementation: expired-session handling,
   stale public status data, backend read-only `demo` group, 60-second minimum,
   25 global/3 owner monitor caps, maximum 10-second check timeout, example seeding,
   and `/api/demo/session`. The new property names alone do not enforce limits on
-  the pre-Phase-2 backend. Include tests for concurrent quota creation and write
-  rejection by demo tokens, and rate-limit the public demo-login endpoint on the
-  application side. Stock Caddy does not supply a login rate limiter here.
-- The shared demo account must retain `demo` membership. Claude must provide a
-  trusted way to seed its three monitors without exposing a writable shared
-  account. Prefer neutral targets unless the owner chooses otherwise.
+  the pre-Phase-2 backend. PR #4 supplies backend group enforcement, concurrent
+  quota protection, and a 30/minute demo-login limit for the single backend.
+  Stock Caddy does not add another login rate limiter here.
+- The shared demo account must retain `demo` membership. PR #4 seeds its two
+  neutral monitors (Example Domain and Wikipedia) on startup using the Cognito
+  UUID `sub`. Capture that subject during provisioning; do not substitute its
+  email or remove group membership to seed monitors.
 - Establish the AWS budget alert before application resources; get explicit
   deployment authorization before creating AWS resources, keys, users, VM, or DNS.
 - Confirm the chosen VM's actual availability, billing/egress/storage terms, and
@@ -97,8 +103,13 @@ Terraform outputs. No secrets are embedded in Compose, build arguments, or Vite.
 
    It suppresses invitation email, marks the operator-controlled email verified,
    adds `demo` membership **before** setting a permanent password, and does not
-   print credentials or place the password in command arguments. It intentionally
-   fails if the user already exists; inspect partial provisioning before retrying.
+   print credentials or place the password in command arguments. It captures the
+   returned Cognito UUID `sub` into `secrets/demo_owner_subject` (0600), for
+   `RCP_DEMO_OWNER_SUBJECT` at startup. The runtime user needs no additional Cognito
+   permission. It intentionally fails if the user or owner file already exists;
+   inspect partial provisioning before retrying. If recovering an existing user,
+   use the operator CLI to confirm its group/password/MFA state and obtain its
+   actual `sub`; preserve that identity instead of creating a replacement user.
    Do not enable TOTP on the shared demo user: the one-click flow does not answer
    MFA challenges. Other registered users can enable optional TOTP.
    The runtime key has no user-creation or group-management permissions.
@@ -111,7 +122,8 @@ Terraform outputs. No secrets are embedded in Compose, build arguments, or Vite.
    ```sh
    chmod 700 deploy/demo/secrets
    chmod 444 deploy/demo/secrets/postgres_password deploy/demo/secrets/aws_credentials \
-     deploy/demo/secrets/application.json deploy/demo/secrets/demo_username deploy/demo/secrets/demo_password
+     deploy/demo/secrets/application.json deploy/demo/secrets/demo_username deploy/demo/secrets/demo_password \
+     deploy/demo/secrets/demo_owner_subject
    chmod 600 deploy/demo/.env deploy/demo/dashboard.env deploy/demo/terraform-outputs.json
    ```
 
@@ -121,9 +133,9 @@ Terraform outputs. No secrets are embedded in Compose, build arguments, or Vite.
    read them. `docker compose config` prints file paths rather than secret contents.
    Do not use shell tracing/debug CLI output while provisioning or running startup.
 
-The container startup wrapper loads Spring's password/JSON and the demo credentials
-from those files. The AWS SDK uses the `rcp-demo` shared-credentials profile. The
-runtime key only sends regional jobs, consumes central results, and authenticates
+The container startup wrapper loads Spring's password/JSON, demo credentials and
+owner subject from those files. The AWS SDK uses the `rcp-demo` shared-credentials
+profile. The runtime key only sends regional jobs, consumes central results, and authenticates
 the shared Cognito user. Rotate it by replacing the credential file and recreating
 the control-plane container; disable the previous key after verification.
 
@@ -252,12 +264,26 @@ python3 -m unittest discover -s deploy/demo/tests -v
 python3 deploy/demo/scripts/local-smoke.py
 ```
 
-The smoke test builds/reuses `rcp-control-plane:demo`, runs an isolated Compose
+The default smoke builds/reuses `rcp-control-plane:demo`, runs an isolated Compose
 project with fake identity, disables queue polling, uses loopback HTTP Caddy, runs
 Flyway on PostgreSQL 17.6, verifies anonymous API rejection/management hiding,
 backs up/restores synthetic data, and cleans up only its own temporary resources.
 It creates no AWS resources, calls no Cognito API, and does not request certificates.
-It does not test the Phase 2 features that are absent from this branch's base.
+
+After integrating PR #4 into the application checkout, also run:
+
+```sh
+python3 deploy/demo/scripts/local-smoke.py --build --phase2
+```
+
+This second mode uses local JWTs, enables the actual Phase 2 configuration, disables
+both queue polling and local workers, and verifies the seeded demo UUID, two
+monitors, server-side read-only rejection, 60-second/10-second limits, and one-time
+onboarding. It uses a fresh local database, not the developer's running services.
+The local token endpoint exists only in this loopback test's `local` profile;
+production Compose still uses `aws`. To test an immutable application snapshot
+without merging it into this branch, supply `--source-directory /path/to/snapshot`
+and a separate `--image` tag. This does not verify real Cognito login or AWS probes.
 
 ## Updates and rollback
 

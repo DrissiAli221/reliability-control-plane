@@ -1,0 +1,48 @@
+--- a/rcp-control-plane/src/main/java/dev/ali/rcp/demo/CognitoDemoSessionIssuer.java
++++ b/rcp-control-plane/src/main/java/dev/ali/rcp/demo/CognitoDemoSessionIssuer.java
+@@ -1,5 +1,6 @@
+ package dev.ali.rcp.demo;
+
++import org.springframework.beans.factory.annotation.Autowired;
+ import org.springframework.beans.factory.annotation.Value;
+ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+ import org.springframework.context.annotation.Profile;
+@@ -28,6 +29,7 @@
+     private final String username;
+     private final String password;
+
++    @Autowired
+     CognitoDemoSessionIssuer(
+             @Value("${rcp.identity.issuer-uri}") String issuerUri,
+             @Value("${rcp.identity.client-id}") String clientId,
+--- /dev/null
++++ b/rcp-control-plane/src/test/java/dev/ali/rcp/demo/CognitoDemoContextTest.java
+@@ -0,0 +1,28 @@
++package dev.ali.rcp.demo;
++
++import org.junit.jupiter.api.Test;
++import org.springframework.context.annotation.AnnotationConfigApplicationContext;
++import org.springframework.core.env.MapPropertySource;
++
++import java.util.Map;
++
++import static org.assertj.core.api.Assertions.assertThat;
++
++class CognitoDemoContextTest {
++    @Test
++    void awsProfileConstructsConfiguredDemoIssuerThroughSpring() {
++        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
++            context.getEnvironment().setActiveProfiles("aws");
++            context.getEnvironment().getPropertySources().addFirst(new MapPropertySource("demo-test", Map.of(
++                    "rcp.identity.issuer-uri", "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_TestPool",
++                    "rcp.identity.client-id", "test-client",
++                    "rcp.demo.username", "demo@example.invalid",
++                    "rcp.demo.password", "local-only-fake-password"
++            )));
++            context.register(CognitoDemoSessionIssuer.class);
++            context.refresh();
++            // Construct/close the SDK client, but never authenticate or call AWS.
++            assertThat(context.getBean(DemoSessionIssuer.class)).isInstanceOf(CognitoDemoSessionIssuer.class);
++        }
++    }
++}

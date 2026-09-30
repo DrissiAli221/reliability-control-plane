@@ -62,8 +62,12 @@ output "server_application_json" {
         max-per-owner        = 3
         min-interval-seconds = 60
         max-total            = 25
+        max-timeout-ms       = 10000
       }
-      demo = { seed-example-monitor = true }
+      demo = {
+        monitors            = "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org"
+        example-monitor-url = "https://example.com"
+      }
     }
   })
 }
