@@ -11,6 +11,7 @@ import { downloadReport } from "../reportDownload";
 import { Tracker } from "../components/Tracker";
 import { compactUrl, milliseconds, monitorState, percent, relativeTime, type Tone } from "../format";
 import type { AvailabilityReport, CreateMonitorInput, MonitorHistory, MonitorOverview } from "../types";
+import { useReadOnly } from "../session";
 import { useLiveData, useNow } from "../useLiveData";
 
 const TRACKER_DAYS = 30;
@@ -42,6 +43,7 @@ export function MonitorsPage() {
   const fleet = useLiveData(loadFleet);
   const now = useNow();
   const navigate = useNavigate();
+  const readOnly = useReadOnly();
   const [params, setParams] = useSearchParams();
   const [showCreate, setShowCreate] = useState(() => params.get("create") === "1");
   const [query, setQuery] = useState("");
@@ -62,9 +64,9 @@ export function MonitorsPage() {
   // "Create monitor" from the command palette or the C shortcut arrives as ?create=1; consume it once.
   useEffect(() => {
     if (params.get("create") !== "1") return;
-    setShowCreate(true);
+    if (!readOnly) setShowCreate(true);
     setParams({}, { replace: true });
-  }, [params, setParams]);
+  }, [params, setParams, readOnly]);
 
   useEffect(() => {
     if (fleet.data) previousStates.current = new Map(fleet.data.map(({ monitor }) => [monitor.id, monitorState(monitor).label]));
@@ -122,9 +124,11 @@ export function MonitorsPage() {
           <button type="button" className="icon-button bordered" onClick={() => void fleet.refresh()} aria-label="Refresh" disabled={fleet.loading}>
             <RefreshCw size={15} className={fleet.loading ? "spin" : undefined} />
           </button>
-          <button type="button" className="button primary" onClick={() => setShowCreate(true)}>
-            <Plus size={15} aria-hidden="true" /> Create monitor
-          </button>
+          {!readOnly && (
+            <button type="button" className="button primary" onClick={() => setShowCreate(true)}>
+              <Plus size={15} aria-hidden="true" /> Create monitor
+            </button>
+          )}
         </div>
       </header>
 
@@ -156,7 +160,7 @@ export function MonitorsPage() {
 
         {fleet.error && !fleet.data && <ErrorState message={fleet.error} retry={fleet.refresh} />}
         {!fleet.data && !fleet.error && <SkeletonRows />}
-        {fleet.data && rows.length === 0 && <EmptyState onCreate={() => setShowCreate(true)} />}
+        {fleet.data && rows.length === 0 && <EmptyState onCreate={readOnly ? undefined : () => setShowCreate(true)} />}
         {fleet.data && rows.length > 0 && (
           <div className="table-scroll">
             <table className="table fleet">
@@ -180,6 +184,7 @@ export function MonitorsPage() {
                     index={index}
                     changed={changed.has(row.monitor.id)}
                     onOpen={() => navigate(`/monitors/${row.monitor.id}`)}
+                    readOnly={readOnly}
                     onToggle={() => void runAction(() => setMonitorEnabled(row.monitor.id, !row.monitor.enabled), "Monitor could not be updated")}
                     onDownload={() => void runAction(() => downloadReport(row.monitor.id, row.monitor.name), "The report could not be downloaded")}
                   />
@@ -203,8 +208,9 @@ export function MonitorsPage() {
   );
 }
 
-function FleetTableRow({ row, now, index, changed, onOpen, onToggle, onDownload }: {
+function FleetTableRow({ row, now, index, changed, readOnly, onOpen, onToggle, onDownload }: {
   row: FleetRow;
+  readOnly: boolean;
   now: number;
   index: number;
   changed: boolean;
@@ -276,7 +282,7 @@ function FleetTableRow({ row, now, index, changed, onOpen, onToggle, onDownload 
           label={`Actions for ${monitor.name}`}
           actions={[
             { label: "Open details", icon: <ArrowUpRight size={14} />, onSelect: onOpen },
-            { label: monitor.enabled ? "Pause checks" : "Resume checks", icon: monitor.enabled ? <Pause size={14} /> : <Play size={14} />, onSelect: onToggle },
+            ...(readOnly ? [] : [{ label: monitor.enabled ? "Pause checks" : "Resume checks", icon: monitor.enabled ? <Pause size={14} /> : <Play size={14} />, onSelect: onToggle }]),
             { label: "Download 7-day report", icon: <Download size={14} />, onSelect: onDownload },
           ]}
         />
@@ -344,13 +350,13 @@ function SkeletonRows() {
   return <div className="skeletons" aria-label="Loading monitors">{[0, 1, 2].map((key) => <div className="skeleton" key={key} />)}</div>;
 }
 
-function EmptyState({ onCreate }: { onCreate: () => void }) {
+function EmptyState({ onCreate }: { onCreate?: () => void }) {
   return (
     <div className="empty">
       <p className="dot-glyph small" aria-hidden="true">0</p>
       <h2>No monitors yet</h2>
       <p>Add a public HTTP(S) endpoint. Each check runs in every region, and the control plane only calls it down when the regions agree.</p>
-      <button type="button" className="button primary" onClick={onCreate}><Plus size={15} aria-hidden="true" /> Create monitor</button>
+      {onCreate && <button type="button" className="button primary" onClick={onCreate}><Plus size={15} aria-hidden="true" /> Create monitor</button>}
     </div>
   );
 }
