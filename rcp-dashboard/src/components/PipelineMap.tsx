@@ -95,9 +95,14 @@ function StageCard({ stage }: { stage: Stage }) {
   );
 }
 
+/**
+ * A link is a short run of pixels that light up in sequence, so direction reads without an arrowhead.
+ * When a new check is finalized, a pixel in its verdict colour runs the whole pipeline once.
+ */
 function Link({ pulseKey, order }: { pulseKey?: string; order: number }) {
   return (
     <div className="pipeline-link" aria-hidden="true">
+      {[0, 1, 2, 3].map((dot) => <span key={dot} style={{ animationDelay: `${order * 120 + dot * 160}ms` }} />)}
       {pulseKey && <i key={pulseKey} style={{ animationDelay: `${order * 260}ms` }} />}
     </div>
   );
