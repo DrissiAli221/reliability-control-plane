@@ -302,10 +302,10 @@ export function Metric({ label, value, suffix, hint, tone, explain, visual }: {
 
 export function LiveIndicator({ updatedAt, now, error }: { updatedAt: number | null; now: number; error: string | null }) {
   if (error && updatedAt) {
-    return <span className="live stale" title={error}><LiveLed updatedAt={null} tone="warn" />Refresh failed · data from {relativeTime(new Date(updatedAt).toISOString(), now)}</span>;
+    return <span className="live stale" title={error}><LiveLed updatedAt={null} tone="warn" /><span>Refresh failed · data from <span className="live-age">{relativeTime(new Date(updatedAt).toISOString(), now)}</span></span></span>;
   }
   if (!updatedAt) return null;
-  return <span className="live"><LiveLed updatedAt={updatedAt} />Live · updated {relativeTime(new Date(updatedAt).toISOString(), now)}</span>;
+  return <span className="live"><LiveLed updatedAt={updatedAt} /><span>Live · updated <span className="live-age">{relativeTime(new Date(updatedAt).toISOString(), now)}</span></span></span>;
 }
 
 function SkeletonRows() {
