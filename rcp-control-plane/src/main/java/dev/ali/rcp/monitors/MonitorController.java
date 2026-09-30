@@ -74,6 +74,15 @@ public class MonitorController {
         return monitorHistoryService.forOwner(authentication.getName(), monitorId, days);
     }
 
+    @GetMapping("/{monitorId}/latency-heatmap")
+    public LatencyHeatmap latencyHeatmap(
+            @PathVariable UUID monitorId,
+            @RequestParam(defaultValue = "24") @Min(1) @Max(168) int hours,
+            Authentication authentication
+    ) {
+        return monitorHistoryService.latencyHeatmap(authentication.getName(), monitorId, hours);
+    }
+
     @PatchMapping("/{monitorId}/enabled")
     public MonitorResponse setEnabled(
             @PathVariable UUID monitorId,

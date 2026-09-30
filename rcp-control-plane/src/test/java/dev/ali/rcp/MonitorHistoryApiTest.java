@@ -19,6 +19,8 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -114,6 +116,38 @@ class MonitorHistoryApiTest {
                             .with(jwt().jwt(token -> token.subject("ali-subject"))))
                     .andExpect(status().isBadRequest());
         }
+    }
+
+    @Test
+    void heatmapCountsHttpResponsesByRegionTimeColumnAndLatencyBand() throws Exception {
+        mockMvc.perform(get("/api/monitors/{id}/latency-heatmap", monitor.getId())
+                        .queryParam("hours", "48")
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bucketSeconds").value(3600))
+                .andExpect(jsonPath("$.latencyBoundsMs.length()").value(7))
+                .andExpect(jsonPath("$.regions.length()").value(2))
+                .andExpect(jsonPath("$.regions[0].region").value(EU))
+                // Today's two HTTP responses in eu-west-1: 100 ms (band 2: 100-200) and 200 ms (band 3: 200-400);
+                // the two-day-old 503 is outside 48 hours and the timeout carries no latency sample.
+                .andExpect(jsonPath("$.regions[0].samples").value(2))
+                .andExpect(jsonPath("$.regions[0].counts.length()").value(48))
+                .andExpect(jsonPath("$.regions[0].counts[0].length()").value(8))
+                .andExpect(jsonPath("$.regions[0].counts[*][2]", hasItem(1)))
+                .andExpect(jsonPath("$.regions[0].counts[*][3]", hasItem(1)))
+                .andExpect(jsonPath("$.regions[0].counts[*][1]", not(hasItem(1))))
+                .andExpect(jsonPath("$.regions[1].samples").value(2));
+    }
+
+    @Test
+    void heatmapIsOwnerOnlyAndBoundedToOneWeek() throws Exception {
+        mockMvc.perform(get("/api/monitors/{id}/latency-heatmap", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("other-subject"))))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/monitors/{id}/latency-heatmap", monitor.getId())
+                        .queryParam("hours", "169")
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))))
+                .andExpect(status().isBadRequest());
     }
 
     private record Fact(String region, String outcome, Integer httpStatus, long latencyMs) {
