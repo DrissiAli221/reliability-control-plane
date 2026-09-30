@@ -3,7 +3,7 @@ import { pipelineEvents } from "../api";
 import { milliseconds, outcomeLabel, outcomeTone, type Tone } from "../format";
 import type { PipelineEvent } from "../types";
 import { useLiveData } from "../useLiveData";
-import { StatusDot } from "./StatusBadge";
+import { LiveLed } from "./StatusBadge";
 
 const key = (event: PipelineEvent) => `${event.at}|${event.type}|${event.executionId}|${event.region ?? ""}`;
 
@@ -53,7 +53,7 @@ export function EventStream() {
     <section className="panel">
       <header className="panel-header">
         <h2>Live events</h2>
-        <span className="subtle live-tail"><StatusDot tone="good" pulse /> tail · your checks, last 15 min</span>
+        <span className="subtle live-tail"><LiveLed updatedAt={events.updatedAt} /> tail · your checks, last 15 min</span>
       </header>
       {lines.length === 0 ? (
         <p className="panel-body subtle">{events.error ?? "Waiting for the next check…"}</p>
