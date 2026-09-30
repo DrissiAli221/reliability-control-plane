@@ -772,3 +772,24 @@ a { color: inherit; }
 .row-link.status-changed.warn { --flash: var(--amber); }
 @keyframes status-flash { 0%, 20% { background: color-mix(in srgb, var(--flash) 22%, transparent); box-shadow: inset 2px 0 0 var(--flash); } }
 
+/* ---------- Quiet details ---------- */
+/* A faint accent light at the top of every console page. */
+.main { background: radial-gradient(ellipse 70% 260px at 35% -80px, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%) no-repeat; }
+.fleet-cells { display: flex; flex-wrap: wrap; gap: 3px; }
+.fleet-cells i { width: 10px; height: 10px; background: var(--gray-bar); }
+.fleet-cells i.good { background: var(--green); }
+.fleet-cells i.fault { background: var(--red); }
+.fleet-cells i.warn { background: var(--amber); }
+.fleet-cells i.muted { background: var(--text-3); }
+.metric-visual:has(.fleet-cells) > * { flex: none; }
+/* Pipeline canvas: a dot grid that fades toward the edges, and numbered steps. */
+.panel-body:has(> .pipeline) { position: relative; }
+.panel-body:has(> .pipeline)::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.09) 1px, transparent 1.2px) 0 0 / 16px 16px;
+  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 80%);
+}
+.pipeline { position: relative; }
+.stage-name { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.stage-step { font-family: var(--font-mono); font-size: 10.5px; font-weight: 400; color: var(--text-3); }
+
