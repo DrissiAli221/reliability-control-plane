@@ -1,8 +1,9 @@
 import { ArrowUpRight, Download, Pause, Play, Plus, RefreshCw, Search } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { availability, createMonitor, listMonitors, monitorHistory, setMonitorEnabled } from "../api";
 import { ActionMenu } from "../components/ActionMenu";
+import { RollingText } from "../components/RollingText";
 import { CreateMonitorDialog } from "../components/CreateMonitorDialog";
 import { StatusBadge, StatusDot } from "../components/StatusBadge";
 import { downloadReport } from "../reportDownload";
@@ -44,6 +45,21 @@ export function MonitorsPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [notice, setNotice] = useState<string | null>(null);
+  const previousStates = useRef<Map<string, string> | null>(null);
+  const changed = new Set(
+    previousStates.current
+      ? (fleet.data ?? [])
+        .filter(({ monitor }) => {
+          const before = previousStates.current!.get(monitor.id);
+          return before != null && before !== monitorState(monitor).label;
+        })
+        .map(({ monitor }) => monitor.id)
+      : [],
+  );
+
+  useEffect(() => {
+    if (fleet.data) previousStates.current = new Map(fleet.data.map(({ monitor }) => [monitor.id, monitorState(monitor).label]));
+  }, [fleet.data]);
 
   const rows = useMemo(() => fleet.data ?? [], [fleet.data]);
   const summary = useMemo(() => {
@@ -149,6 +165,7 @@ export function MonitorsPage() {
                     row={row}
                     now={now}
                     index={index}
+                    changed={changed.has(row.monitor.id)}
                     onOpen={() => navigate(`/monitors/${row.monitor.id}`)}
                     onToggle={() => void runAction(() => setMonitorEnabled(row.monitor.id, !row.monitor.enabled), "Monitor could not be updated")}
                     onDownload={() => void runAction(() => downloadReport(row.monitor.id), "The report could not be downloaded")}
@@ -173,10 +190,11 @@ export function MonitorsPage() {
   );
 }
 
-function FleetTableRow({ row, now, index, onOpen, onToggle, onDownload }: {
+function FleetTableRow({ row, now, index, changed, onOpen, onToggle, onDownload }: {
   row: FleetRow;
   now: number;
   index: number;
+  changed: boolean;
   onOpen: () => void;
   onToggle: () => void;
   onDownload: () => void;
@@ -187,7 +205,7 @@ function FleetTableRow({ row, now, index, onOpen, onToggle, onDownload }: {
 
   return (
     <tr
-      className="row-link"
+      className={`row-link${changed ? ` status-changed ${state.tone}` : ""}`}
       tabIndex={0}
       style={{ animationDelay: `${index * 35}ms` }}
       onClick={onOpen}
@@ -262,7 +280,7 @@ export function Metric({ label, value, suffix, hint, tone, explain, visual }: {
   return (
     <div className={`metric${attention ? ` attention ${tone}` : ""}`}>
       <span className="metric-label"><StatusDot tone={tone} />{label}{explain}</span>
-      <span className="metric-value">{value}{suffix && <small>{suffix}</small>}</span>
+      <span className="metric-value"><RollingText value={value} />{suffix && <small>{suffix}</small>}</span>
       {visual && <div className="metric-visual">{visual}</div>}
       {hint && <span className="metric-hint">{hint}</span>}
     </div>

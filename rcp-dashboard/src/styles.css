@@ -753,3 +753,14 @@ a { color: inherit; }
 @keyframes fresh-line { from { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text); } }
 @media (max-width: 860px) { .event-log li { grid-template-columns: 92px 1fr auto; } .log-region, .log-monitor { display: none; } }
 
+/* ---------- Motion tied to data changes ---------- */
+.rolling { display: inline-flex; }
+.rolling-digit { display: inline-block; height: 1.1em; overflow: hidden; }
+.rolling-strip { display: flex; flex-direction: column; transition: transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.rolling-strip > span { height: 1.1em; line-height: 1.1em; }
+.row-link.status-changed { --flash: var(--text-3); animation: status-flash 2.4s ease-out; }
+.row-link.status-changed.good { --flash: var(--green); }
+.row-link.status-changed.fault { --flash: var(--red); }
+.row-link.status-changed.warn { --flash: var(--amber); }
+@keyframes status-flash { 0%, 20% { background: color-mix(in srgb, var(--flash) 22%, transparent); box-shadow: inset 2px 0 0 var(--flash); } }
+
