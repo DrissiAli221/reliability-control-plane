@@ -42,7 +42,7 @@ export function PipelinePage() {
             <div className="panel-body"><PipelineMap snapshot={snapshot.data} local={local} /></div>
           </section>
 
-          <div className="split wide-left">
+          <div className="split balanced">
             <section className="panel">
               <header className="panel-header">
                 <h2>Time to decision</h2>
