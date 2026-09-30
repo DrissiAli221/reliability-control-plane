@@ -770,26 +770,15 @@ a { color: inherit; }
 .region-flow b { font-weight: 500; color: var(--text); font-size: 13px; }
 .pipeline-link { position: relative; flex: 0 0 30px; align-self: stretch; }
 .pipeline-link.fork { flex-basis: 40px; }
-/* Pixel lines: 3px squares every 7px, drifting in the direction of travel. */
-.flow-h, .flow-v { position: absolute; opacity: 0.55; }
-.flow-h {
-  height: 3px; margin-top: -1px;
-  background: linear-gradient(90deg, var(--text-3) 0 3px, transparent 3px) 0 0 / 7px 3px;
-  animation: flow-x 1.4s linear infinite;
-}
-.flow-v {
-  width: 3px; margin-left: -1px;
-  background: linear-gradient(180deg, var(--text-3) 0 3px, transparent 3px) 0 0 / 3px 7px;
-  animation: flow-y 1.4s linear infinite;
-}
-.flow-v { animation: none; }
-/* The verdict-coloured copy of the lines, shown once per finalized check. */
-.flow-flash { position: absolute; inset: 0; opacity: 0; animation: flow-flash 900ms ease-out backwards; }
-.flow-flash .flow-h, .flow-flash .flow-v { opacity: 1; animation: none; filter: drop-shadow(0 0 3px var(--pulse)); }
-.flow-flash .flow-h { background-image: linear-gradient(90deg, var(--pulse) 0 3px, transparent 3px); }
-.flow-flash .flow-v { background-image: linear-gradient(180deg, var(--pulse) 0 3px, transparent 3px); }
+.pipeline-link svg { position: absolute; inset: 0; overflow: visible; }
+/* Pixel lines: 3px dashes on a 7px rhythm; horizontal runs drift in the direction of travel. */
+.pipeline-link path { fill: none; stroke: var(--text-3); stroke-width: 3; stroke-dasharray: 3 4; stroke-linecap: butt; }
+.flow-lines { opacity: 0.55; }
+.flow-lines path.flow { animation: flow-dash 1.4s linear infinite; }
+.flow-flash { opacity: 0; animation: flow-flash 900ms ease-out backwards; }
+.flow-flash path { stroke: var(--pulse); filter: drop-shadow(0 0 3px var(--pulse)); }
+@keyframes flow-dash { to { stroke-dashoffset: -7; } }
 @keyframes flow-flash { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes flow-x { to { background-position: 7px 0; } }
 @keyframes flow-y { to { background-position: 0 7px; } }
 
 @keyframes sweep { from { transform: scaleX(0); } }
@@ -800,7 +789,7 @@ a { color: inherit; }
   .pipeline { flex-direction: column; }
   /* Stacked layout: every link, forks included, becomes a short vertical run. */
   .pipeline-link, .pipeline-link.fork { flex-basis: 24px; align-self: center; width: 3px; }
-  .pipeline-link .flow-h, .pipeline-link .flow-v { display: none; }
+  .pipeline-link svg { display: none; }
   .pipeline-link::before {
     content: ""; position: absolute; inset: 0; opacity: 0.55;
     background: linear-gradient(180deg, var(--text-3) 0 3px, transparent 3px) 0 0 / 3px 7px; animation: flow-y 1.4s linear infinite;

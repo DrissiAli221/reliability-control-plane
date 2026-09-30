@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { count, milliseconds } from "../format";
 import type { PipelineSnapshot, Verdict } from "../types";
 
@@ -101,43 +101,84 @@ function StageCard({ stage }: { stage: Stage }) {
   );
 }
 
-type Line = { kind: "h" | "v"; style: CSSProperties };
+type Segment = { d: string; flow: boolean };
+
+// Measures the connector so paths can be drawn in real pixels; dashes would stretch under a scaled viewBox.
+function useSize<T extends HTMLElement>(): [React.RefObject<T | null>, { width: number; height: number }] {
+  const ref = useRef<T>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setSize((previous) => (previous.width === Math.round(width) && previous.height === Math.round(height)
+        ? previous
+        : { width: Math.round(width), height: Math.round(height) }));
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  return [ref, size];
+}
 
 /**
- * Draws a connector twice: a quiet line of pixels drifting in the direction of travel, and, whenever a new
- * check is finalized, a copy in its verdict colour that flashes once (remounted per check, delayed per stage).
+ * Draws a connector as dashed pixel paths snapped to whole pixels. Each straight piece is its own path that
+ * starts on a dash, so pieces meet cleanly at corners instead of overlapping. Horizontal pieces drift in the
+ * direction of travel; whenever a new check is finalized, a copy in its verdict colour flashes once.
  */
-function Connector({ lines, className = "", pulseKey, order }: { lines: Line[]; className?: string; pulseKey?: string; order: number }) {
-  const draw = (line: Line, index: number) => <span key={index} className={`flow-${line.kind}`} style={line.style} />;
+function Connector({ build, className = "", pulseKey, order }: {
+  build: (width: number, height: number) => Segment[];
+  className?: string;
+  pulseKey?: string;
+  order: number;
+}) {
+  const [ref, { width, height }] = useSize<HTMLDivElement>();
+  const segments = width && height ? build(width, height) : [];
+  const draw = (segment: Segment, index: number) => <path key={index} d={segment.d} className={segment.flow ? "flow" : undefined} />;
   return (
-    <div className={`pipeline-link ${className}`} aria-hidden="true">
-      {lines.map(draw)}
-      {pulseKey && <span key={pulseKey} className="flow-flash" style={{ animationDelay: `${order * 220}ms` }}>{lines.map(draw)}</span>}
+    <div className={`pipeline-link ${className}`} ref={ref} aria-hidden="true">
+      {segments.length > 0 && (
+        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} shapeRendering="crispEdges">
+          <g className="flow-lines">{segments.map(draw)}</g>
+          {pulseKey && <g key={pulseKey} className="flow-flash" style={{ animationDelay: `${order * 220}ms` }}>{segments.map(draw)}</g>}
+        </svg>
+      )}
     </div>
   );
 }
 
+// Dashes are 3px on a 7px rhythm; centring a 3px stroke on n + 1.5 keeps every dash on whole pixels.
+const at = (value: number) => Math.round(value - 1.5) + 1.5;
+
 function Link({ pulseKey, order }: { pulseKey?: string; order: number }) {
-  return <Connector lines={[{ kind: "h", style: { left: 0, right: 0, top: "50%" } }]} pulseKey={pulseKey} order={order} />;
+  return <Connector build={(width, height) => [{ d: `M0 ${at(height / 2)} H${width}`, flow: true }]} pulseKey={pulseKey} order={order} />;
 }
 
 // Vertical centre of region box `index` among `count` equal boxes separated by the 8px column gap.
 const REGION_GAP = 8;
-function branchY(index: number, count: number): string {
-  return `calc((100% - ${(count - 1) * REGION_GAP}px) / ${count} * ${index + 0.5} + ${index * REGION_GAP}px)`;
+function branchY(index: number, count: number, height: number): number {
+  const box = (height - (count - 1) * REGION_GAP) / count;
+  return at(index * (box + REGION_GAP) + box / 2);
 }
 
 /**
  * The outbox fans each check out to one queue per region, and ingestion gathers the results back in:
  * a trunk, a spine across the region boxes, and one branch landing on the middle of each box.
+ * The trunk stops where the spine begins, so no dash is drawn twice.
  */
 function Fork({ branches, direction, pulseKey, order }: { branches: number; direction: "split" | "join"; pulseKey?: string; order: number }) {
-  const split = direction === "split";
-  const ys = Array.from({ length: branches }, (_, index) => branchY(index, branches));
-  const lines: Line[] = [
-    { kind: "h", style: split ? { left: 0, right: "50%", top: "50%" } : { left: "50%", right: 0, top: "50%" } },
-    ...(branches > 1 ? [{ kind: "v" as const, style: { left: "50%", top: ys[0], bottom: `calc(100% - ${ys[ys.length - 1]})` } }] : []),
-    ...ys.map((y): Line => ({ kind: "h", style: split ? { left: "50%", right: 0, top: y } : { left: 0, right: "50%", top: y } })),
-  ];
-  return <Connector lines={lines} className={`fork ${direction}`} pulseKey={pulseKey} order={order} />;
+  const build = (width: number, height: number): Segment[] => {
+    const middle = at(height / 2);
+    const spine = at(width / 2);
+    const ys = Array.from({ length: branches }, (_, index) => branchY(index, branches, height));
+    const near = spine - 1.5;
+    const far = spine + 1.5;
+    const trunk = direction === "split" ? `M0 ${middle} H${near}` : `M${far} ${middle} H${width}`;
+    const arms = ys.map((y) => (direction === "split" ? `M${far} ${y} H${width}` : `M0 ${y} H${near}`));
+    const segments: Segment[] = [{ d: trunk, flow: true }, ...arms.map((d) => ({ d, flow: true }))];
+    if (branches > 1) segments.push({ d: `M${spine} ${ys[0] - 1.5} V${ys[ys.length - 1] + 1.5}`, flow: false });
+    return segments;
+  };
+  return <Connector build={build} className={`fork ${direction}`} pulseKey={pulseKey} order={order} />;
 }
