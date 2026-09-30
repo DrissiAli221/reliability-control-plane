@@ -5,12 +5,15 @@ import dev.ali.rcp.monitors.MonitorNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
 @Service
 public class PipelineService {
     static final int ACTIVITY_WINDOW_SECONDS = 300;
+    static final int EVENT_WINDOW_SECONDS = 900;
+    static final int EVENT_LIMIT = 40;
 
     // The processor evaluates with the same policy, so the thresholds shown are the thresholds applied.
     private static final IncidentPolicy POLICY = IncidentPolicy.initialPolicy();
@@ -37,6 +40,12 @@ public class PipelineService {
     public PipelineSnapshot snapshot(String ownerSubject) {
         Objects.requireNonNull(ownerSubject, "ownerSubject must not be null");
         return repository.snapshot(ownerSubject, repository.databaseNow(), ACTIVITY_WINDOW_SECONDS);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PipelineEvent> recentEvents(String ownerSubject) {
+        Objects.requireNonNull(ownerSubject, "ownerSubject must not be null");
+        return repository.recentEvents(ownerSubject, repository.databaseNow().minusSeconds(EVENT_WINDOW_SECONDS), EVENT_LIMIT);
     }
 
     private void requireOwned(String ownerSubject, UUID monitorId) {
