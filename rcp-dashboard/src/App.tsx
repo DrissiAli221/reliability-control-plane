@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Navigate, Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
-import { completeLogin, isLocalAuth, login, logout } from "./auth";
+import { Route, Routes, useNavigate } from "react-router-dom";
+import { completeLogin, logout } from "./auth";
 import { AppShell, BrandMark } from "./components/AppShell";
 import { MonitorDetailPage } from "./pages/MonitorDetailPage";
 import { MonitorsPage } from "./pages/MonitorsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { SignInPage } from "./pages/SignInPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { PipelinePage } from "./pages/PipelinePage";
 import { PublicStatus } from "./PublicStatus";
@@ -20,17 +21,6 @@ function AuthCallback() {
   }, [navigate]);
 
   return <CenteredMessage title="Completing sign-in" detail={error ?? "Validating the authorization response…"} />;
-}
-
-function SignIn() {
-  const [params] = useSearchParams();
-  const next = params.get("next") ?? "/";
-  if (isLocalAuth()) return <Navigate to={next.startsWith("/") && !next.startsWith("//") ? next : "/"} replace />;
-  return (
-    <CenteredMessage title="Operator access" detail="Use the configured Cognito operator account to continue.">
-      <button type="button" className="button primary" onClick={() => void login(next)}>Sign in</button>
-    </CenteredMessage>
-  );
 }
 
 function CenteredMessage({
@@ -61,7 +51,7 @@ export function App() {
       <Route path="/monitors" element={<AppShell onLogout={() => void logout()}><MonitorsPage /></AppShell>} />
       <Route path="/pipeline" element={<AppShell onLogout={() => void logout()}><PipelinePage /></AppShell>} />
       <Route path="/monitors/:monitorId" element={<AppShell onLogout={() => void logout()}><MonitorDetailPage /></AppShell>} />
-      <Route path="/signin" element={<SignIn />} />
+      <Route path="/signin" element={<SignInPage />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/public/:slug" element={<PublicStatus />} />
       <Route path="*" element={<AppShell onLogout={() => void logout()}><NotFoundPage /></AppShell>} />
