@@ -1099,3 +1099,50 @@ kbd {
 /* The day tooltip is the more specific answer while the pointer is on the tracker. */
 body:has(.tracker-tooltip) .row-preview { display: none; }
 .sidebar-footer .nav-item { width: calc(100% + 16px); margin: 0 -8px; }
+
+/* ---------- Decisions: policy strip and check timeline ---------- */
+.policy-strip {
+  --hue: var(--green); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 16px;
+  border-bottom: 1px solid var(--border); font-size: 13px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--hue) 9%, transparent), transparent 45%);
+}
+.policy-strip.warn { --hue: var(--amber); }
+.policy-strip.fault { --hue: var(--red); }
+.policy-strip.info { --hue: var(--blue); }
+.policy-strip strong { font-weight: 600; }
+.policy-strip .mono { color: var(--text-2); font-size: 12.5px; }
+.policy-next { font-size: 12.5px; }
+.policy-toggle {
+  display: inline-flex; align-items: center; gap: 4px; margin-left: auto; height: 26px; padding: 0 8px;
+  border: 1px solid var(--border-strong); background: var(--bg); color: var(--text-2); font-size: 12px;
+}
+.policy-toggle:hover { color: var(--text); }
+.policy-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.machine-body { border-bottom: 1px solid var(--border); animation: rise 220ms ease-out backwards; }
+
+.timeline-checks { display: grid; gap: 10px; padding: 14px 16px 16px; }
+.check-readout { min-height: 18px; font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.check-readout .result { font-size: 12px; }
+.check-readout .result.warn { color: var(--amber-text); }
+.check-grid { display: grid; grid-template-rows: 12px; grid-auto-rows: 40px; column-gap: 3px; row-gap: 4px; }
+.check-label { grid-column: 1; align-self: center; padding-right: 10px; font-size: 11px; color: var(--text-3); white-space: nowrap; }
+.check-verdict {
+  display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 0; border: 0; background: none; cursor: pointer;
+  animation: grow 360ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; transform-origin: bottom;
+}
+.check-verdict > i { display: block; height: 12px; flex: none; background: var(--gray-bar); }
+.check-verdict.up > i { background: var(--green); }
+.check-verdict.down > i { background: var(--red); }
+.check-verdict.disagreement > i { background: var(--amber); }
+.check-verdict.no-data > i { background: var(--no-data); }
+.check-bar { position: relative; display: block; flex: none; height: 40px; background: var(--gray-bg); }
+.check-bar b { position: absolute; left: 0; right: 0; bottom: 0; background: var(--text-3); opacity: 0.75; transition: opacity 120ms; }
+.check-bar b.good { background: var(--green); }
+.check-bar b.fault { background: var(--red); }
+.check-bar b.missing { height: 100%; background: repeating-linear-gradient(135deg, var(--hatch-a) 0 3px, var(--hatch-b) 3px 6px); opacity: 1; }
+.check-grid:hover .check-verdict:not(:hover) { opacity: 0.55; }
+.check-verdict:hover .check-bar b, .check-verdict.selected .check-bar b { opacity: 1; }
+.check-verdict.selected { box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-soft); }
+.check-verdict:focus-visible { outline-offset: 3px; }
+.check-axis { display: flex; justify-content: space-between; margin-left: 76px; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+.decisions .trace-panel { border-top: 1px solid var(--border); }

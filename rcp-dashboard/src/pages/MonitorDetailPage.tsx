@@ -1,11 +1,12 @@
 import { AlertTriangle, ChevronLeft, ExternalLink, Info, PauseCircle, RefreshCw } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   availability, executionTrace, getMonitor, incidentState, latencyHeatmap, listMonitors, monitorHistory, reliabilityReport, setMonitorEnabled,
 } from "../api";
 import { isLocalAuth } from "../auth";
 import { ChaosPanel } from "../components/ChaosPanel";
+import { CheckTimeline } from "../components/CheckTimeline";
 import { DownloadReportButton } from "../components/DownloadReportButton";
 import { EvidenceRail } from "../components/EvidenceRail";
 import { Explain } from "../components/Explain";
@@ -13,14 +14,16 @@ import { IncidentMachine } from "../components/IncidentMachine";
 import { LatencyHeatmap } from "../components/LatencyHeatmap";
 import { BudgetMeter, CoverageMeter, LatencyRange } from "../components/MetricVisuals";
 import { MonitorToggleButton } from "../components/MonitorToggleButton";
+import { PolicyStrip } from "../components/PolicyStrip";
 import { StatusBadge, StatusDot } from "../components/StatusBadge";
 import { TraceView } from "../components/TraceView";
 import { Tracker } from "../components/Tracker";
 import {
   absoluteTime, compactUrl, count, interval, milliseconds, monitorState, outcomeLabel, outcomeTone, percent,
-  relativeTime, verdictState,
+  relativeTime,
 } from "../format";
 import type { AvailabilityReport, IncidentStateView, LatencyHeatmap as Heatmap, MonitorDetail, MonitorHistory, MonitorOverview, ReliabilityReport } from "../types";
+import { machineNode } from "../machine";
 import { useLiveData, useNow } from "../useLiveData";
 import { CoverageNote, ErrorState, LiveIndicator, Metric } from "./MonitorsPage";
 
@@ -62,6 +65,8 @@ export function MonitorDetailPage() {
   const detail = useLiveData(load, 10_000);
   const now = useNow();
   const [params, setParams] = useSearchParams();
+  // The full state machine opens by itself whenever the monitor leaves Healthy; a manual toggle overrides that.
+  const [machineToggle, setMachineToggle] = useState<boolean | null>(null);
 
   if (!detail.data) {
     return (
@@ -78,6 +83,8 @@ export function MonitorDetailPage() {
   const state = overview ? monitorState(overview) : { label: monitor.enabled ? "Awaiting evidence" : "Paused", tone: "muted" as const };
   const incidents = pairIncidents(report);
   const ongoing = incidents.find((incident) => !incident.resolvedAt);
+  const machineOpen = machineToggle ?? (incident ? machineNode(incident) !== "healthy" : false);
+  const setMachineOpen = (open: boolean) => setMachineToggle(open);
 
   async function toggle() {
     await setMonitorEnabled(monitor.id, !monitor.enabled);
@@ -219,69 +226,29 @@ export function MonitorDetailPage() {
         </div>
       </section>
 
-      <section className="panel" data-tour="machine">
+      <section className="panel decisions" data-tour="machine">
         <header className="panel-header">
-          <h2>Incident policy</h2>
+          <h2>Decisions</h2>
           <span className="subtle">
             {incident ? `Opens after ${incident.failuresToOpen} consecutive DOWN, resolves after ${incident.successesToResolve} UP` : "State unavailable"}
           </span>
         </header>
         {isLocalAuth() && <ChaosPanel failuresToOpen={incident?.failuresToOpen} inline />}
-        <div className="panel-body">
-          {incident ? <IncidentMachine state={incident} now={now} /> : <p className="subtle">Incident state unavailable.</p>}
-        </div>
-      </section>
-
-      <section className="panel" data-tour="checks">
-        <header className="panel-header">
-          <h2>Recent checks</h2>
-          <span className="subtle">Select a check to trace it</span>
-        </header>
-        {history && history.recentChecks.length > 0 ? (
-          <div className="table-scroll">
-            <table className="table compact">
-              <thead>
-                <tr>
-                  <th scope="col">Scheduled</th>
-                  <th scope="col">Verdict</th>
-                  {history.regions.map((region) => <th scope="col" key={region.region} className="mono">{region.region}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {history.recentChecks.map((check) => {
-                  const verdict = verdictState(check.verdict);
-                  const selected = check.executionId === selectedCheck;
-                  return (
-                    <tr
-                      key={check.executionId}
-                      className={`row-link${selected ? " selected" : ""}`}
-                      tabIndex={0}
-                      aria-selected={selected}
-                      onClick={() => selectCheck(check.executionId)}
-                      onKeyDown={(event) => { if (event.key === "Enter") selectCheck(check.executionId); }}
-                    >
-                      <td><time className="subtle" dateTime={check.scheduledAt} title={absoluteTime(check.scheduledAt)}>{relativeTime(check.scheduledAt, now)}</time></td>
-                      <td><StatusBadge label={verdict.label} tone={verdict.tone} /></td>
-                      {history.regions.map((region) => {
-                        const result = check.results.find((item) => item.region === region.region);
-                        return (
-                          <td key={region.region} className="mono">
-                            {result ? (
-                              <>
-                                <span className={`result ${outcomeTone(result.outcome, result.httpStatus)}`}>{outcomeLabel(result.outcome, result.httpStatus)}</span>
-                                <span className="subtle"> {milliseconds(result.latencyMs)}</span>
-                              </>
-                            ) : <span className="subtle">no result</span>}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        {incident && <PolicyStrip state={incident} now={now} expanded={machineOpen} onToggle={() => setMachineOpen(!machineOpen)} />}
+        {incident && machineOpen && (
+          <div className="panel-body machine-body">
+            <IncidentMachine state={incident} now={now} showTape={false} />
           </div>
-        ) : <p className="panel-body subtle">No finalized checks yet.</p>}
+        )}
+        {history && (
+          <CheckTimeline
+            checks={history.recentChecks}
+            regions={history.regions.map((region) => region.region)}
+            selected={selectedCheck}
+            onSelect={selectCheck}
+            now={now}
+          />
+        )}
         {selectedCheck && <CheckTrace monitorId={monitor.id} executionId={selectedCheck} />}
       </section>
 

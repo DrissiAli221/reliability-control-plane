@@ -12,7 +12,7 @@ const HEIGHT = 50;
 const right = (node: Node) => NODE_X[node] + WIDTH;
 const mid = (from: Node, to: Node) => (right(from) + NODE_X[to]) / 2;
 
-export function IncidentMachine({ state, now }: { state: IncidentStateView; now: number }) {
+export function IncidentMachine({ state, now, showTape = true }: { state: IncidentStateView; now: number; showTape?: boolean }) {
   // useId output can contain characters that break SVG url(#…) references.
   const id = `machine-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const current = machineNode(state);
@@ -69,7 +69,7 @@ export function IncidentMachine({ state, now }: { state: IncidentStateView; now:
       </svg>
 
       <div className="machine-foot">
-        <div className="tape" aria-label="Recent incident evaluations, oldest first">
+        {showTape && <div className="tape" aria-label="Recent incident evaluations, oldest first">
           {evaluations.map((evaluation) => (
             <span
               key={evaluation.executionId}
@@ -79,7 +79,7 @@ export function IncidentMachine({ state, now }: { state: IncidentStateView; now:
               {evaluation.verdict === "DISAGREEMENT" ? "≠" : evaluation.verdict === "NO_DATA" ? "?" : evaluation.verdict === "UP" ? "↑" : "↓"}
             </span>
           ))}
-        </div>
+        </div>}
         <p className="subtle">
           {last
             ? <>Last evaluation {relativeTime(last.evaluatedAt, now)}: {last.verdict}{last.transition === "NONE" ? ", no transition" : `, incident ${last.transition.toLowerCase()}`}.</>
