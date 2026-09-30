@@ -20,6 +20,9 @@
   --accent: #7c6cff;
   --accent-hover: #9387ff;
   --on-accent: #ffffff;
+  --accent-text: #b4abff;
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent) 45%, transparent);
   --focus: var(--accent);
 
   --green: #30a46c;
@@ -94,7 +97,8 @@ a { color: inherit; }
   transition: background 120ms, color 120ms;
 }
 .nav-item:hover { background: var(--surface-hover); color: var(--text); }
-.nav-item.active { background: var(--surface-2); color: var(--text); box-shadow: inset 2px 0 0 var(--accent), inset 0 0 0 1px var(--border); }
+.nav-item.active { background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
+.nav-item.active svg { color: var(--accent-text); }
 .nav-external { margin-left: auto; color: var(--text-3); }
 .sidebar-footer { margin-top: auto; display: flex; flex-direction: column; gap: 12px; padding: 0 8px; }
 .env-note { font-size: 12px; line-height: 1.45; color: var(--text-3); }
@@ -135,8 +139,8 @@ a { color: inherit; }
   border: 1px solid transparent; border-radius: var(--radius-md); font-size: 13.5px; font-weight: 500; white-space: nowrap;
   transition: background 120ms, border-color 120ms, color 120ms;
 }
-.button.primary { background: var(--accent); color: var(--on-accent); }
-.button.primary:hover:not(:disabled) { background: var(--accent-hover); }
+.button.primary { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-text); }
+.button.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 22%, transparent); color: #d4cfff; }
 .button.secondary { background: var(--surface); border-color: var(--border-strong); color: var(--text); }
 .button.secondary:hover:not(:disabled) { background: var(--surface-hover); }
 .icon-button {
@@ -223,7 +227,7 @@ a { color: inherit; }
 .segmented { display: inline-flex; padding: 2px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg); }
 .segmented button { height: 26px; padding: 0 10px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--text-2); font-size: 12.5px; font-weight: 500; }
 .segmented button:hover { color: var(--text); }
-.segmented button[aria-pressed="true"] { background: var(--surface-2); color: var(--text); box-shadow: inset 0 -2px 0 var(--accent), inset 0 0 0 1px var(--border-strong); }
+.segmented button[aria-pressed="true"] { background: var(--surface-2); color: var(--accent-text); box-shadow: inset 0 0 0 1px var(--border-strong); }
 
 .table-scroll { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
