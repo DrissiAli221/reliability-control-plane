@@ -962,3 +962,17 @@ kbd {
 .shortcut-list dt { color: var(--text-2); }
 .shortcut-list dd { margin: 0; }
 @media (max-width: 860px) { .palette-trigger { display: none; } }
+
+/* ---------- Dot-matrix glyphs for empty and lost states ---------- */
+.dot-glyph {
+  font-family: var(--font-dots); font-size: 120px; font-weight: 800; line-height: 0.9; letter-spacing: 0.04em;
+  color: transparent; background: linear-gradient(180deg, var(--text-2), var(--text-3) 70%, transparent);
+  -webkit-background-clip: text; background-clip: text;
+}
+.dot-glyph.small { font-size: 56px; margin-bottom: 4px; }
+.lost { display: grid; justify-items: center; gap: 10px; padding: 12vh 16px 64px; text-align: center; }
+.lost h1 { margin-top: 12px; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+.lost > p:not(.dot-glyph) { color: var(--text-2); }
+.lost-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: center; margin-top: 12px; font-size: 13px; }
+.lost-actions kbd { margin: 0 1px; }
+.lost-actions .button { text-decoration: none; }

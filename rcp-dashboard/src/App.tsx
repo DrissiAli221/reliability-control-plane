@@ -4,6 +4,7 @@ import { completeLogin, isLocalAuth, login, logout } from "./auth";
 import { AppShell, BrandMark } from "./components/AppShell";
 import { MonitorDetailPage } from "./pages/MonitorDetailPage";
 import { MonitorsPage } from "./pages/MonitorsPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { PipelinePage } from "./pages/PipelinePage";
 import { PublicStatus } from "./PublicStatus";
@@ -61,7 +62,7 @@ export function App() {
       <Route path="/signin" element={<SignIn />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/public/:slug" element={<PublicStatus />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<AppShell onLogout={() => void logout()}><NotFoundPage /></AppShell>} />
     </Routes>
   );
 }
