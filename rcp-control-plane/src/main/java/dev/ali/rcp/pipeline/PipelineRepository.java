@@ -340,6 +340,59 @@ public class PipelineRepository {
         );
     }
 
+    /** Finalized verdicts of the caller's monitors per bucket, keyed by bucket index; the caller zero-fills. */
+    public Map<Integer, FleetOverview.Bucket> verdictBuckets(String ownerSubject, Instant from, Instant to, int bucketSeconds) {
+        Map<Integer, FleetOverview.Bucket> buckets = new TreeMap<>();
+        jdbcTemplate.query(
+                """
+                SELECT FLOOR(EXTRACT(EPOCH FROM (executions.scheduled_at - ?)) / ?)::int AS bucket,
+                       COUNT(*) FILTER (WHERE executions.verdict = 'UP') AS up,
+                       COUNT(*) FILTER (WHERE executions.verdict = 'DOWN') AS down,
+                       COUNT(*) FILTER (WHERE executions.verdict = 'DISAGREEMENT') AS disagreement,
+                       COUNT(*) FILTER (WHERE executions.verdict = 'NO_DATA') AS no_data
+                FROM monitors
+                JOIN probe_executions executions ON executions.monitor_id = monitors.monitor_id
+                WHERE monitors.owner_subject = ?
+                  AND executions.status = 'FINALIZED'
+                  AND executions.scheduled_at >= ? AND executions.scheduled_at < ?
+                GROUP BY 1
+                """,
+                resultSet -> {
+                    buckets.put(resultSet.getInt("bucket"), new FleetOverview.Bucket(
+                            resultSet.getLong("up"),
+                            resultSet.getLong("down"),
+                            resultSet.getLong("disagreement"),
+                            resultSet.getLong("no_data")
+                    ));
+                },
+                timestamp(from), bucketSeconds, ownerSubject, timestamp(from), timestamp(to)
+        );
+        return buckets;
+    }
+
+    /** Incidents of the caller's monitors that overlap [since, now]: still open, or resolved after {@code since}. */
+    public List<FleetOverview.IncidentSpan> incidentSpans(String ownerSubject, Instant since, int limit) {
+        return jdbcTemplate.query(
+                """
+                SELECT incidents.incident_id, incidents.monitor_id, monitors.name, incidents.opened_at, incidents.resolved_at
+                FROM monitors
+                JOIN incidents ON incidents.monitor_id = monitors.monitor_id
+                WHERE monitors.owner_subject = ?
+                  AND (incidents.status = 'OPEN' OR incidents.resolved_at >= ?)
+                ORDER BY incidents.opened_at DESC
+                LIMIT ?
+                """,
+                (resultSet, rowNumber) -> new FleetOverview.IncidentSpan(
+                        resultSet.getObject("incident_id", UUID.class),
+                        resultSet.getObject("monitor_id", UUID.class),
+                        resultSet.getString("name"),
+                        instant(resultSet, "opened_at"),
+                        instant(resultSet, "resolved_at")
+                ),
+                ownerSubject, timestamp(since), limit
+        );
+    }
+
     private static Instant instant(ResultSet resultSet, String column) throws SQLException {
         OffsetDateTime value = resultSet.getObject(column, OffsetDateTime.class);
         return value == null ? null : value.toInstant();

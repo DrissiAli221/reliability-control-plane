@@ -21,6 +21,11 @@ public class PipelineController {
         return service.snapshot(authentication.getName());
     }
 
+    @GetMapping("/api/overview")
+    public FleetOverview overview(Authentication authentication) {
+        return service.overview(authentication.getName());
+    }
+
     @GetMapping("/api/pipeline/events")
     public List<PipelineEvent> events(Authentication authentication) {
         return service.recentEvents(authentication.getName());
