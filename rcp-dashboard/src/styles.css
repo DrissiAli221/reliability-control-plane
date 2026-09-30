@@ -413,6 +413,10 @@ a { color: inherit; }
   height: 36px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--bg);
   font-size: 14px; outline: none; transition: border-color 120ms, box-shadow 120ms;
 }
+.field select {
+  appearance: none; padding-right: 36px; cursor: pointer;
+  background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238f8f8f' stroke-width='2.2' stroke-linecap='square'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+}
 .field input:focus, .field select:focus { border-color: var(--text-3); box-shadow: 0 0 0 3px var(--gray-bg); }
 .field small { font-size: 12px; color: var(--text-3); }
 .field-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
