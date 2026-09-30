@@ -397,7 +397,7 @@ function SloExplain({ report }: { report: AvailabilityReport }) {
 }
 
 function SloMetric({ report }: { report?: AvailabilityReport }) {
-  if (!report) return <Metric label="SLO · 99.9%" value="—" tone="muted" />;
+  if (!report) return <Metric label="SLO" value="—" tone="muted" />;
   if (report.sloMet == null) {
     return (
       <Metric
