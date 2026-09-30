@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { accessToken, isLocalAuth, sessionRejected } from "./auth";
+import { accessToken, isDemoSession, isLocalAuth, sessionRejected, startDemoSession } from "./auth";
 
 const token = (value: string, expiresInSeconds: number) =>
   new Response(JSON.stringify({ accessToken: value, tokenType: "Bearer", expiresInSeconds }), { status: 200 });
 
 afterEach(async () => {
+  sessionStorage.clear();
   await sessionRejected();
   vi.useRealTimers();
   vi.restoreAllMocks();
@@ -42,5 +43,29 @@ describe("local development session", () => {
     const tokens = await Promise.all([accessToken(), accessToken(), accessToken()]);
     expect(tokens).toEqual(["shared", "shared", "shared"]);
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("switches this tab into the read-only demo and renews it as a demo, not as the developer", async () => {
+    vi.useFakeTimers({ now: new Date("2026-09-30T12:00:00Z") });
+    const demo = (value: string) => new Response(JSON.stringify({ accessToken: value, idToken: null, expiresInSeconds: 3600 }), { status: 200 });
+    const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(demo("demo-1")).mockResolvedValueOnce(demo("demo-2"));
+
+    await startDemoSession();
+    expect(isDemoSession()).toBe(true);
+    expect(await accessToken()).toBe("demo-1");
+
+    vi.advanceTimersByTime(3_600_000);
+    expect(await accessToken()).toBe("demo-2");
+    expect(fetch.mock.calls.map(([url]) => String(url))).toEqual(["/api/demo/session", "/api/demo/session"]);
+  });
+
+  it("explains a busy or missing demo instead of failing silently", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response("{}", { status: 429 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 404 }));
+
+    await expect(startDemoSession()).rejects.toThrow(/Try again in a minute/);
+    await expect(startDemoSession()).rejects.toThrow("The live demo is not available on this deployment.");
+    expect(isDemoSession()).toBe(false);
   });
 });
