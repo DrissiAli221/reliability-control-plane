@@ -12,3 +12,12 @@ export function StatusBadge({ label, tone }: { label: string; tone: Tone }) {
     </span>
   );
 }
+
+/**
+ * A square indicator that blinks once each time fresh data arrives, keyed by the refresh time,
+ * so it only moves when something actually happened.
+ */
+export function LiveLed({ updatedAt, tone = "good" }: { updatedAt: number | null; tone?: Tone }) {
+  return <span key={updatedAt ?? 0} className={`led ${tone}${updatedAt ? " blink" : ""}`} aria-hidden="true" />;
+}
+

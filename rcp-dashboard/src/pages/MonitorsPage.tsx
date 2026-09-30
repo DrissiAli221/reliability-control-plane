@@ -5,7 +5,7 @@ import { availability, createMonitor, listMonitors, monitorHistory, setMonitorEn
 import { ActionMenu } from "../components/ActionMenu";
 import { RollingText } from "../components/RollingText";
 import { CreateMonitorDialog } from "../components/CreateMonitorDialog";
-import { StatusBadge, StatusDot } from "../components/StatusBadge";
+import { LiveLed, StatusBadge, StatusDot } from "../components/StatusBadge";
 import { downloadReport } from "../reportDownload";
 import { Tracker } from "../components/Tracker";
 import { compactUrl, milliseconds, monitorState, percent, relativeTime, type Tone } from "../format";
@@ -289,10 +289,10 @@ export function Metric({ label, value, suffix, hint, tone, explain, visual }: {
 
 export function LiveIndicator({ updatedAt, now, error }: { updatedAt: number | null; now: number; error: string | null }) {
   if (error && updatedAt) {
-    return <span className="live stale" title={error}><StatusDot tone="warn" />Refresh failed · data from {relativeTime(new Date(updatedAt).toISOString(), now)}</span>;
+    return <span className="live stale" title={error}><LiveLed updatedAt={null} tone="warn" />Refresh failed · data from {relativeTime(new Date(updatedAt).toISOString(), now)}</span>;
   }
   if (!updatedAt) return null;
-  return <span className="live"><StatusDot tone="good" pulse />Live · updated {relativeTime(new Date(updatedAt).toISOString(), now)}</span>;
+  return <span className="live"><LiveLed updatedAt={updatedAt} />Live · updated {relativeTime(new Date(updatedAt).toISOString(), now)}</span>;
 }
 
 function SkeletonRows() {

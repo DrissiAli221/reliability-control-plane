@@ -160,9 +160,13 @@ a { color: inherit; }
 .status-dot.fault { background: var(--red); }
 .status-dot.info { background: var(--blue); }
 .status-dot.muted { background: var(--text-3); }
-.status-dot.pulse::after {
-  content: ""; position: absolute; inset: 0; border-radius: 50%; background: inherit; animation: ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
+/* Active faults breathe gently instead of radiating rings. */
+.status-dot.pulse { animation: breathe 2.4s ease-in-out infinite; }
+.led { display: inline-block; width: 6px; height: 6px; flex: none; background: var(--green); opacity: 0.55; }
+.led.warn { background: var(--amber); opacity: 0.9; }
+.led.blink { animation: led-blink 900ms ease-out; }
+@keyframes breathe { 50% { opacity: 0.45; } }
+@keyframes led-blink { 0% { opacity: 1; box-shadow: 0 0 0 2px color-mix(in srgb, var(--green) 30%, transparent); } }
 
 .badge {
   display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: var(--radius-pill);
