@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { count, milliseconds } from "../format";
 import type { PipelineSnapshot, Verdict } from "../types";
 
@@ -56,7 +56,10 @@ export function PipelineMap({ snapshot, local }: { snapshot: PipelineSnapshot; l
   return (
     <div className="pipeline" data-pulse={pulse?.verdict.toLowerCase()}>
       {before.map((stage) => <StageCard key={stage.key} stage={stage} />).flatMap((card, index) => [
-        card, <Link key={`link-${index}`} pulseKey={pulse?.key} order={index} />,
+        card,
+        index < before.length - 1
+          ? <Link key={`link-${index}`} pulseKey={pulse?.key} order={index} />
+          : <Fork key="fork-out" branches={Math.max(1, snapshot.regions.length)} direction="split" pulseKey={pulse?.key} order={index} />,
       ])}
       <div className="pipeline-regions">
         {snapshot.regions.length === 0 && <div className="stage empty"><span className="stage-name">Regions</span><span className="subtle">No jobs in the last {windowLabel}</span></div>}
@@ -75,7 +78,10 @@ export function PipelineMap({ snapshot, local }: { snapshot: PipelineSnapshot; l
         ))}
       </div>
       {after.map((stage) => <StageCard key={stage.key} stage={stage} />).flatMap((card, index) => [
-        <Link key={`link-after-${index}`} pulseKey={pulse?.key} order={index + 2} />, card,
+        index === 0
+          ? <Fork key="fork-in" branches={Math.max(1, snapshot.regions.length)} direction="join" pulseKey={pulse?.key} order={index + 2} />
+          : <Link key={`link-after-${index}`} pulseKey={pulse?.key} order={index + 2} />,
+        card,
       ])}
     </div>
   );
@@ -95,15 +101,43 @@ function StageCard({ stage }: { stage: Stage }) {
   );
 }
 
+type Line = { kind: "h" | "v"; style: CSSProperties };
+
 /**
- * A link is a short run of pixels that light up in sequence, so direction reads without an arrowhead.
- * When a new check is finalized, a pixel in its verdict colour runs the whole pipeline once.
+ * Draws a connector twice: a quiet line of pixels drifting in the direction of travel, and, whenever a new
+ * check is finalized, a copy in its verdict colour that flashes once (remounted per check, delayed per stage).
  */
-function Link({ pulseKey, order }: { pulseKey?: string; order: number }) {
+function Connector({ lines, className = "", pulseKey, order }: { lines: Line[]; className?: string; pulseKey?: string; order: number }) {
+  const draw = (line: Line, index: number) => <span key={index} className={`flow-${line.kind}`} style={line.style} />;
   return (
-    <div className="pipeline-link" aria-hidden="true">
-      {[0, 1, 2, 3].map((dot) => <span key={dot} style={{ animationDelay: `${order * 120 + dot * 160}ms` }} />)}
-      {pulseKey && <i key={pulseKey} style={{ animationDelay: `${order * 260}ms` }} />}
+    <div className={`pipeline-link ${className}`} aria-hidden="true">
+      {lines.map(draw)}
+      {pulseKey && <span key={pulseKey} className="flow-flash" style={{ animationDelay: `${order * 220}ms` }}>{lines.map(draw)}</span>}
     </div>
   );
+}
+
+function Link({ pulseKey, order }: { pulseKey?: string; order: number }) {
+  return <Connector lines={[{ kind: "h", style: { left: 0, right: 0, top: "50%" } }]} pulseKey={pulseKey} order={order} />;
+}
+
+// Vertical centre of region box `index` among `count` equal boxes separated by the 8px column gap.
+const REGION_GAP = 8;
+function branchY(index: number, count: number): string {
+  return `calc((100% - ${(count - 1) * REGION_GAP}px) / ${count} * ${index + 0.5} + ${index * REGION_GAP}px)`;
+}
+
+/**
+ * The outbox fans each check out to one queue per region, and ingestion gathers the results back in:
+ * a trunk, a spine across the region boxes, and one branch landing on the middle of each box.
+ */
+function Fork({ branches, direction, pulseKey, order }: { branches: number; direction: "split" | "join"; pulseKey?: string; order: number }) {
+  const split = direction === "split";
+  const ys = Array.from({ length: branches }, (_, index) => branchY(index, branches));
+  const lines: Line[] = [
+    { kind: "h", style: split ? { left: 0, right: "50%", top: "50%" } : { left: "50%", right: 0, top: "50%" } },
+    ...(branches > 1 ? [{ kind: "v" as const, style: { left: "50%", top: ys[0], bottom: `calc(100% - ${ys[ys.length - 1]})` } }] : []),
+    ...ys.map((y): Line => ({ kind: "h", style: split ? { left: "50%", right: 0, top: y } : { left: 0, right: "50%", top: y } })),
+  ];
+  return <Connector lines={lines} className={`fork ${direction}`} pulseKey={pulseKey} order={order} />;
 }
