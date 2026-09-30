@@ -9,6 +9,29 @@ const CARD_WIDTH = 340;
 const GAP = 14;
 
 type Frame = { top: number; left: number; width: number; height: number } | null;
+type Side = "below" | "above" | "left" | "inside" | "centre";
+
+const PAD = 6;
+const CARD_HEIGHT = 240;
+
+function chooseSide(frame: NonNullable<Frame>): Side {
+  if (frame.top + frame.height + PAD + GAP + CARD_HEIGHT < window.innerHeight) return "below";
+  if (frame.top - PAD - GAP > CARD_HEIGHT) return "above";
+  if (frame.left - PAD - GAP - CARD_WIDTH >= 16) return "left";
+  return "inside";
+}
+
+function cardPosition(side: Side, frame: Frame): CSSProperties {
+  if (side === "centre" || !frame) return { left: "50%", top: "50%", transform: "translate(-50%, -50%)" };
+  const left = Math.min(Math.max(frame.left, 16), window.innerWidth - CARD_WIDTH - 16);
+  switch (side) {
+    case "below": return { left, top: frame.top + frame.height + PAD + GAP };
+    case "above": return { left, top: frame.top - PAD - GAP, transform: "translateY(-100%)" };
+    // No room above or below: sit beside the target rather than covering it.
+    case "left": return { left: frame.left - PAD - GAP - CARD_WIDTH, top: Math.min(Math.max(16, frame.top), window.innerHeight - CARD_HEIGHT - 16) };
+    default: return { left: Math.min(frame.left + frame.width - CARD_WIDTH, window.innerWidth - CARD_WIDTH - 16), top: Math.max(16, frame.top + 16) };
+  }
+}
 
 function onRoute(pathname: string, route: string): boolean {
   return route === "monitor" ? pathname.startsWith("/monitors/") : pathname === route;
@@ -23,6 +46,7 @@ export function Tour() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [frame, setFrame] = useState<Frame>(null);
+  const [side, setSide] = useState<Side | null>(null);
   const current = index == null ? null : TOUR[index];
 
   // Take the operator to the step's page first.
@@ -43,26 +67,47 @@ export function Tour() {
     return () => { active = false; };
   }, [current, pathname, navigate, index]);
 
-  // Find the target once it renders, bring it into view, then keep the spotlight on it.
+  // Find the target once it renders, bring it into view, then keep the spotlight on it every frame.
+  // The card waits until the target has stopped moving, then picks its side once for the whole step,
+  // so a smooth scroll can no longer flip it between above and below.
   useLayoutEffect(() => {
     setFrame(null);
+    setSide(null);
     if (!current || !onRoute(pathname, current.route)) return;
+    const started = performance.now();
     let scrolled = false;
-    const measure = () => {
+    let still = 0;
+    let decided = false;
+    let last: Frame = null;
+    let raf = 0;
+    const tick = () => {
       const element = document.querySelector<HTMLElement>(`[data-tour="${current.target}"]`);
-      if (!element) return;
-      if (!scrolled) {
-        element.scrollIntoView({ block: "center", behavior: "smooth" });
-        scrolled = true;
+      if (element) {
+        if (!scrolled) {
+          element.scrollIntoView({ block: "center", behavior: "smooth" });
+          scrolled = true;
+        }
+        const rect = element.getBoundingClientRect();
+        const next = { top: rect.top, left: rect.left, width: rect.width, height: rect.height };
+        const same = last && last.top === next.top && last.left === next.left && last.width === next.width && last.height === next.height;
+        still = same ? still + 1 : 0;
+        if (!same) {
+          last = next;
+          setFrame(next);
+        }
+        if (!decided && still >= 8) {
+          decided = true;
+          setSide(chooseSide(next));
+        }
+      } else if (!decided && performance.now() - started > 1500) {
+        // The target never appeared (for example the fault drill outside the local profile): centre the card.
+        decided = true;
+        setSide("centre");
       }
-      const rect = element.getBoundingClientRect();
-      setFrame((previous) => (previous && previous.top === rect.top && previous.left === rect.left && previous.width === rect.width && previous.height === rect.height
-        ? previous
-        : { top: rect.top, left: rect.left, width: rect.width, height: rect.height }));
+      raf = requestAnimationFrame(tick);
     };
-    measure();
-    const timer = window.setInterval(measure, 120);
-    return () => window.clearInterval(timer);
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, [current, pathname]);
 
   useEffect(() => {
@@ -78,30 +123,15 @@ export function Tour() {
 
   if (index == null || !current) return null;
 
-  const pad = 6;
   const spotlight: CSSProperties | undefined = frame
-    ? { top: frame.top - pad, left: frame.left - pad, width: frame.width + pad * 2, height: frame.height + pad * 2 }
+    ? { top: frame.top - PAD, left: frame.left - PAD, width: frame.width + PAD * 2, height: frame.height + PAD * 2 }
     : undefined;
-
-  let card: CSSProperties = { left: "50%", top: "50%", transform: "translate(-50%, -50%)" };
-  if (frame) {
-    const left = Math.min(Math.max(frame.left, 16), window.innerWidth - CARD_WIDTH - 16);
-    const below = frame.top + frame.height + pad + GAP;
-    card = below + 220 < window.innerHeight
-      ? { left, top: below }
-      : frame.top - pad - GAP > 240
-        ? { left, top: frame.top - pad - GAP, transform: "translateY(-100%)" }
-        : frame.left - pad - GAP - CARD_WIDTH >= 16
-          // No room above or below: sit beside the target, on its left, rather than covering it.
-          ? { left: frame.left - pad - GAP - CARD_WIDTH, top: Math.min(Math.max(16, frame.top), window.innerHeight - 260) }
-          : { left: Math.min(frame.left + frame.width - CARD_WIDTH, window.innerWidth - CARD_WIDTH - 16), top: Math.max(16, frame.top + 16) };
-  }
 
   const last = index === TOUR.length - 1;
   return createPortal(
     <div className="tour" role="dialog" aria-modal="false" aria-labelledby="tour-title">
       {spotlight ? <div className="tour-spotlight" style={spotlight} /> : <div className="tour-dim" />}
-      <section className="tour-card" style={{ ...card, width: CARD_WIDTH }} key={index}>
+      {side && <section className="tour-card" style={{ ...cardPosition(side, frame), width: CARD_WIDTH }} key={index}>
         <header>
           <span className="tour-count" aria-label={`Step ${index + 1} of ${TOUR.length}`}>
             {String(index + 1).padStart(2, "0")}<small>/{TOUR.length}</small>
@@ -121,7 +151,7 @@ export function Tour() {
             {last ? "Finish" : <>Next <ArrowRight size={14} aria-hidden="true" /></>}
           </button>
         </footer>
-      </section>
+      </section>}
     </div>,
     document.body,
   );
