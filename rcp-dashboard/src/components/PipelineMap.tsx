@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { count, milliseconds } from "../format";
 import type { PipelineSnapshot, Verdict } from "../types";
 
-type Stage = { key: string; step: string; name: string; tech: string; value: ReactNode; unit: string; detail?: ReactNode; alert?: boolean };
+type Stage = { key: string; step: string; name: string; tech: string; value: number; unit: string; detail?: ReactNode; alert?: boolean };
 
 /**
  * The control plane drawn as its stages, each with live counts for the caller's monitors. A pulse travels
@@ -26,11 +26,11 @@ export function PipelineMap({ snapshot, local }: { snapshot: PipelineSnapshot; l
   const before: Stage[] = [
     {
       key: "scheduler", step: "01", name: "Scheduler", tech: "PostgreSQL · SKIP LOCKED",
-      value: count(snapshot.dueMonitors), unit: "due now", detail: `${count(snapshot.enabledMonitors)} enabled monitors`,
+      value: snapshot.dueMonitors, unit: "due now", detail: `${count(snapshot.enabledMonitors)} enabled monitors`,
     },
     {
       key: "outbox", step: "02", name: "Outbox", tech: "same transaction as the jobs",
-      value: count(snapshot.pendingOutbox), unit: "pending",
+      value: snapshot.pendingOutbox, unit: "pending",
       detail: <>oldest {snapshot.oldestPendingOutboxSeconds}s · {count(snapshot.failedOutbox)} failed</>,
       alert: snapshot.failedOutbox > 0 || snapshot.oldestPendingOutboxSeconds > 60,
     },
@@ -38,15 +38,17 @@ export function PipelineMap({ snapshot, local }: { snapshot: PipelineSnapshot; l
   const after: Stage[] = [
     {
       key: "ingest", step: "04", name: "Ingest", tech: "idempotent by message and job",
-      value: count(received), unit: `results / ${windowLabel}`,
+      value: received, unit: `results / ${windowLabel}`,
+      detail: `${count(snapshot.regions.length)} regions reporting`,
     },
     {
       key: "finalizer", step: "05", name: "Finalizer", tech: "regional consensus",
-      value: count(snapshot.pendingExecutions), unit: "awaiting results",
+      value: snapshot.pendingExecutions, unit: "awaiting results",
+      detail: "all regions or deadline",
     },
     {
       key: "policy", step: "06", name: "Incident policy", tech: "streak thresholds",
-      value: count(snapshot.openIncidents), unit: "open incidents",
+      value: snapshot.openIncidents, unit: "open incidents",
       detail: `${count(snapshot.awaitingIncidentEvaluation)} to evaluate`, alert: snapshot.openIncidents > 0,
     },
   ];
@@ -81,12 +83,13 @@ export function PipelineMap({ snapshot, local }: { snapshot: PipelineSnapshot; l
 
 function StageCard({ stage }: { stage: Stage }) {
   return (
-    <div className={`stage${stage.alert ? " alert" : ""}`}>
+    // An empty stage is the normal state between checks, so its zero stays quiet instead of shouting.
+    <div className={`stage${stage.alert ? " alert" : ""}${stage.value === 0 ? " idle" : ""}`}>
       <div className="stage-head">
         <span className="stage-name">{stage.name}<span className="stage-step">{stage.step}</span></span>
         <span className="stage-tech">{stage.tech}</span>
       </div>
-      <div className="stage-value"><span className="mono">{stage.value}</span><small>{stage.unit}</small></div>
+      <div className="stage-value"><span className="mono">{count(stage.value)}</span><small>{stage.unit}</small></div>
       {stage.detail && <span className="stage-detail">{stage.detail}</span>}
     </div>
   );
