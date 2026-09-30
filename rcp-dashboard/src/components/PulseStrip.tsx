@@ -21,7 +21,7 @@ export function PulseStrip({ buckets, from, bucketSeconds }: { buckets: VerdictB
   const active = hover == null ? null : buckets[hover];
 
   return (
-    <div className="pulse">
+    <div className="pulse" data-tour="pulse">
       <p className="pulse-readout mono" aria-live="polite">
         {active && hover != null
           ? <>{clock(start + hover * step)}–{clock(start + (hover + 1) * step)} · <b>{count(active.up)}</b> up · <b>{count(active.down)}</b> down · <b>{count(active.disagreement)}</b> disagree · <b>{count(active.noData)}</b> no data</>

@@ -5,6 +5,7 @@ import { isLocalAuth } from "../auth";
 import { useFleetWatch } from "../tabSignal";
 import { CommandPalette, PaletteButton } from "./CommandPalette";
 import { IncidentToasts } from "./IncidentToasts";
+import { Tour } from "./Tour";
 
 const telemetryUrl = import.meta.env.VITE_GRAFANA_URL
   ?? (import.meta.env.DEV ? "http://localhost:3000/d/rcp-overview/rcp-overview" : null);
@@ -72,6 +73,7 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
       <div className="main">{children}</div>
       <CommandPalette />
       <IncidentToasts changes={changes} dismiss={dismiss} />
+      <Tour />
     </div>
   );
 }
