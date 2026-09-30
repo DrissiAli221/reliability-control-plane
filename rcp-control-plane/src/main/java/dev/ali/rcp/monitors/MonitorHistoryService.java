@@ -18,7 +18,7 @@ import java.util.UUID;
 @Service
 public class MonitorHistoryService {
     private static final Duration REGION_WINDOW = Duration.ofHours(24);
-    private static final int RECENT_CHECK_LIMIT = 12;
+    private static final int RECENT_CHECK_LIMIT = 30;
     static final int HEATMAP_COLUMNS = 48;
     // Doubling bands keep fast and slow responses readable on one axis.
     static final List<Long> LATENCY_BOUNDS_MS = List.of(50L, 100L, 200L, 400L, 800L, 1_600L, 3_200L);

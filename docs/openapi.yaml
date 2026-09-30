@@ -879,7 +879,7 @@ components:
                 format: date-time
         recentChecks:
           type: array
-          description: The latest 12 finalized executions with their regional results.
+          description: The latest 30 finalized executions with their regional results.
           items:
             type: object
             properties:
