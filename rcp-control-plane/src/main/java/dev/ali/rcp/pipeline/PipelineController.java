@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -18,6 +19,11 @@ public class PipelineController {
     @GetMapping("/api/pipeline")
     public PipelineSnapshot snapshot(Authentication authentication) {
         return service.snapshot(authentication.getName());
+    }
+
+    @GetMapping("/api/pipeline/events")
+    public List<PipelineEvent> events(Authentication authentication) {
+        return service.recentEvents(authentication.getName());
     }
 
     @GetMapping("/api/monitors/{monitorId}/incident-state")

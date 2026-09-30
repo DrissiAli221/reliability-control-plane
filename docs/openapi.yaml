@@ -215,6 +215,52 @@ paths:
                 $ref: '#/components/schemas/PipelineSnapshot'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /api/pipeline/events:
+    get:
+      operationId: getPipelineEvents
+      summary: The latest 40 steps of the caller's checks from the last 15 minutes, newest first
+      description: Outbox publishes, ingested results, verdicts, and incident openings or resolutions, owner-scoped.
+      responses:
+        '200':
+          description: Time-ordered events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    at:
+                      type: string
+                      format: date-time
+                    type:
+                      type: string
+                      enum: [OutboxPublished, ResultIngested, ExecutionFinalized, IncidentOpened, IncidentResolved]
+                    monitorId:
+                      type: string
+                      format: uuid
+                    monitorName:
+                      type: string
+                    executionId:
+                      type: string
+                      format: uuid
+                    region:
+                      type: string
+                      nullable: true
+                    outcome:
+                      type: string
+                      nullable: true
+                    httpStatus:
+                      type: integer
+                      nullable: true
+                    latencyMs:
+                      type: integer
+                      nullable: true
+                    detail:
+                      type: string
+                      nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/monitors/{monitorId}/availability:
     parameters:
       - $ref: '#/components/parameters/MonitorId'

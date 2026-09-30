@@ -127,6 +127,21 @@ class PipelineApiTest {
                 .andExpect(jsonPath("$.recentActivity[*].monitorName", not(hasItem("Someone else's monitor"))));
     }
 
+    @Test
+    void eventStreamMergesTheCallersCheckStepsNewestFirst() throws Exception {
+        mockMvc.perform(get("/api/pipeline/events")
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))))
+                .andExpect(status().isOk())
+                // Two publishes, two ingested results and one verdict; a NONE evaluation is not an event.
+                .andExpect(jsonPath("$.length()").value(5))
+                .andExpect(jsonPath("$[0].type").value("ExecutionFinalized"))
+                .andExpect(jsonPath("$[0].detail").value("DOWN"))
+                .andExpect(jsonPath("$[1].type").value("ResultIngested"))
+                .andExpect(jsonPath("$[1].httpStatus").value(503))
+                .andExpect(jsonPath("$[4].type").value("OutboxPublished"))
+                .andExpect(jsonPath("$[*].monitorName", not(hasItem("Someone else's monitor"))));
+    }
+
     private Monitor monitor(String owner, String name) {
         return monitorRepository.saveAndFlush(Monitor.create(
                 owner, name, "https://example.com", 60, 5_000, scheduledAt.minusSeconds(600)

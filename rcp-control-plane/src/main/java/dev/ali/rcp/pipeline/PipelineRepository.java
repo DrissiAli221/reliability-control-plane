@@ -284,6 +284,62 @@ public class PipelineRepository {
         );
     }
 
+    /**
+     * The newest steps of the caller's recent checks, merged into one time-ordered stream. Only executions scheduled
+     * since {@code since} are considered, so the union stays on the (monitor_id, scheduled_at) index.
+     */
+    public List<PipelineEvent> recentEvents(String ownerSubject, Instant since, int limit) {
+        return jdbcTemplate.query(
+                """
+                WITH recent AS (
+                    SELECT executions.execution_id, executions.monitor_id, monitors.name,
+                           executions.finalized_at, executions.verdict
+                    FROM monitors
+                    JOIN probe_executions executions ON executions.monitor_id = monitors.monitor_id
+                    WHERE monitors.owner_subject = ? AND executions.scheduled_at >= ?
+                )
+                SELECT * FROM (
+                    SELECT outbox.published_at AS at, 'OutboxPublished' AS type, recent.monitor_id, recent.name,
+                           recent.execution_id, outbox.destination_region AS region, NULL AS outcome,
+                           NULL::int AS http_status, NULL::bigint AS latency_ms, NULL AS detail
+                    FROM recent
+                    JOIN probe_jobs jobs ON jobs.execution_id = recent.execution_id
+                    JOIN outbox_events outbox
+                      ON outbox.event_type = 'PROBE_JOB_REQUESTED' AND outbox.aggregate_id = jobs.job_id
+                    WHERE outbox.published_at IS NOT NULL
+                    UNION ALL
+                    SELECT results.received_at, 'ResultIngested', recent.monitor_id, recent.name, recent.execution_id,
+                           results.probe_region, results.outcome, results.http_status, results.latency_ms, NULL
+                    FROM recent JOIN probe_results results ON results.execution_id = recent.execution_id
+                    UNION ALL
+                    SELECT recent.finalized_at, 'ExecutionFinalized', recent.monitor_id, recent.name, recent.execution_id,
+                           NULL, NULL, NULL, NULL, recent.verdict
+                    FROM recent WHERE recent.finalized_at IS NOT NULL
+                    UNION ALL
+                    SELECT evaluations.evaluated_at, 'Incident' || INITCAP(evaluations.transition), recent.monitor_id,
+                           recent.name, recent.execution_id, NULL, NULL, NULL, NULL, evaluations.transition
+                    FROM recent JOIN incident_evaluations evaluations ON evaluations.execution_id = recent.execution_id
+                    WHERE evaluations.transition IN ('OPENED', 'RESOLVED')
+                ) events
+                ORDER BY at DESC, type
+                LIMIT ?
+                """,
+                (resultSet, rowNumber) -> new PipelineEvent(
+                        instant(resultSet, "at"),
+                        resultSet.getString("type"),
+                        resultSet.getObject("monitor_id", UUID.class),
+                        resultSet.getString("name"),
+                        resultSet.getObject("execution_id", UUID.class),
+                        resultSet.getString("region"),
+                        resultSet.getString("outcome"),
+                        resultSet.getObject("http_status", Integer.class),
+                        resultSet.getObject("latency_ms", Long.class),
+                        resultSet.getString("detail")
+                ),
+                ownerSubject, timestamp(since), limit
+        );
+    }
+
     private static Instant instant(ResultSet resultSet, String column) throws SQLException {
         OffsetDateTime value = resultSet.getObject(column, OffsetDateTime.class);
         return value == null ? null : value.toInstant();
