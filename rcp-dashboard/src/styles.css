@@ -546,6 +546,8 @@ a { color: inherit; }
 .status-card > header { display: flex; justify-content: space-between; align-items: baseline; padding: 16px 20px; border-bottom: 1px solid var(--border); }
 .status-card > header h2 { font-size: 15px; font-weight: 600; }
 .status-card > header span { font-size: 12.5px; color: var(--text-3); }
+/* Last-known data after a failed refresh: kept for context, visibly not current. */
+.status-card.stale .status-component { opacity: 0.55; filter: grayscale(1); }
 .status-component { padding: 18px 20px 16px; border-bottom: 1px solid var(--border); }
 .status-component:last-child { border-bottom: 0; }
 .status-component-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
