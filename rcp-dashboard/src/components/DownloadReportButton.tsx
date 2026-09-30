@@ -2,7 +2,7 @@ import { Download } from "lucide-react";
 import { useState } from "react";
 import { downloadReport } from "../reportDownload";
 
-export function DownloadReportButton({ monitorId }: { monitorId: string }) {
+export function DownloadReportButton({ monitorId, monitorName }: { monitorId: string; monitorName: string }) {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -10,7 +10,7 @@ export function DownloadReportButton({ monitorId }: { monitorId: string }) {
     setDownloading(true);
     setError(null);
     try {
-      await downloadReport(monitorId);
+      await downloadReport(monitorId, monitorName);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "The report could not be downloaded");
     } finally {

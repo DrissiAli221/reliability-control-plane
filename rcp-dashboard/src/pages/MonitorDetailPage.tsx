@@ -117,7 +117,7 @@ export function MonitorDetailPage() {
             <RefreshCw size={15} className={detail.loading ? "spin" : undefined} />
           </button>
           <MonitorToggleButton enabled={monitor.enabled} onToggle={toggle} />
-          <DownloadReportButton monitorId={monitor.id} />
+          <DownloadReportButton monitorId={monitor.id} monitorName={monitor.name} />
         </div>
       </header>
 

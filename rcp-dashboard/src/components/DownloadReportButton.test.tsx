@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { reliabilityReportHtml } from "../api";
+import { reportFilename } from "../reportDownload";
 import { DownloadReportButton } from "./DownloadReportButton";
 
 vi.mock("../api", () => ({ reliabilityReportHtml: vi.fn() }));
@@ -26,10 +27,10 @@ describe("DownloadReportButton", () => {
       filename = this.download;
     });
 
-    render(<DownloadReportButton monitorId="monitor-1" />);
+    render(<DownloadReportButton monitorId="monitor-1" monitorName="Checkout API" />);
     fireEvent.click(screen.getByRole("button", { name: "Download 7-day report" }));
 
-    await waitFor(() => expect(filename).toBe("rcp-reliability-monitor-1.html"));
+    await waitFor(() => expect(filename).toMatch(/^rcp-reliability-checkout-api-\d{4}-\d{2}-\d{2}\.html$/));
     expect(reliabilityReportHtml).toHaveBeenCalledWith("monitor-1");
     expect(URL.createObjectURL).toHaveBeenCalledOnce();
   });
@@ -37,10 +38,16 @@ describe("DownloadReportButton", () => {
   it("shows a useful error when report generation fails", async () => {
     vi.mocked(reliabilityReportHtml).mockRejectedValue(new Error("Report service unavailable"));
 
-    render(<DownloadReportButton monitorId="monitor-1" />);
+    render(<DownloadReportButton monitorId="monitor-1" monitorName="Checkout API" />);
     fireEvent.click(screen.getByRole("button", { name: "Download 7-day report" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Report service unavailable");
     expect(screen.getByRole("button", { name: "Download 7-day report" })).toBeEnabled();
+  });
+
+  it("names the file after the monitor and falls back to its id", () => {
+    const day = new Date("2026-09-30T12:00:00Z");
+    expect(reportFilename("SpectraTV (EU)", "id-1", day)).toBe("rcp-reliability-spectratv-eu-2026-09-30.html");
+    expect(reportFilename("???", "id-1", day)).toBe("rcp-reliability-id-1-2026-09-30.html");
   });
 });
