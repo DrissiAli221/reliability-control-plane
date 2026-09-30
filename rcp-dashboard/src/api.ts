@@ -10,6 +10,7 @@ import type {
   MonitorDetail,
   MonitorHistory,
   MonitorOverview,
+  PipelineEvent,
   PipelineSnapshot,
   PublicStatusPage,
   ReliabilityReport,
@@ -77,6 +78,10 @@ export function incidentState(monitorId: string): Promise<IncidentStateView> {
 
 export function pipelineSnapshot(): Promise<PipelineSnapshot> {
   return request("/api/pipeline");
+}
+
+export function pipelineEvents(): Promise<PipelineEvent[]> {
+  return request("/api/pipeline/events");
 }
 
 /** Local profile only: the fault switch for the in-JVM probe adapters. */

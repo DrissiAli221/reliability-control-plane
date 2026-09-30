@@ -726,3 +726,30 @@ a { color: inherit; }
 .heatmap-grid i:hover { outline: 1px solid var(--text); outline-offset: -1px; opacity: 1; }
 .heatmap-time { display: flex; justify-content: space-between; margin-left: 84px; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
 
+/* ---------- Live event log ---------- */
+.live-tail { display: inline-flex; align-items: center; gap: 8px; }
+.event-log {
+  max-height: 264px; overflow-y: auto; margin: 0; padding: 8px 0; list-style: none; background: var(--bg);
+  font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums;
+}
+.event-log li {
+  display: grid; grid-template-columns: 96px 150px 76px minmax(0, 1fr) auto; gap: 12px; padding: 2px 16px;
+  color: var(--text-2); white-space: nowrap;
+}
+.event-log li.fresh { animation: fresh-line 1.6s ease-out; }
+.event-log time { color: var(--text-3); }
+.log-type { overflow: hidden; text-overflow: ellipsis; }
+.log-type.OutboxPublished { color: #e879f9; }
+.log-type.ResultIngested { color: #2dd4bf; }
+.log-type.ExecutionFinalized { color: var(--text); }
+.log-type.IncidentOpened { color: var(--red-text); }
+.log-type.IncidentResolved { color: var(--green-text); }
+.log-region { color: var(--text-3); }
+.log-text { overflow: hidden; text-overflow: ellipsis; }
+.log-text.good { color: var(--green-text); }
+.log-text.fault { color: var(--red-text); }
+.log-text.warn { color: var(--amber-text); }
+.log-monitor { color: var(--text-3); overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+@keyframes fresh-line { from { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text); } }
+@media (max-width: 860px) { .event-log li { grid-template-columns: 92px 1fr auto; } .log-region, .log-monitor { display: none; } }
+
