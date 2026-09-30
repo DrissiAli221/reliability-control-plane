@@ -1,4 +1,4 @@
-import { ArrowUpRight, Command, CornerDownLeft, Gauge, Keyboard, LayoutList, Plus, Search, Workflow } from "lucide-react";
+import { ArrowUpRight, Bell, Command, CornerDownLeft, Gauge, Keyboard, LayoutList, Plus, Search, Workflow } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
@@ -97,6 +97,11 @@ export function CommandPalette() {
         };
       }),
       { id: "create", group: "Actions", label: "Create monitor", keys: ["C"], icon: <Plus size={15} />, run: close(() => navigate("/monitors?create=1")) },
+      // Asked only when the operator chooses it, never on page load.
+      ...(typeof Notification !== "undefined" && Notification.permission === "default" ? [{
+        id: "alerts", group: "Actions" as const, label: "Enable desktop alerts", hint: "notify when an incident opens in a background tab",
+        icon: <Bell size={15} />, run: close(() => void Notification.requestPermission()),
+      }] : []),
       { id: "shortcuts", group: "Actions", label: "Keyboard shortcuts", keys: ["?"], icon: <Keyboard size={15} />, run: () => setMode("help") },
     ];
     return all
