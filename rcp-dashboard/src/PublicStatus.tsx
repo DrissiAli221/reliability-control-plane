@@ -77,6 +77,11 @@ export function PublicStatus() {
     };
   }, [slug]);
 
+  // A public page is the customer's brand, not the operator console.
+  useEffect(() => {
+    document.title = page ? `${page.name} status` : "Service status";
+  }, [page]);
+
   // With nothing confirmed yet there is nothing honest to show but the error.
   if (error && !page) {
     return (
