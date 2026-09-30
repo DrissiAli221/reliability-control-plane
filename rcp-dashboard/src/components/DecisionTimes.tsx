@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { absoluteTime, durationBetween, relativeTime, verdictState } from "../format";
 import type { PipelineSnapshot } from "../types";
@@ -10,6 +11,14 @@ export function DecisionTimes({ activity, now }: { activity: PipelineSnapshot["r
   const navigate = useNavigate();
   const took = (item: (typeof activity)[number]) => Math.max(0, Date.parse(item.finalizedAt) - Date.parse(item.scheduledAt));
   const slowest = Math.max(1, ...activity.map(took));
+  // Rows that were not there on the previous refresh light up once as they arrive; the first load stays still.
+  const seen = useRef<Set<string> | null>(null);
+  const [fresh, setFresh] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const ids = activity.map((item) => item.executionId);
+    if (seen.current) setFresh(new Set(ids.filter((id) => !seen.current!.has(id))));
+    seen.current = new Set(ids);
+  }, [activity]);
 
   return (
     <ol className="decision-times">
@@ -17,7 +26,7 @@ export function DecisionTimes({ activity, now }: { activity: PipelineSnapshot["r
         const verdict = verdictState(item.verdict);
         const open = () => navigate(`/monitors/${item.monitorId}?check=${item.executionId}`);
         return (
-          <li key={item.executionId}>
+          <li key={item.executionId} className={fresh.has(item.executionId) ? "fresh" : undefined}>
             <button type="button" onClick={open} style={{ animationDelay: `${index * 25}ms` }} aria-label={`${item.monitorName}, ${verdict.label}, decided in ${durationBetween(item.scheduledAt, item.finalizedAt)}. Open trace`}>
               <i className={`decision-verdict ${verdict.tone}`} title={verdict.label} />
               <span className="decision-monitor">{item.monitorName}</span>

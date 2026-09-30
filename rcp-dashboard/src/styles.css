@@ -1190,3 +1190,5 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 /* Beside the timing chart, the event tail fills the same height instead of stopping short. */
 .split > .panel:has(> .event-log) { display: flex; flex-direction: column; }
 .split > .panel > .event-log { flex: 1; max-height: 520px; }
+.decision-times li.fresh button { animation: fresh-line 1.8s ease-out, rise 280ms ease-out backwards; }
+.decision-times li.fresh .decision-track b { animation-duration: 700ms; }
