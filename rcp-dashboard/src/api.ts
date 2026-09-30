@@ -1,4 +1,4 @@
-import { accessToken } from "./auth";
+import { accessToken, redirectToSignIn, sessionRejected } from "./auth";
 import type {
   AvailabilityReport,
   CreateMonitorInput,
@@ -19,9 +19,12 @@ import type {
 
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? "";
 
-async function authorizedResponse(path: string, init: RequestInit = {}): Promise<Response> {
+async function authorizedResponse(path: string, init: RequestInit = {}, retried = false): Promise<Response> {
   const token = await accessToken();
-  if (!token) throw new Error("Sign in to continue");
+  if (!token) {
+    redirectToSignIn();
+    throw new Error("Sign in to continue");
+  }
 
   const response = await fetch(`${apiBase}${path}`, {
     ...init,
@@ -32,6 +35,13 @@ async function authorizedResponse(path: string, init: RequestInit = {}): Promise
       ...init.headers,
     },
   });
+
+  // A rejected token is a session problem, not a control-plane failure: renew it once, or go and sign in.
+  if (response.status === 401) {
+    if (!retried && (await sessionRejected()) === "retry") return authorizedResponse(path, init, true);
+    if (retried) redirectToSignIn();
+    throw new Error("Your session expired. Sign in again to continue.");
+  }
 
   if (!response.ok) {
     const problem = (await response.json().catch(() => null)) as

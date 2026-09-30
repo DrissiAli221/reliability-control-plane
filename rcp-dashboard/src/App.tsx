@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { Navigate, Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
 import { completeLogin, isLocalAuth, login, logout } from "./auth";
 import { AppShell, BrandMark } from "./components/AppShell";
 import { MonitorDetailPage } from "./pages/MonitorDetailPage";
@@ -15,7 +15,7 @@ function AuthCallback() {
 
   useEffect(() => {
     completeLogin()
-      .then(() => navigate("/", { replace: true }))
+      .then((next) => navigate(next, { replace: true }))
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Sign-in failed"));
   }, [navigate]);
 
@@ -23,10 +23,12 @@ function AuthCallback() {
 }
 
 function SignIn() {
-  if (isLocalAuth()) return <Navigate to="/" replace />;
+  const [params] = useSearchParams();
+  const next = params.get("next") ?? "/";
+  if (isLocalAuth()) return <Navigate to={next.startsWith("/") && !next.startsWith("//") ? next : "/"} replace />;
   return (
     <CenteredMessage title="Operator access" detail="Use the configured Cognito operator account to continue.">
-      <button type="button" className="button primary" onClick={() => void login()}>Sign in</button>
+      <button type="button" className="button primary" onClick={() => void login(next)}>Sign in</button>
     </CenteredMessage>
   );
 }
