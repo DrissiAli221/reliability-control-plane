@@ -17,6 +17,20 @@ public class MonitorExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
     }
 
+    @ExceptionHandler(MonitorCapacityReachedException.class)
+    public ResponseEntity<ProblemDetail> handleCapacity(MonitorCapacityReachedException exception) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+        problem.setTitle("Deployment monitor limit reached");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
+    }
+
+    @ExceptionHandler(MonitorLimitException.class)
+    public ResponseEntity<ProblemDetail> handleLimit(MonitorLimitException exception) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+        problem.setTitle("Outside this deployment's limits");
+        return ResponseEntity.badRequest().body(problem);
+    }
+
     @ExceptionHandler(MonitorNotFoundException.class)
     public ResponseEntity<ProblemDetail> handleNotFound(MonitorNotFoundException exception) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());

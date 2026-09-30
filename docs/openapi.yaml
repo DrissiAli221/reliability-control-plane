@@ -52,11 +52,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/Monitor'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: >-
+            Invalid request, unsafe target, or outside this deployment's limits
+            (`rcp.monitors.min-interval-seconds`, `rcp.monitors.max-timeout-ms`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '409':
-          $ref: '#/components/responses/Conflict'
+          description: Per-owner quota or the deployment-wide monitor cap (`rcp.monitors.max-total`) reached
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /api/monitors/{monitorId}:
     parameters:
       - $ref: '#/components/parameters/MonitorId'

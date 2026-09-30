@@ -1,7 +1,7 @@
 package dev.ali.rcp.monitors;
 
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,22 +15,31 @@ public class MonitorService {
 
     private final MonitorRepository monitorRepository;
     private final SafeTargetPolicy safeTargetPolicy;
+    // Advisory-lock classes: one global key for the deployment-wide cap, one per-owner family for the quota.
+    private static final int CAPACITY_LOCK = 0x52435054;
+    private static final int OWNER_LOCK = 0x5243504d;
+
     private final JdbcTemplate jdbcTemplate;
-    private final int maxPerOwner;
+    private final MonitorLimits limits;
 
     public MonitorService(
             MonitorRepository monitorRepository,
             SafeTargetPolicy safeTargetPolicy,
             JdbcTemplate jdbcTemplate,
-            @Value("${rcp.monitors.max-per-owner:25}") int maxPerOwner
+            @Value("${rcp.monitors.max-per-owner:25}") int maxPerOwner,
+            @Value("${rcp.monitors.max-total:0}") int maxTotal,
+            @Value("${rcp.monitors.min-interval-seconds:30}") int minIntervalSeconds,
+            @Value("${rcp.monitors.max-timeout-ms:30000}") int maxTimeoutMs
     ) {
-        if (maxPerOwner < 1) {
-            throw new IllegalArgumentException("maxPerOwner must be positive");
-        }
         this.monitorRepository = monitorRepository;
         this.safeTargetPolicy = safeTargetPolicy;
         this.jdbcTemplate = jdbcTemplate;
-        this.maxPerOwner = maxPerOwner;
+        this.limits = new MonitorLimits(maxPerOwner, maxTotal, minIntervalSeconds, maxTimeoutMs);
+    }
+
+    /** The limits this deployment enforces, so clients can offer only choices that will be accepted. */
+    public MonitorLimits limits() {
+        return limits;
     }
 
     @Transactional
@@ -38,21 +47,37 @@ public class MonitorService {
             String ownerSubject,
             CreateMonitorRequest request
     ) {
+        if (request.checkIntervalSeconds() < limits.minIntervalSeconds()) {
+            throw new MonitorLimitException("Checks can run at most every " + limits.minIntervalSeconds() + " s on this deployment");
+        }
+        if (request.timeoutMs() > limits.maxTimeoutMs()) {
+            throw new MonitorLimitException("Timeouts can be at most " + limits.maxTimeoutMs() + " ms on this deployment");
+        }
         String normalizedTarget = safeTargetPolicy.validateAndNormalize(
                 request.targetUrl()
         );
+
+        // Locks are always taken in the same order (global, then owner) so concurrent creations cannot deadlock.
+        // The global lock only exists when a deployment-wide cap is configured.
+        if (limits.maxTotal() > 0) {
+            jdbcTemplate.queryForList("SELECT pg_advisory_xact_lock(?, ?)", CAPACITY_LOCK, 0);
+            Long total = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM monitors", Long.class);
+            if (total != null && total >= limits.maxTotal()) {
+                throw new MonitorCapacityReachedException(limits.maxTotal());
+            }
+        }
 
         // Serialize creations for this subject across all control-plane instances.
         // Hash collisions merely serialize unrelated subjects; the count still uses
         // the full subject. The transaction-scoped lock releases on commit/rollback.
         jdbcTemplate.queryForList("SELECT pg_advisory_xact_lock(?, ?)",
-                0x5243504d, ownerSubject.hashCode());
+                OWNER_LOCK, ownerSubject.hashCode());
         Long existing = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM monitors WHERE owner_subject = ?",
                 Long.class, ownerSubject
         );
-        if (existing != null && existing >= maxPerOwner) {
-            throw new MonitorQuotaExceededException(maxPerOwner);
+        if (existing != null && existing >= limits.maxPerOwner()) {
+            throw new MonitorQuotaExceededException(limits.maxPerOwner());
         }
 
         Monitor monitor = Monitor.create(
