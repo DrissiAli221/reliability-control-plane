@@ -1017,3 +1017,7 @@ kbd {
 .tour-progress i { flex: 1; height: 3px; background: var(--gray-bar); }
 .tour-progress i.done { background: var(--accent); }
 .tour-card footer { display: flex; justify-content: space-between; margin-top: 4px; }
+
+/* ---------- Page transitions ---------- */
+.main { animation: page-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes page-in { from { opacity: 0; transform: translateY(6px); } }

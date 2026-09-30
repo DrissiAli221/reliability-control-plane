@@ -70,7 +70,8 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
             : <button type="button" className="nav-item" onClick={onLogout}><LogOut size={16} aria-hidden="true" /> Sign out</button>}
         </div>
       </aside>
-      <div className="main">{children}</div>
+      {/* Keyed by path so each page enters with the same short settle, including monitor-to-monitor moves. */}
+      <div className="main" key={pathname}>{children}</div>
       <CommandPalette />
       <IncidentToasts changes={changes} dismiss={dismiss} />
       <Tour />
