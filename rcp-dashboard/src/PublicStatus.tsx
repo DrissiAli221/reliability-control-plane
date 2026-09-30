@@ -77,10 +77,10 @@ export function PublicStatus() {
     };
   }, [slug]);
 
-  // A failed refresh must not leave an old green page on screen.
-  if (error) {
+  // With nothing confirmed yet there is nothing honest to show but the error.
+  if (error && !page) {
     return (
-      <StatusFrame name={page?.name}>
+      <StatusFrame>
         <div className="status-banner muted" role="alert">
           <CircleHelp size={18} aria-hidden="true" />
           <div><strong>Status unavailable</strong><p>{error}</p></div>
@@ -92,18 +92,32 @@ export function PublicStatus() {
     return <StatusFrame><div className="status-banner loading"><div><p>Loading current status…</p></div></div></StatusFrame>;
   }
 
+  // A failed refresh keeps the last confirmed data for context, but never presents it as current: the headline
+  // says the refresh failed, components read "Last known", and the whole card is dimmed.
+  const stale = error != null;
   const summary = overall[page.overallStatus] ?? overall.UNKNOWN;
   return (
     <StatusFrame name={page.name} generatedAt={page.generatedAt}>
-      <div className={`status-banner ${summary.tone}`}>
-        <ToneIcon tone={summary.tone} />
-        <div><strong>{summary.title}</strong><p>{summary.detail}</p></div>
-      </div>
+      {stale ? (
+        <div className="status-banner muted" role="alert">
+          <CircleHelp size={18} aria-hidden="true" />
+          <div>
+            <strong>Couldn't refresh status</strong>
+            <p>{error}. Showing the last confirmed status from {absoluteTime(page.generatedAt)}; it may be out of date.</p>
+          </div>
+        </div>
+      ) : (
+        <div className={`status-banner ${summary.tone}`}>
+          <ToneIcon tone={summary.tone} />
+          <div><strong>{summary.title}</strong><p>{summary.detail}</p></div>
+        </div>
+      )}
 
-      <section className="status-card" aria-label="Components">
+      <section className={`status-card${stale ? " stale" : ""}`} aria-label="Components">
         <header><h2>System status</h2><span>Last 45 days</span></header>
         {page.components.map((item) => {
-          const state = component[item.status] ?? component.UNKNOWN;
+          const current = component[item.status] ?? component.UNKNOWN;
+          const state = stale ? { label: `Last known · ${current.label}`, tone: "muted" as const } : current;
           return (
             <article className="status-component" key={item.name}>
               <div className="status-component-head">
