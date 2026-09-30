@@ -181,7 +181,7 @@ export function MonitorsPage() {
                     changed={changed.has(row.monitor.id)}
                     onOpen={() => navigate(`/monitors/${row.monitor.id}`)}
                     onToggle={() => void runAction(() => setMonitorEnabled(row.monitor.id, !row.monitor.enabled), "Monitor could not be updated")}
-                    onDownload={() => void runAction(() => downloadReport(row.monitor.id), "The report could not be downloaded")}
+                    onDownload={() => void runAction(() => downloadReport(row.monitor.id, row.monitor.name), "The report could not be downloaded")}
                   />
                 ))}
                 {visible.length === 0 && (
