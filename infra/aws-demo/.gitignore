@@ -1,0 +1,7 @@
+*.tfvars
+!terraform.tfvars.example
+!offline.tfvars
+plan.json
+validation.log
+
+__pycache__/
