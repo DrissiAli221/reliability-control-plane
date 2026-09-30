@@ -204,6 +204,7 @@ a { color: inherit; }
 .metric.attention { --hue: var(--text-3); --wash: color-mix(in srgb, var(--hue) 13%, transparent); background: radial-gradient(circle at 0 0, var(--wash), transparent 45%), radial-gradient(circle at 100% 0, var(--wash), transparent 45%), radial-gradient(circle at 0 100%, var(--wash), transparent 45%), radial-gradient(circle at 100% 100%, var(--wash), transparent 45%), var(--surface); }
 .metric.attention.fault { --hue: var(--red); }
 .metric.attention.warn { --hue: var(--amber); }
+.metric.attention.info { --hue: var(--blue); }
 .metric-visual { display: flex; align-items: center; height: 22px; margin-top: 2px; }
 .metric-visual > * { flex: 1; }
 .metric-visual .tracker.compact .tracker-bars { height: 12px; gap: 3px; }

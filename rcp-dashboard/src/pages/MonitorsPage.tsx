@@ -288,8 +288,8 @@ export function Metric({ label, value, suffix, hint, tone, explain, visual }: {
   explain?: ReactNode;
   visual?: ReactNode;
 }) {
-  // Only cards that need attention are tinted, so colour keeps its meaning.
-  const attention = tone === "fault" || tone === "warn";
+  // Healthy and idle cards stay neutral; attention and informational readouts carry a faint hue.
+  const attention = tone === "fault" || tone === "warn" || tone === "info";
   return (
     <div className={`metric${attention ? ` attention ${tone}` : ""}`}>
       <span className="metric-label"><StatusDot tone={tone} />{label}{explain}</span>
