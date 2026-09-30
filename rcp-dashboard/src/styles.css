@@ -372,10 +372,18 @@ a { color: inherit; }
 .empty p { max-width: 440px; color: var(--text-2); }
 .empty .button { margin-top: 8px; }
 .skeletons { display: grid; gap: 8px; padding: 12px; }
+/* Loading is a dot-matrix panel with a lit band sweeping across it, like a display scanning, instead of a grey shimmer. */
 .skeleton {
-  height: 52px; border-radius: var(--radius);
-  background: linear-gradient(90deg, var(--surface) 0%, var(--surface-hover) 50%, var(--surface) 100%);
-  background-size: 200% 100%; animation: shimmer 1.4s ease-in-out infinite;
+  position: relative; height: 52px; overflow: hidden; border-radius: var(--radius);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1.3px) 0 0 / 8px 8px, var(--surface);
+}
+.skeleton::after {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(circle, var(--accent-text) 1.1px, transparent 1.4px) 0 0 / 8px 8px;
+  -webkit-mask-image: linear-gradient(90deg, transparent 35%, #000 50%, transparent 65%);
+  mask-image: linear-gradient(90deg, transparent 35%, #000 50%, transparent 65%);
+  -webkit-mask-size: 300% 100%; mask-size: 300% 100%;
+  opacity: 0.55; animation: scan 1.8s linear infinite;
 }
 .skeleton.tall { height: 120px; }
 
@@ -493,7 +501,7 @@ a { color: inherit; }
 @keyframes rise { from { transform: translateY(4px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes pop { from { transform: scale(0.97); opacity: 0; } }
 @keyframes fade { from { opacity: 0; } }
-@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes scan { from { -webkit-mask-position: 100% 0; mask-position: 100% 0; } to { -webkit-mask-position: 0 0; mask-position: 0 0; } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition: none !important; }
 }
