@@ -1,4 +1,4 @@
-import { ArrowUpRight, RefreshCw } from "lucide-react";
+import { ArrowUpRight, Play, RefreshCw } from "lucide-react";
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { fleetOverview, listMonitors, pipelineSnapshot } from "../api";
@@ -9,6 +9,7 @@ import { RollingText } from "../components/RollingText";
 import { LiveLed, StatusDot } from "../components/StatusBadge";
 import { compactUrl, count, elapsed, milliseconds, monitorState, relativeTime } from "../format";
 import type { FleetOverview, MonitorOverview, PipelineSnapshot } from "../types";
+import { tour } from "../tour";
 import { useLiveData, useNow } from "../useLiveData";
 import { ErrorState, LiveIndicator } from "./MonitorsPage";
 
@@ -35,6 +36,9 @@ export function OverviewPage() {
           <button type="button" className="icon-button bordered" onClick={() => void refresh()} aria-label="Refresh" disabled={overview.loading}>
             <RefreshCw size={15} className={overview.loading ? "spin" : undefined} />
           </button>
+          <button type="button" className="button primary" onClick={tour.start}>
+            <Play size={13} aria-hidden="true" /> Take the tour
+          </button>
         </div>
       </header>
 
@@ -46,7 +50,7 @@ export function OverviewPage() {
           <Hero overview={overview.data} monitors={monitors.data} regions={pipeline.data?.regions.length ?? 0} now={now} updatedAt={overview.updatedAt} />
 
           <div className="split wide-left">
-            <section className="panel">
+            <section className="panel" data-tour="incidents">
               <header className="panel-header">
                 <h2>Incidents</h2>
                 <span className="subtle">Last 7 days · opened after 2 DOWN, resolved after 2 UP</span>
@@ -100,7 +104,7 @@ function Hero({ overview, monitors, regions, now, updatedAt }: {
   );
 
   return (
-    <section className={`hero panel${lead ? " incident" : ""}`} aria-label="Fleet status">
+    <section className={`hero panel${lead ? " incident" : ""}`} aria-label="Fleet status" data-tour="hero">
       <div className="hero-main">
         {lead ? (
           <div className="hero-readout">
@@ -133,7 +137,7 @@ function Hero({ overview, monitors, regions, now, updatedAt }: {
 
 function Regions({ snapshot }: { snapshot: PipelineSnapshot | null }) {
   return (
-    <section className="panel">
+    <section className="panel" data-tour="regions">
       <header className="panel-header">
         <h2>Regions</h2>
         <span className="subtle">Last {snapshot ? Math.round(snapshot.windowSeconds / 60) : 5} min</span>

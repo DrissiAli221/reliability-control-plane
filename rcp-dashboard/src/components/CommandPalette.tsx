@@ -1,10 +1,11 @@
-import { ArrowUpRight, Bell, Command, CornerDownLeft, Gauge, Keyboard, LayoutList, Plus, Search, Workflow } from "lucide-react";
+import { ArrowUpRight, Bell, Command, CornerDownLeft, Gauge, Keyboard, LayoutList, Play, Plus, Search, Workflow } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { listMonitors } from "../api";
 import { compactUrl, monitorState } from "../format";
 import { fuzzyScore, SHORTCUTS } from "../commands";
+import { tour } from "../tour";
 import type { MonitorOverview } from "../types";
 import { StatusDot } from "./StatusBadge";
 
@@ -96,6 +97,7 @@ export function CommandPalette() {
           run: close(() => navigate(`/monitors/${monitor.id}`)),
         };
       }),
+      { id: "tour", group: "Actions", label: "Take the tour", hint: "a two-minute walk through the system", icon: <Play size={15} />, run: close(tour.start) },
       { id: "create", group: "Actions", label: "Create monitor", keys: ["C"], icon: <Plus size={15} />, run: close(() => navigate("/monitors?create=1")) },
       // Asked only when the operator chooses it, never on page load.
       ...(typeof Notification !== "undefined" && Notification.permission === "default" ? [{
@@ -214,6 +216,7 @@ export function PaletteButton() {
     <button
       type="button"
       className="palette-trigger"
+      data-tour="palette"
       onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, ctrlKey: !mac }))}
     >
       <Search size={14} aria-hidden="true" />

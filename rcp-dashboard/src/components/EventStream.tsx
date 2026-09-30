@@ -50,7 +50,7 @@ export function EventStream({ limit }: { limit?: number } = {}) {
   }, [events.data]);
 
   return (
-    <section className="panel">
+    <section className="panel" data-tour="events">
       <header className="panel-header">
         <h2>Live events</h2>
         <span className="subtle live-tail"><LiveLed updatedAt={events.updatedAt} /> tail · your checks, last 15 min</span>

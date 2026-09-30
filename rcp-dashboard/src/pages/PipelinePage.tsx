@@ -36,7 +36,7 @@ export function PipelinePage() {
 
       {snapshot.data && (
         <>
-          <section className="panel">
+          <section className="panel" data-tour="stages">
             <header className="panel-header">
               <h2>Stages</h2>
               <span className="subtle">Throughput over the last {Math.round(snapshot.data.windowSeconds / 60)} min · refreshes every 5 s</span>

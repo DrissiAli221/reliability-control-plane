@@ -137,7 +137,7 @@ export function MonitorDetailPage() {
         </div>
       )}
 
-      <section className="metric-grid" aria-label="Seven-day summary">
+      <section className="metric-grid" aria-label="Seven-day summary" data-tour="metrics">
         <Metric
           label="Uptime · 7d"
           explain={evidence && <UptimeExplain report={evidence} />}
@@ -209,7 +209,7 @@ export function MonitorDetailPage() {
         </div>
       </section>
 
-      <section className="panel">
+      <section className="panel" data-tour="heatmap">
         <header className="panel-header">
           <h2>Latency</h2>
           <span className="subtle">HTTP responses · last 24 h</span>
@@ -219,7 +219,7 @@ export function MonitorDetailPage() {
         </div>
       </section>
 
-      <section className="panel">
+      <section className="panel" data-tour="machine">
         <header className="panel-header">
           <h2>Incident policy</h2>
           <span className="subtle">
@@ -232,7 +232,7 @@ export function MonitorDetailPage() {
         </div>
       </section>
 
-      <section className="panel">
+      <section className="panel" data-tour="checks">
         <header className="panel-header">
           <h2>Recent checks</h2>
           <span className="subtle">Select a check to trace it</span>

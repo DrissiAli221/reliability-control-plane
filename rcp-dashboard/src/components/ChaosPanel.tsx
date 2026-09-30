@@ -73,7 +73,7 @@ export function ChaosPanel({ failuresToOpen = 2, inline = false }: { failuresToO
   }
 
   return (
-    <section className={`panel chaos${armed ? " armed" : ""}`} aria-label="Fault injection">
+    <section className={`panel chaos${armed ? " armed" : ""}`} aria-label="Fault injection" data-tour="drill">
       <header className="panel-header">
         <h2><FlaskConical size={14} aria-hidden="true" /> Fault drill</h2>
         <span className="env-pill">Local only</span>
