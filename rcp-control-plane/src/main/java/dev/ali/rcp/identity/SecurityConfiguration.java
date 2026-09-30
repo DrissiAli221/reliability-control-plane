@@ -40,6 +40,8 @@ public class SecurityConfiguration {
                                 "/actuator/health/liveness",
                                 "/status/**"
                         ).permitAll()
+                        // "Try the live demo" is how an anonymous visitor gets a (read-only) session in the first place.
+                        .requestMatchers(HttpMethod.POST, "/api/demo/session").permitAll()
                         // Reads stay open to every signed-in caller; changes are refused for the read-only group.
                         .requestMatchers(HttpMethod.POST, "/api/**").access(readOnlyAccess.writable())
                         .requestMatchers(HttpMethod.PUT, "/api/**").access(readOnlyAccess.writable())

@@ -225,6 +225,31 @@ paths:
                 $ref: '#/components/schemas/PipelineSnapshot'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /api/demo/session:
+    post:
+      operationId: createDemoSession
+      summary: Sign in as the shared read-only demo account ("Try the live demo")
+      description: >-
+        Anonymous. On AWS the server signs in as the configured demo user with Cognito AdminInitiateAuth
+        (`rcp.demo.username`, `rcp.demo.password`), so the password never reaches the browser; locally it issues a
+        development token for `rcp.demo.owner-subject` in the read-only group. No refresh token is returned.
+        Limited to 30 sessions per minute across the deployment.
+      security: []
+      responses:
+        '200':
+          description: Tokens for the demo account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken: { type: string }
+                  idToken: { type: string, nullable: true, description: Null in the local profile }
+                  expiresInSeconds: { type: integer }
+        '404':
+          description: This deployment does not offer a demo account
+        '429':
+          description: Too many demo sign-ins in the current minute
   /api/me:
     get:
       operationId: getSession
