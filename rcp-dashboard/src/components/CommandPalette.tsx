@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { listMonitors } from "../api";
 import { compactUrl, monitorState } from "../format";
 import { fuzzyScore, SHORTCUTS } from "../commands";
+import { useReadOnly } from "../session";
 import { toggleTheme } from "../theme";
 import { tour } from "../tour";
 import type { MonitorOverview } from "../types";
@@ -35,6 +36,7 @@ export function Keys({ keys }: { keys: string[] }) {
  */
 export function CommandPalette() {
   const navigate = useNavigate();
+  const readOnly = useReadOnly();
   const [mode, setMode] = useState<"closed" | "palette" | "help">("closed");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
@@ -64,11 +66,11 @@ export function CommandPalette() {
       }
       if (key === "g") leader = Date.now();
       else if (event.key === "?" || (event.shiftKey && event.code === "Slash")) setMode("help");
-      else if (key === "c") navigate("/monitors?create=1");
+      else if (key === "c" && !readOnly) navigate("/monitors?create=1");
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [navigate]);
+  }, [navigate, readOnly]);
 
   useEffect(() => {
     if (mode !== "palette") return;
@@ -100,7 +102,7 @@ export function CommandPalette() {
       }),
       { id: "tour", group: "Actions", label: "Take the tour", hint: "a two-minute walk through the system", icon: <Play size={15} />, run: close(tour.start) },
       { id: "theme", group: "Actions", label: "Toggle light / dark theme", icon: <SunMoon size={15} />, run: close(toggleTheme) },
-      { id: "create", group: "Actions", label: "Create monitor", keys: ["C"], icon: <Plus size={15} />, run: close(() => navigate("/monitors?create=1")) },
+      ...(readOnly ? [] : [{ id: "create", group: "Actions" as const, label: "Create monitor", keys: ["C"], icon: <Plus size={15} />, run: close(() => navigate("/monitors?create=1")) }]),
       // Asked only when the operator chooses it, never on page load.
       ...(typeof Notification !== "undefined" && Notification.permission === "default" ? [{
         id: "alerts", group: "Actions" as const, label: "Enable desktop alerts", hint: "notify when an incident opens in a background tab",
@@ -113,7 +115,7 @@ export function CommandPalette() {
       .filter((entry): entry is { item: Item; score: number } => entry.score != null)
       .sort((a, b) => (query ? a.score - b.score : 0))
       .map((entry) => entry.item);
-  }, [monitors, query, navigate]);
+  }, [monitors, query, navigate, readOnly]);
 
   useEffect(() => {
     list.current?.querySelector(`[data-index="${selected}"]`)?.scrollIntoView({ block: "nearest" });

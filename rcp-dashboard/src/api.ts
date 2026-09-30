@@ -14,6 +14,7 @@ import type {
   PipelineEvent,
   PipelineSnapshot,
   PublicStatusPage,
+  Session,
   ReliabilityReport,
 } from "./types";
 
@@ -54,6 +55,15 @@ async function authorizedResponse(path: string, init: RequestInit = {}, retried 
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (await authorizedResponse(path, init)).json() as Promise<T>;
+}
+
+export function currentSession(): Promise<Session> {
+  return request("/api/me");
+}
+
+/** Gives a brand-new account its one example monitor; a no-op on every later call. */
+export async function onboard(): Promise<void> {
+  await authorizedResponse("/api/onboarding", { method: "POST" });
 }
 
 export function listMonitors(): Promise<MonitorOverview[]> {
