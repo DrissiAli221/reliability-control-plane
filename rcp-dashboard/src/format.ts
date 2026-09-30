@@ -96,3 +96,15 @@ export function ordinal(value: number): string {
 export function durationBetween(from: string, to: string): string {
   return milliseconds(Math.max(0, new Date(to).getTime() - new Date(from).getTime()));
 }
+
+/** A running clock for an ongoing incident: "04:12" under an hour, "3:04:12" under a day, then "2d 03h". */
+export function elapsed(milliseconds: number): string {
+  const total = Math.max(0, Math.floor(milliseconds / 1000));
+  const days = Math.floor(total / 86_400);
+  const hours = Math.floor((total % 86_400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  const pad = (value: number) => String(value).padStart(2, "0");
+  if (days > 0) return `${days}d ${pad(hours)}h`;
+  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
+}

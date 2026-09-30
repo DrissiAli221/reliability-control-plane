@@ -375,7 +375,7 @@ export function MonitorDetailPage() {
 function Breadcrumb({ name }: { name: string }) {
   return (
     <nav className="breadcrumb" aria-label="Breadcrumb">
-      <Link to="/"><ChevronLeft size={14} aria-hidden="true" /> Monitors</Link>
+      <Link to="/monitors"><ChevronLeft size={14} aria-hidden="true" /> Monitors</Link>
       <span aria-hidden="true">/</span>
       <span aria-current="page">{name}</span>
     </nav>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monitorState, outcomeTone, relativeTime } from "./format";
+import { elapsed, monitorState, outcomeTone, relativeTime } from "./format";
 import type { MonitorOverview } from "./types";
 
 const monitor: MonitorOverview = {
@@ -35,5 +35,12 @@ describe("format", () => {
     expect(relativeTime("2026-09-29T11:00:00Z", now)).toBe("1h ago");
     expect(relativeTime("2026-09-29T12:05:00Z", now)).toBe("in 5m");
     expect(relativeTime(null, now)).toBe("—");
+  });
+
+  it("runs an incident clock that stays short at every scale", () => {
+    expect(elapsed(65_000)).toBe("01:05");
+    expect(elapsed(3_725_000)).toBe("1:02:05");
+    expect(elapsed(2 * 86_400_000 + 3 * 3_600_000)).toBe("2d 03h");
+    expect(elapsed(-5)).toBe("00:00");
   });
 });

@@ -4,6 +4,7 @@ import type {
   CreateMonitorInput,
   CreatedMonitor,
   ExecutionTrace,
+  FleetOverview,
   FaultMode,
   IncidentStateView,
   LatencyHeatmap,
@@ -74,6 +75,10 @@ export function executionTrace(monitorId: string, executionId: string): Promise<
 
 export function incidentState(monitorId: string): Promise<IncidentStateView> {
   return request(`/api/monitors/${encodeURIComponent(monitorId)}/incident-state`);
+}
+
+export function fleetOverview(): Promise<FleetOverview> {
+  return request("/api/overview");
 }
 
 export function pipelineSnapshot(): Promise<PipelineSnapshot> {
