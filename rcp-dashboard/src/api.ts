@@ -125,7 +125,6 @@ export function availability(monitorId: string, days = 7): Promise<AvailabilityR
   const query = new URLSearchParams({
     from: from.toISOString(),
     to: to.toISOString(),
-    sloTargetPercent: "99.9",
   });
   return request(`/api/monitors/${encodeURIComponent(monitorId)}/availability?${query}`);
 }
