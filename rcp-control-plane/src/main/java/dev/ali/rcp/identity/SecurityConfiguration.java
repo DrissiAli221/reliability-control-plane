@@ -21,7 +21,8 @@ public class SecurityConfiguration {
     @Bean
     @Order(2)
     SecurityFilterChain securityFilterChain(
-            HttpSecurity http
+            HttpSecurity http,
+            ReadOnlyAccess readOnlyAccess
     ) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
@@ -39,8 +40,21 @@ public class SecurityConfiguration {
                                 "/actuator/health/liveness",
                                 "/status/**"
                         ).permitAll()
+                        // Reads stay open to every signed-in caller; changes are refused for the read-only group.
+                        .requestMatchers(HttpMethod.POST, "/api/**").access(readOnlyAccess.writable())
+                        .requestMatchers(HttpMethod.PUT, "/api/**").access(readOnlyAccess.writable())
+                        .requestMatchers(HttpMethod.PATCH, "/api/**").access(readOnlyAccess.writable())
+                        .requestMatchers(HttpMethod.DELETE, "/api/**").access(readOnlyAccess.writable())
                         .anyRequest().authenticated()
                 )
+                .exceptionHandling(exceptions -> exceptions.accessDeniedHandler((request, response, denied) -> {
+                    response.setStatus(403);
+                    response.setContentType("application/problem+json");
+                    response.getWriter().write("""
+                            {"type":"about:blank","title":"Read-only account","status":403,\
+                            "detail":"This demo account can look at everything but cannot change anything. \
+                            Create your own account to add monitors."}""");
+                }))
                 .oauth2ResourceServer(resourceServer ->
                         resourceServer.jwt(Customizer.withDefaults())
                 );
