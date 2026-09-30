@@ -1,8 +1,9 @@
-import { Activity, BookOpen, ExternalLink, Gauge, LayoutList, LogOut, Workflow } from "lucide-react";
+import { Activity, BookOpen, ExternalLink, Gauge, LayoutList, LogOut, Moon, Sun, Workflow } from "lucide-react";
 import type { ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { isLocalAuth } from "../auth";
 import { useFleetWatch } from "../tabSignal";
+import { toggleTheme, useTheme } from "../theme";
 import { CommandPalette, PaletteButton } from "./CommandPalette";
 import { IncidentToasts } from "./IncidentToasts";
 import { Tour } from "./Tour";
@@ -23,6 +24,7 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
   const local = isLocalAuth();
   const { pathname } = useLocation();
   const { changes, dismiss } = useFleetWatch(pathname);
+  const theme = useTheme();
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -65,6 +67,10 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
               Regions are simulated in one JVM; labels are not geographic evidence.
             </p>
           )}
+          <button type="button" className="nav-item" onClick={toggleTheme}>
+            {theme === "dark" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
+            {theme === "dark" ? "Light theme" : "Dark theme"}
+          </button>
           {local
             ? <span className="identity">Local development identity</span>
             : <button type="button" className="nav-item" onClick={onLogout}><LogOut size={16} aria-hidden="true" /> Sign out</button>}

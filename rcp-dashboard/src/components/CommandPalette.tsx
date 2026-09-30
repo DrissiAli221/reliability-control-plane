@@ -1,10 +1,11 @@
-import { ArrowUpRight, Bell, Command, CornerDownLeft, Gauge, Keyboard, LayoutList, Play, Plus, Search, Workflow } from "lucide-react";
+import { ArrowUpRight, Bell, Command, CornerDownLeft, Gauge, Keyboard, LayoutList, Play, Plus, Search, SunMoon, Workflow } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { listMonitors } from "../api";
 import { compactUrl, monitorState } from "../format";
 import { fuzzyScore, SHORTCUTS } from "../commands";
+import { toggleTheme } from "../theme";
 import { tour } from "../tour";
 import type { MonitorOverview } from "../types";
 import { StatusDot } from "./StatusBadge";
@@ -98,6 +99,7 @@ export function CommandPalette() {
         };
       }),
       { id: "tour", group: "Actions", label: "Take the tour", hint: "a two-minute walk through the system", icon: <Play size={15} />, run: close(tour.start) },
+      { id: "theme", group: "Actions", label: "Toggle light / dark theme", icon: <SunMoon size={15} />, run: close(toggleTheme) },
       { id: "create", group: "Actions", label: "Create monitor", keys: ["C"], icon: <Plus size={15} />, run: close(() => navigate("/monitors?create=1")) },
       // Asked only when the operator chooses it, never on page load.
       ...(typeof Notification !== "undefined" && Notification.permission === "default" ? [{
