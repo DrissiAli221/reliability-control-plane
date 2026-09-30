@@ -1,6 +1,6 @@
 import { ArrowUpRight, Download, Pause, Play, Plus, RefreshCw, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { availability, createMonitor, listMonitors, monitorHistory, setMonitorEnabled } from "../api";
 import { ActionMenu } from "../components/ActionMenu";
 import { RollingText } from "../components/RollingText";
@@ -41,7 +41,8 @@ export function MonitorsPage() {
   const fleet = useLiveData(loadFleet);
   const now = useNow();
   const navigate = useNavigate();
-  const [showCreate, setShowCreate] = useState(false);
+  const [params, setParams] = useSearchParams();
+  const [showCreate, setShowCreate] = useState(() => params.get("create") === "1");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [notice, setNotice] = useState<string | null>(null);
@@ -56,6 +57,13 @@ export function MonitorsPage() {
         .map(({ monitor }) => monitor.id)
       : [],
   );
+
+  // "Create monitor" from the command palette or the C shortcut arrives as ?create=1; consume it once.
+  useEffect(() => {
+    if (params.get("create") !== "1") return;
+    setShowCreate(true);
+    setParams({}, { replace: true });
+  }, [params, setParams]);
 
   useEffect(() => {
     if (fleet.data) previousStates.current = new Map(fleet.data.map(({ monitor }) => [monitor.id, monitorState(monitor).label]));
