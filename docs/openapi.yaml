@@ -225,6 +225,33 @@ paths:
                 $ref: '#/components/schemas/PipelineSnapshot'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /api/me:
+    get:
+      operationId: getSession
+      summary: The caller's session as this deployment sees it
+      description: >-
+        Whether the caller is in the read-only group (`rcp.identity.read-only-group`, the public demo account),
+        and the monitor limits this deployment enforces, so clients offer only choices that will be accepted.
+        Members of the read-only group receive 403 "Read-only account" on every POST, PUT, PATCH or DELETE under /api.
+      responses:
+        '200':
+          description: Session and limits
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subject: { type: string }
+                  readOnly: { type: boolean }
+                  limits:
+                    type: object
+                    properties:
+                      maxPerOwner: { type: integer }
+                      maxTotal: { type: integer, description: 0 means no deployment-wide cap }
+                      minIntervalSeconds: { type: integer }
+                      maxTimeoutMs: { type: integer }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/overview:
     get:
       operationId: getFleetOverview
