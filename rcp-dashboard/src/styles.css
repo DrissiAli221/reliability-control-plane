@@ -165,14 +165,14 @@ a { color: inherit; }
 /* Active faults breathe gently instead of radiating rings. */
 .status-dot.pulse { animation: breathe 2.4s ease-in-out infinite; }
 /* A 3×3 dot-matrix block, drawn with the same round dots as the Doto readouts. */
-.led {
-  --led: var(--green); display: inline-block; width: 9px; height: 9px; flex: none; opacity: 0.6;
-  background: radial-gradient(circle, var(--led) 0.95px, transparent 1.15px) 0 0 / 3px 3px;
-}
-.led.warn { --led: var(--amber); opacity: 0.95; }
+.led { --led: var(--green); display: inline-grid; grid-template-columns: repeat(3, 2px); gap: 1px; flex: none; }
+.led i { width: 2px; height: 2px; border-radius: 50%; background: var(--led); opacity: 0.3; animation: led-breathe 2.8s ease-in-out infinite backwards; }
+.led.warn { --led: var(--amber); }
+.led.warn i { animation: none; opacity: 0.9; }
 .led.blink { animation: led-blink 900ms ease-out; }
 @keyframes breathe { 50% { opacity: 0.45; } }
-@keyframes led-blink { 0% { opacity: 1; filter: brightness(1.6); } }
+@keyframes led-breathe { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+@keyframes led-blink { 0% { filter: brightness(1.8) drop-shadow(0 0 3px var(--led)); } }
 
 .badge {
   display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: var(--radius-pill);
