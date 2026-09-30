@@ -215,6 +215,46 @@ paths:
                 $ref: '#/components/schemas/PipelineSnapshot'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /api/overview:
+    get:
+      operationId: getFleetOverview
+      summary: The caller's fleet at a glance for the console home page
+      description: >-
+        Finalized verdicts of all owned monitors in 48 half-hour buckets (oldest first, zero-filled, the newest still
+        filling), plus every owned incident that was open at some point in the last 7 days (at most 50, newest first).
+      responses:
+        '200':
+          description: Fleet verdict buckets and incident spans
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  from: { type: string, format: date-time }
+                  to: { type: string, format: date-time }
+                  bucketSeconds: { type: integer, example: 1800 }
+                  buckets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        up: { type: integer }
+                        down: { type: integer }
+                        disagreement: { type: integer }
+                        noData: { type: integer }
+                  incidentsFrom: { type: string, format: date-time }
+                  incidents:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        incidentId: { type: string, format: uuid }
+                        monitorId: { type: string, format: uuid }
+                        monitorName: { type: string }
+                        openedAt: { type: string, format: date-time }
+                        resolvedAt: { type: string, format: date-time, nullable: true, description: Null while open }
+        '401':
+          description: Missing or invalid bearer token
   /api/pipeline/events:
     get:
       operationId: getPipelineEvents

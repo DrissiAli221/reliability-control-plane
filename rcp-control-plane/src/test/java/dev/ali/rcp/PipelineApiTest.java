@@ -2,6 +2,7 @@ package dev.ali.rcp;
 
 import dev.ali.rcp.monitors.Monitor;
 import dev.ali.rcp.monitors.MonitorRepository;
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,8 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -140,6 +143,34 @@ class PipelineApiTest {
                 .andExpect(jsonPath("$[1].httpStatus").value(503))
                 .andExpect(jsonPath("$[4].type").value("OutboxPublished"))
                 .andExpect(jsonPath("$[*].monitorName", not(hasItem("Someone else's monitor"))));
+    }
+
+    @Test
+    void overviewBucketsOnlyTheCallersVerdictsAndListsTheirIncidents() throws Exception {
+        UUID opener = execution(owned, scheduledAt.minusSeconds(120));
+        jdbcTemplate.update(
+                """
+                INSERT INTO incidents (incident_id, monitor_id, status, opened_by_execution_id, opened_at)
+                VALUES (?, ?, 'OPEN', ?, ?)
+                """,
+                UUID.randomUUID(), owned.getId(), opener, timestamp(scheduledAt.minusSeconds(110))
+        );
+
+        String body = mockMvc.perform(get("/api/overview")
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bucketSeconds").value(1800))
+                .andExpect(jsonPath("$.buckets.length()").value(48))
+                .andExpect(jsonPath("$.incidents.length()").value(1))
+                .andExpect(jsonPath("$.incidents[0].monitorName").value("Traced monitor"))
+                .andExpect(jsonPath("$.incidents[0].resolvedAt").doesNotExist())
+                .andReturn().getResponse().getContentAsString();
+
+        // Two owned DOWN checks, wherever the bucket boundary falls; the foreign DOWN check is not counted.
+        List<Integer> down = JsonPath.read(body, "$.buckets[*].down");
+        List<Integer> up = JsonPath.read(body, "$.buckets[*].up");
+        assertThat(down.stream().mapToInt(Integer::intValue).sum()).isEqualTo(2);
+        assertThat(up.stream().mapToInt(Integer::intValue).sum()).isZero();
     }
 
     private Monitor monitor(String owner, String name) {
