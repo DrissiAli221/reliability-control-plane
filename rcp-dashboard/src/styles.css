@@ -47,6 +47,10 @@
   --accent-strong: #d4cfff;
   --log-outbox: #e879f9;
   --log-ingest: #2dd4bf;
+  --green-muted: color-mix(in srgb, var(--green) 62%, var(--surface));
+  --wash-strength: 13%;
+  --ink-dots: var(--text);
+  --panel-shadow: none;
 
   /* Corner scale: every rounded corner reads one of these, so the whole system changes in one place.
      The operator console is square, like an instrument panel; status dots stay round. */
@@ -205,11 +209,11 @@ a { color: inherit; }
 }
 .metric-label { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); }
 .metric-label .status-dot { width: 6px; height: 6px; }
-.metric-value { font-family: var(--font-dots); font-size: 30px; font-weight: 800; letter-spacing: 0.01em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.metric-value { color: var(--ink-dots); font-family: var(--font-dots); font-size: 30px; font-weight: 800; letter-spacing: 0.01em; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .metric-value small { margin-left: 6px; font-family: var(--font-sans); font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--text-3); }
 .metric-hint { font-size: 12px; color: var(--text-3); }
 /* Attention is a hue, not a fill: the status colour pools in the corners and the border stays neutral. */
-.metric.attention { --hue: var(--text-3); --wash: color-mix(in srgb, var(--hue) 13%, transparent); background: radial-gradient(circle at 0 0, var(--wash), transparent 45%), radial-gradient(circle at 100% 0, var(--wash), transparent 45%), radial-gradient(circle at 0 100%, var(--wash), transparent 45%), radial-gradient(circle at 100% 100%, var(--wash), transparent 45%), var(--surface); }
+.metric.attention { --hue: var(--text-3); --wash: color-mix(in srgb, var(--hue) var(--wash-strength), transparent); background: radial-gradient(circle at 0 0, var(--wash), transparent 45%), radial-gradient(circle at 100% 0, var(--wash), transparent 45%), radial-gradient(circle at 0 100%, var(--wash), transparent 45%), radial-gradient(circle at 100% 100%, var(--wash), transparent 45%), var(--surface); }
 .metric.attention.fault { --hue: var(--red); }
 .metric.attention.warn { --hue: var(--amber); }
 .metric.attention.info { --hue: var(--blue); }
@@ -227,7 +231,7 @@ a { color: inherit; }
 .range-tick { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--blue-text); }
 
 /* ---------- Panels & tables ---------- */
-.panel { margin-bottom: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.panel { margin-bottom: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--panel-shadow); }
 .panel-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
 .panel-header h2 { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
 .panel-header .subtle { font-size: 12.5px; }
@@ -475,8 +479,18 @@ a { color: inherit; }
   --log-outbox: #b62fcf;
   --log-ingest: #0f8f80;
   --shadow-pop: 0 8px 30px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--border-strong);
+  /* On paper, colour needs more body and less wash, dot readouts a softer ink, and panels a hairline of depth. */
+  --green-muted: color-mix(in srgb, var(--green) 78%, var(--surface));
+  --wash-strength: 7%;
+  --ink-dots: #3a3a36;
+  --panel-shadow: 0 1px 2px rgba(20, 20, 15, 0.04), 0 1px 1px rgba(20, 20, 15, 0.03);
   color-scheme: light;
 }
+:root[data-theme="light"] .metric { box-shadow: var(--panel-shadow); }
+:root[data-theme="light"] .timeline-span { background: color-mix(in srgb, var(--red) 85%, var(--surface)); }
+:root[data-theme="light"] .chaos-inline, :root[data-theme="light"] .trace-panel, :root[data-theme="light"] .table th { background: #fafaf8; }
+:root[data-theme="light"] .hero::before { background: radial-gradient(circle, rgba(0, 0, 0, 0.07) 1px, transparent 1.2px) 0 0 / 14px 14px; }
+:root[data-theme="light"] .led i { opacity: 0.45; }
 :root[data-theme="light"] .heatmap { --heat: #0891b2; }
 :root[data-theme="light"] .dot-glyph { background-image: linear-gradient(180deg, var(--text-2), var(--text-3) 70%, transparent); }
 
@@ -746,7 +760,7 @@ a { color: inherit; }
 .stage-name { font-size: 13px; font-weight: 500; }
 .stage-tech { font-size: 11.5px; color: var(--text-3); }
 .stage-value { display: flex; align-items: baseline; gap: 6px; margin-top: 6px; }
-.stage-value .mono { font-family: var(--font-dots); font-size: 28px; font-weight: 800; letter-spacing: 0.01em; }
+.stage-value .mono { color: var(--ink-dots); font-family: var(--font-dots); font-size: 28px; font-weight: 800; letter-spacing: 0.01em; }
 .stage-value small { font-size: 12px; color: var(--text-2); }
 .stage.alert .stage-value .mono { color: var(--red-text); }
 .stage-detail { font-size: 12px; color: var(--text-3); }
@@ -890,7 +904,7 @@ a { color: inherit; }
 .hero-label { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
 .hero.incident .hero-label { color: var(--red-text); }
 .hero-value {
-  font-family: var(--font-dots); font-size: clamp(52px, 7.5vw, 84px); font-weight: 800; line-height: 1;
+  color: var(--ink-dots); font-family: var(--font-dots); font-size: clamp(52px, 7.5vw, 84px); font-weight: 800; line-height: 1;
   letter-spacing: 0.01em; font-variant-numeric: tabular-nums;
 }
 .hero.incident .hero-value { color: var(--red-text); }
@@ -900,7 +914,7 @@ a { color: inherit; }
 .hero-stats div { display: grid; gap: 4px; padding: 10px 16px; border-left: 1px solid var(--border); }
 .hero-stats div:first-child { border-left: 0; }
 .hero-stats dt { font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
-.hero-stats dd { margin: 0; font-family: var(--font-dots); font-size: 24px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.hero-stats dd { margin: 0; color: var(--ink-dots); font-family: var(--font-dots); font-size: 24px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .hero-stats small { margin-left: 4px; font-family: var(--font-sans); font-size: 12px; font-weight: 400; color: var(--text-3); }
 
 .pulse { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
@@ -915,7 +929,7 @@ a { color: inherit; }
 .pulse-bar.idle { background: linear-gradient(var(--gray-bar), var(--gray-bar)) bottom / 100% 2px no-repeat; animation: none; }
 .pulse-bar i { display: block; flex-basis: 0; min-height: 0; }
 .pulse-bar i + i { box-shadow: 0 -1px 0 var(--surface); }
-.pulse-bar i.up { background: color-mix(in srgb, var(--green) 62%, var(--surface)); }
+.pulse-bar i.up { background: var(--green-muted); }
 .pulse-bar i.down { background: var(--red); }
 .pulse-bar i.disagreement { background: var(--amber); }
 .pulse-bar i.no-data { background: var(--no-data); }
@@ -947,7 +961,7 @@ a { color: inherit; }
 .regions li { display: grid; gap: 4px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
 .regions li:last-child { border-bottom: 0; }
 .region-head { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; color: var(--text-2); }
-.region-value { font-family: var(--font-dots); font-size: 28px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.region-value { color: var(--ink-dots); font-family: var(--font-dots); font-size: 28px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .region-caption { font-size: 12px; color: var(--text-3); }
 .regions .meter { height: 4px; margin-top: 6px; }
 
@@ -1176,7 +1190,7 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .decision-monitor { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .decision-track { height: 6px; background: var(--gray-bg); }
 .decision-track b { display: block; height: 100%; min-width: 2px; background: var(--no-data); transform-origin: left; animation: sweep 420ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
-.decision-track b.good { background: color-mix(in srgb, var(--green) 62%, var(--surface)); }
+.decision-track b.good { background: var(--green-muted); }
 .decision-track b.fault { background: var(--red); }
 .decision-track b.warn { background: var(--amber); }
 .decision-times button:hover .decision-track b.good { background: var(--green); }
@@ -1194,3 +1208,4 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .split > .panel > .event-log { flex: 1; max-height: 520px; }
 .decision-times li.fresh button { animation: fresh-line 1.8s ease-out, rise 280ms ease-out backwards; }
 .decision-times li.fresh .decision-track b { animation-duration: 700ms; }
+:root[data-theme="light"] .hero:not(.incident) .hero-value { color: #4a4a45; }
