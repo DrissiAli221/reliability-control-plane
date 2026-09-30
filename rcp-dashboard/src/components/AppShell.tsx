@@ -2,6 +2,7 @@ import { Activity, BookOpen, ExternalLink, Gauge, LayoutList, LogOut, Workflow }
 import type { ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { isLocalAuth } from "../auth";
+import { useTabSignal } from "../tabSignal";
 
 const telemetryUrl = import.meta.env.VITE_GRAFANA_URL
   ?? (import.meta.env.DEV ? "http://localhost:3000/d/rcp-overview/rcp-overview" : null);
@@ -18,6 +19,7 @@ export function BrandMark() {
 export function AppShell({ children, onLogout }: { children: ReactNode; onLogout: () => void }) {
   const local = isLocalAuth();
   const { pathname } = useLocation();
+  useTabSignal(pathname);
   return (
     <div className="shell">
       <aside className="sidebar">
