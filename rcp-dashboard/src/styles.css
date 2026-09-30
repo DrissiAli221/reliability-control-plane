@@ -1152,3 +1152,42 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .check-verdict:focus-visible { outline-offset: 3px; }
 .check-axis { display: flex; justify-content: space-between; margin-left: 76px; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
 .decisions .trace-panel { border-top: 1px solid var(--border); }
+
+/* ---------- Pipeline: even stages and time to decision ---------- */
+.pipeline { align-items: stretch; }
+/* Every stage keeps its name at the top and its reading at the bottom, so the values line up across the row. */
+.pipeline > .stage .stage-value { margin-top: auto; }
+.pipeline-regions .stage.region .region-flow { margin-top: auto; }
+.stage.idle .stage-value .mono { color: var(--text-3); }
+.panel .chaos-inline { border-top: 0; }
+
+.decision-times { margin: 0; padding: 6px 0; list-style: none; }
+.decision-times button {
+  display: grid; grid-template-columns: 10px minmax(120px, 0.9fr) minmax(0, 1.6fr) 60px 64px 64px; align-items: center; gap: 12px;
+  width: 100%; padding: 7px 16px; border: 0; background: none; font-size: 13px; text-align: left;
+  animation: rise 280ms ease-out backwards; transition: background 100ms;
+}
+.decision-times button:hover { background: var(--surface-hover); }
+.decision-verdict { width: 10px; height: 10px; background: var(--no-data); }
+.decision-verdict.good { background: var(--green); }
+.decision-verdict.fault { background: var(--red); }
+.decision-verdict.warn { background: var(--amber); }
+.decision-monitor { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.decision-track { height: 6px; background: var(--gray-bg); }
+.decision-track b { display: block; height: 100%; min-width: 2px; background: var(--no-data); transform-origin: left; animation: sweep 420ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+.decision-track b.good { background: color-mix(in srgb, var(--green) 62%, var(--surface)); }
+.decision-track b.fault { background: var(--red); }
+.decision-track b.warn { background: var(--amber); }
+.decision-times button:hover .decision-track b.good { background: var(--green); }
+.decision-took { text-align: right; font-size: 12px; }
+.decision-times time { font-size: 12px; text-align: right; }
+.decision-transition { font-family: var(--font-mono); font-size: 11.5px; text-align: right; }
+.decision-transition.fault { color: var(--red-text); }
+.decision-transition.good { color: var(--green-text); }
+@media (max-width: 560px) {
+  .decision-times button { grid-template-columns: 10px minmax(0, 1fr) 56px; }
+  .decision-track, .decision-times time, .decision-transition { display: none; }
+}
+/* Beside the timing chart, the event tail fills the same height instead of stopping short. */
+.split > .panel:has(> .event-log) { display: flex; flex-direction: column; }
+.split > .panel > .event-log { flex: 1; max-height: 520px; }
