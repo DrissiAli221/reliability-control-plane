@@ -24,6 +24,7 @@ import {
 } from "../format";
 import type { AvailabilityReport, IncidentStateView, LatencyHeatmap as Heatmap, MonitorDetail, MonitorHistory, MonitorOverview, ReliabilityReport } from "../types";
 import { machineNode } from "../machine";
+import { useReadOnly } from "../session";
 import { useLiveData, useNow } from "../useLiveData";
 import { CoverageNote, ErrorState, LiveIndicator, Metric } from "./MonitorsPage";
 
@@ -65,6 +66,7 @@ export function MonitorDetailPage() {
   const detail = useLiveData(load, 10_000);
   const now = useNow();
   const [params, setParams] = useSearchParams();
+  const readOnly = useReadOnly();
   // The full state machine opens by itself whenever the monitor leaves Healthy; a manual toggle overrides that.
   const [machineToggle, setMachineToggle] = useState<boolean | null>(null);
 
@@ -116,7 +118,7 @@ export function MonitorDetailPage() {
           <button type="button" className="icon-button bordered" onClick={() => void detail.refresh()} aria-label="Refresh" disabled={detail.loading}>
             <RefreshCw size={15} className={detail.loading ? "spin" : undefined} />
           </button>
-          <MonitorToggleButton enabled={monitor.enabled} onToggle={toggle} />
+          {!readOnly && <MonitorToggleButton enabled={monitor.enabled} onToggle={toggle} />}
           <DownloadReportButton monitorId={monitor.id} monitorName={monitor.name} />
         </div>
       </header>
@@ -233,7 +235,7 @@ export function MonitorDetailPage() {
             {incident ? `Opens after ${incident.failuresToOpen} consecutive DOWN, resolves after ${incident.successesToResolve} UP` : "State unavailable"}
           </span>
         </header>
-        {isLocalAuth() && <ChaosPanel failuresToOpen={incident?.failuresToOpen} inline />}
+        {isLocalAuth() && !readOnly && <ChaosPanel failuresToOpen={incident?.failuresToOpen} inline />}
         {incident && <PolicyStrip state={incident} now={now} expanded={machineOpen} onToggle={() => setMachineOpen(!machineOpen)} />}
         {incident && machineOpen && (
           <div className="panel-body machine-body">
