@@ -143,6 +143,31 @@ provisioning, backup-failure and routing tests plus Terraform validation/offline
 plan were rerun. Prior container evidence above used the 10,000 ms setting.
 Recover disk/Docker and rerun the updated container smoke before deployment.
 
+## Cache recovery and container verification (2026-10-01)
+
+Disposable runtime download archives, this task's temporary application snapshot,
+build outputs, cached Terraform provider binaries, Conda downloads/indexes, and
+unused Docker build cache were cleared. The Mac's available disk space increased
+from 2.1 GiB to 6.4 GiB. Docker Desktop was restarted without a data reset; all six
+existing RCP containers restarted, PostgreSQL became healthy, and its original
+named volume was retained. No live database volume, project source, download, or
+document was removed. A protected database dump and archive listing succeeded.
+Terraform providers will be downloaded again on the next initialization.
+
+The updated 5-second Phase 2 smoke passed using the already-built temporary PR #4
+constructor-fix image, without a new image build. It verified configured limits,
+rejection at 5,001 ms, read-only writes, seeded ownership, one-time onboarding,
+health/CORS/private management, backup, and isolated restore. This remains local
+proof against that earlier image, not a build of the final merged application or
+verification of live AWS/Cognito.
+
+The restore helper now explicitly removes anonymous volumes when deleting its
+own temporary container. A repeat restore of the recovered database succeeded,
+and the exact set of existing volumes was unchanged after the test. The temporary
+volume from the earlier smoke was removed individually; no global volume prune
+was performed. The hosting checkout remains isolated from Claude's application
+source.
+
 ## Cost correction
 
 The documented model is illustrative and uses available account-wide free
