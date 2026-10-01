@@ -1,0 +1,6 @@
+name          = "rcp-demo"
+account_id    = "123456789012" # Replace in an untracked terraform.tfvars.
+budget_email  = "you@example.com"
+api_origin    = "https://api.example.com"
+# lambda_artifact_path defaults to ../../rcp-probe-lambda/target/rcp-probe-lambda.jar
+# Offline mode must stay false for an eventual authorized deployment.

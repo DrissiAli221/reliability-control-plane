@@ -1,0 +1,9 @@
+.env
+secrets/
+backups/
+*.dump
+terraform-outputs.json
+
+dashboard.env
+
+__pycache__/
