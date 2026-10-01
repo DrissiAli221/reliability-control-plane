@@ -51,10 +51,8 @@ costs. Local validation proves configuration, not AWS deployment or availability
   Example Domain and Wikipedia for the shared account, and
   `rcp.demo.example-monitor-url=https://example.com` enables one-time onboarding.
   Provisioning captures the Cognito UUID `sub` in a host file supplied through
-  `RCP_DEMO_OWNER_SUBJECT`; an email/username is not a valid substitute. The earlier
-  `seed-example-monitor` flag is removed because PR #4 does not implement it.
-  Application phases 1–2 are merged into main at `4eea1ea` (PRs #3 and #5).
-  Deploy the reviewed combined application and hosting commit.
+  `RCP_DEMO_OWNER_SUBJECT`; an email/username is not a valid substitute. Deploy an
+  application release that supports these properties and enforces the limits.
 - Lambda uses Java 21/ARM64/256 MiB, 30-second timeout, one job per invocation,
   a maximum of ten SQS invocations per region, and partial failures.
   The current handler is sequential, and scheduled jobs have a 30-second result
@@ -104,9 +102,9 @@ includes provider checksums for Linux and both Mac architectures.
    hide consumption. An existing budget can be imported by an operator, or use
    the matching name when creating it. This root does not enforce resource
    creation ordering; a full apply is not a substitute for the initial alarm.
-2. Verify the merged session fixes, read-only backend role, demo login,
-   quotas, and seeding in the combined application/hosting commit. The backend
-   implements `rcp.monitors.max-timeout-ms`; this root supplies 5000. Verify the final merged backend actually reads those values.
+2. Verify expired-session handling, the read-only backend role, demo login,
+   quotas, and seeding using the generated application configuration. This root
+   supplies `rcp.monitors.max-timeout-ms=5000`; verify the backend enforces it.
 3. Build and verify the shaded probe artifact with Java 21:
 
    ```sh
@@ -127,7 +125,7 @@ includes provider checksums for Linux and both Mac architectures.
 6. Export `terraform output -json` to a private file and follow the VM runbook.
    The outputs include identity, queues/DLQs, dashboard build variables, the
    runtime username, and nonsecret Spring JSON. Configure and smoke-test the
-   final merged backend before publishing the dashboard.
+   backend before publishing the dashboard.
 7. Upload the dashboard's hashed assets with long immutable cache headers and
    `index.html` with `Cache-Control: no-cache,max-age=0,must-revalidate`; invalidate
    `/index.html` after a release. Do not upload credentials or `.env` files.
@@ -138,7 +136,7 @@ includes provider checksums for Linux and both Mac architectures.
 current regional prices, and usage shared with other projects. Credits are
 finite; free-tier allowances are account-wide and not doubled by two regions.
 
-The supplied request-only estimate misses Lambda GB-seconds. At 8 monitors,
+Estimate both Lambda requests and GB-seconds. At 8 monitors,
 60 seconds, two regions and 30 days, the configured one-job batches produce
 691,200 checks/invocations before retries. Average billed duration must include
 probe time, DNS/TLS setup, result publishing, cold starts, and failures.

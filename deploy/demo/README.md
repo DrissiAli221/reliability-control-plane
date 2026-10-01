@@ -3,33 +3,25 @@
 Runs the existing control-plane image, PostgreSQL **17.6**, and Caddy on one Linux
 VM. The configuration is portable between Oracle ARM64 and EC2 x86_64/ARM64:
 there is no cloud-specific VM resource or fixed Docker platform in this folder.
-Build the image on the target architecture, or publish a matching multi-arch image
-later with explicit authorization. A prebuilt Mac ARM image is not an x86 image.
+Build the image on the target architecture, or use a matching multi-arch image.
+A prebuilt Mac ARM image is not an x86 image.
 
 This runbook prepares deployment; it does not prove a live deployment. The AWS
 half is documented in [`infra/aws-demo`](../../infra/aws-demo/README.md).
 
 ## Before going live
 
-Application phases 1–2, including the constructor-injection startup fix, are
-merged into `main` at `4eea1eacdeea24acbf82c08884bdb1d3e85f11c6`. Phase 2 reached
-main through PR #5 after PR #4 merged into its original base branch. The patch in
-`patches/` records the earlier finding and must not be reapplied. See
-[the handoff](HANDOFF.md) for verification evidence and remaining deployment steps.
-
-- Use and verify the final combined application/hosting commit: expired-session handling,
+- Deploy an application release that supports expired-session handling,
   stale public status data, backend read-only `demo` group, 60-second minimum,
   8 global/3 owner monitor caps, maximum 5-second check timeout, example seeding,
-  and `/api/demo/session`. The new property names alone do not enforce limits on
-  the pre-Phase-2 backend. PR #4 supplies backend group enforcement, concurrent
-  quota protection, and a 30/minute demo-login limit for the single backend.
+  and `/api/demo/session`. Verify backend group enforcement, concurrent quota
+  protection, and the 30/minute demo-login limit for the single backend.
   Stock Caddy does not add another login rate limiter here.
-- The shared demo account must retain `demo` membership. PR #4 seeds its two
+- The shared demo account must retain `demo` membership. The backend seeds its two
   neutral monitors (Example Domain and Wikipedia) on startup using the Cognito
   UUID `sub`. Capture that subject during provisioning; do not substitute its
   email or remove group membership to seed monitors.
-- Establish the AWS budget alert before application resources; get explicit
-  deployment authorization before creating AWS resources, keys, users, VM, or DNS.
+- Establish the AWS budget alert before creating application resources.
 - Confirm the chosen VM's actual availability, billing/egress/storage terms, and
   idle-instance policy. This file assumes neither provider guarantees a free VM.
 - Use a VM with at least **2 GiB RAM**, preferably 4 GiB, and enough disk for image
@@ -51,7 +43,7 @@ Use a supported Linux distribution with Docker Engine and Docker Compose v2.24.4
 installed from the official Docker instructions. Install Python 3 and the AWS CLI
 on the operator machine. Install `curl` on the VM for external smoke checks.
 
-Clone/copy the **reviewed combined application and hosting commit** to `/opt/rcp`.
+Clone/copy the application release and deployment files to `/opt/rcp`.
 Check the commit before building. Keep production deployment files and states
 separate.
 
@@ -68,8 +60,8 @@ rules that account for Docker's forwarding behavior, not just host INPUT rules.
 
 ## Configuration and secret provisioning
 
-These steps are for a **later authorized deployment**, using the already-reviewed
-Terraform outputs. No secrets are embedded in Compose, build arguments, or Vite.
+Use outputs from the demo Terraform root for these steps. No secrets are embedded
+in Compose, build arguments, or Vite.
 
 1. Export Terraform outputs into a private, ignored file:
 
@@ -154,7 +146,7 @@ profile. The runtime key only sends regional jobs, consumes central results, and
 the shared Cognito user. Rotate it by replacing the credential file and recreating
 the control-plane container; disable the previous key after verification.
 
-## Start and verify the final backend
+## Start and verify the backend
 
 From `/opt/rcp/deploy/demo`:
 
@@ -182,17 +174,17 @@ The public management request must return **404**. The backend Docker healthchec
 must report healthy; it includes database connectivity. Validate a normal unauthenticated
 API request returns **401**, sign-up/email confirmation works, demo login succeeds,
 read-only API writes fail, CORS accepts only the CloudFront origin, and both regions
-produce results within the result deadline. Authentication enforcement is Claude's
-backend work; do not infer it from Terraform group creation.
+produce results within the result deadline. The backend enforces authentication
+and read-only access; verify both through API requests after deployment.
 
 Caddy access logging is deliberately not enabled: avoid recording public tokens or
 sensitive query strings by default. Use bounded service logs for startup diagnosis.
 A missing/incorrect API DNS record or blocked port 80 prevents public certificates.
 No ACME request is needed for the local smoke test described below.
 
-## Publish the dashboard later
+## Publish the dashboard
 
-Build the final dashboard with the generated public variables in `dashboard.env`.
+Build the dashboard with the generated public variables in `dashboard.env`.
 Pass them to the build environment; do not copy the backend's secret files into
 `rcp-dashboard/`. For an operator-reviewed build, from the repository root:
 
@@ -207,7 +199,7 @@ npm --prefix rcp-dashboard run build
 These generated variable values contain only URLs and a public client ID. If you
 edit this env file yourself, treat sourcing it as executing shell input.
 
-With deployment authorization, upload assets and then the HTML shell:
+Upload assets and then the HTML shell:
 
 ```sh
 aws s3 sync rcp-dashboard/dist/ s3://DASHBOARD_BUCKET_FROM_TERRAFORM/ \
@@ -285,24 +277,24 @@ Flyway on PostgreSQL 17.6, verifies anonymous API rejection/management hiding,
 backs up/restores synthetic data, and cleans up only its own temporary resources.
 It creates no AWS resources, calls no Cognito API, and does not request certificates.
 
-After integrating PR #4 into the application checkout, also run:
+To verify demo access restrictions and monitor limits, also run:
 
 ```sh
 python3 deploy/demo/scripts/local-smoke.py --build --phase2
 ```
 
-This second mode uses local JWTs, enables the actual Phase 2 configuration, disables
+This second mode uses local JWTs, enables the demo configuration, disables
 both queue polling and local workers, and verifies the seeded demo UUID, two
 monitors, server-side read-only rejection, 60-second/5-second limits, and one-time
 onboarding. It uses a fresh local database, not the developer's running services.
 The local token endpoint exists only in this loopback test's `local` profile;
-production Compose still uses `aws`. To test an immutable application snapshot
-without merging it into this branch, supply `--source-directory /path/to/snapshot`
+production Compose still uses `aws`. To test a specific application source checkout,
+supply `--source-directory /path/to/snapshot`
 and a separate `--image` tag. This does not verify real Cognito login or AWS probes.
 
 ## Updates and rollback
 
-Build/tag the final merged image by commit on the target architecture. Back up
+Build/tag the application image by commit on the target architecture. Back up
 PostgreSQL before migrations, set `RCP_CONTROL_PLANE_IMAGE` in `.env`, recreate the
 backend, and confirm health plus both-region probe processing. Caddy renewals and
 backups require the VM to remain reachable. A container restart policy restarts
