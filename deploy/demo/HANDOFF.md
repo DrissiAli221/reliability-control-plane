@@ -1,13 +1,14 @@
 # Demo hosting integration handoff
 
-Base: merged PR #2 at `775c51e874c2c8eb138d437754777d40f3c3c304`.
+Base: merged application `main` at `4eea1eacdeea24acbf82c08884bdb1d3e85f11c6`.
+Originally created from merged PR #2; rebased locally after phases 1–2 merged.
 Branch: `codex/demo-hosting`. Changes are confined to `infra/aws-demo/` and
 `deploy/demo/`; no application source, production infrastructure, root README,
 or shared CI workflow was edited.
 
-The infrastructure feature is commit `7d873ff`; server deployment is `17bf5e9`.
-The compatibility commit aligns the contract with PR #4. Integrate this
-hosting branch locally after merging the Phase 1–2 application work. It is not
+After rebase, the infrastructure feature is `29bfb58`; server deployment is
+`c9a0e4c`, compatibility is `e9a74f4`, five-second timeout is `df6c487`, and restore
+cleanup is `6337fa3`. This branch is ready for review and integration. It is not
 pushed and no cloud deployment has been performed.
 
 ## What is ready
@@ -28,9 +29,10 @@ pushed and no cloud deployment has been performed.
 
 ## Application startup fix confirmed (2026-10-01)
 
-**Resolved in PR #4 commit `e561da2ea805af8f7c2a91d5a766759fee794ed6`, whose
-Java, dashboard, and production Terraform CI checks are green.** PRs #3 and #4
-are still open as of this check. The previously tested head `1513158` failed
+**Resolved in the merged application at `4eea1ea`, with the annotation and
+Spring-context regression test present.** The attribution-free fix was `8b9d6d6`
+on PR #4; phases 1–2 ultimately reached main through PRs #3 and #5. All main CI
+checks are green. The previously tested head `1513158` failed
 to start under the `aws` profile with demo credentials configured: Spring reports
 `CognitoDemoSessionIssuer: No default constructor found`. The component has both
 its production constructor and a test constructor, but neither was annotated for
@@ -47,11 +49,10 @@ on the final merged application after local disk/Docker recovery.
 
 ## Phase 2 contract aligned with PR #4
 
-Current application reference: PR #4 head `e561da2ea805af8f7c2a91d5a766759fee794ed6`.
-The full local integration below tested the previous head `1513158` and a
-temporary constructor fix; it has not been repeated on the new head.
-PR #4 is stacked on PR #3; merge #3 first. This hosting branch stays based on
-merged PR #2 and does not import or modify Claude's application commits.
+Current application reference: main `4eea1eacdeea24acbf82c08884bdb1d3e85f11c6`.
+The historical checks below tested `1513158` and a temporary constructor fix.
+The hosting branch now includes merged main as its base, with no application
+source modifications; final-main checks are recorded separately below.
 
 1. Runtime JSON supplies `max-per-owner=3`, `min-interval-seconds=60`,
    `max-total=25`, `max-timeout-ms=5000` and `read-only-group=demo`. PR #4 now
@@ -167,6 +168,36 @@ and the exact set of existing volumes was unchanged after the test. The temporar
 volume from the earlier smoke was removed individually; no global volume prune
 was performed. The hosting checkout remains isolated from Claude's application
 source.
+
+## Final merged-main integration verification (2026-10-01)
+
+- Application reference: `4eea1eacdeea24acbf82c08884bdb1d3e85f11c6` on main.
+  Phase 1 merged via PR #3; Phase 2 reached main via PR #5 after PR #4 merged into
+  its original base. Main's Java, dashboard and production Terraform CI passed.
+- This local hosting branch was rebased onto that main commit without conflicts.
+  The application directories exactly match main; the review diff contains only
+  `infra/aws-demo/` and `deploy/demo/`. Commit messages have no attribution lines.
+- Existing Dockerfile built a fresh ARM64 image from the merged application.
+  Image `rcp-control-plane:demo-main-4eea1ea` records the source revision as a label.
+- Eleven deployment-helper tests and one CloudFront routing test passed.
+  Terraform fmt/init/validate and the fake-credential offline plan passed with
+  50 resources and unchanged scope/IAM/region checks. Initialization reused the
+  existing local provider binary rather than downloading a duplicate.
+- Fresh-image `aws`-profile Compose smoke passed: demo issuer constructs through
+  Spring, Flyway/readiness works, anonymous API returns 401, management routes
+  remain private, expected CORS works, backup and isolated restore preserve the
+  synthetic marker. Credentials are fake; no Cognito or AWS API was called.
+- Fresh-image Phase 2 smoke passed: correct demo owner and two seeded monitors,
+  read-only write/onboarding rejection, 60-second minimum/5,000-ms maximum limits,
+  rejection at 5,001 ms, and one-time onboarding for an ordinary local account.
+  Test projects and temporary database volumes were removed; the original six
+  RCP containers and live database volume were retained.
+
+Next: review, publish and merge the hosting branch with explicit publication
+approval; choose the VM provider, initial public monitor capacity, API hostname
+and off-host backup destination; establish the AWS account-wide USD1 alert before
+application resources; then perform a separately authorized deployment and live
+Cognito/probe/HTTPS verification. No cloud resources were created by these checks.
 
 ## Cost correction
 

@@ -11,12 +11,13 @@ half is documented in [`infra/aws-demo`](../../infra/aws-demo/README.md).
 
 ## Before going live
 
-Compatibility checks against PR #4 head `1513158` found an AWS-profile startup
-failure in `CognitoDemoSessionIssuer` (two constructors without `@Autowired`).
-See [the handoff](HANDOFF.md) and the reviewed patch artifact in `patches/`.
-Claude must integrate that application fix before deployment.
+Application phases 1–2, including the constructor-injection startup fix, are
+merged into `main` at `4eea1eacdeea24acbf82c08884bdb1d3e85f11c6`. Phase 2 reached
+main through PR #5 after PR #4 merged into its original base branch. The patch in
+`patches/` records the earlier finding and must not be reapplied. See
+[the handoff](HANDOFF.md) for verification evidence and remaining deployment steps.
 
-- Merge and verify Claude's Phase 1–2 implementation: expired-session handling,
+- Use and verify the final combined application/hosting commit: expired-session handling,
   stale public status data, backend read-only `demo` group, 60-second minimum,
   25 global/3 owner monitor caps, maximum 5-second check timeout, example seeding,
   and `/api/demo/session`. The new property names alone do not enforce limits on
@@ -42,9 +43,9 @@ Use a supported Linux distribution with Docker Engine and Docker Compose v2.24.4
 installed from the official Docker instructions. Install Python 3 and the AWS CLI
 on the operator machine. Install `curl` on the VM for external smoke checks.
 
-Clone/copy the **final merged application commit** to `/opt/rcp`, not only this
-worktree's older application snapshot. Check the commit before building. Keep
-production deployment files and states separate.
+Clone/copy the **reviewed combined application and hosting commit** to `/opt/rcp`.
+Check the commit before building. Keep production deployment files and states
+separate.
 
 Create an API hostname (for example `api.example.com`) and point its A record at
 the VM's public IPv4. Add AAAA only if working IPv6 routing is configured. Domain

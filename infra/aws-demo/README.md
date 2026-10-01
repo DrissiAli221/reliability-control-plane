@@ -53,7 +53,8 @@ costs. Local validation proves configuration, not AWS deployment or availability
   Provisioning captures the Cognito UUID `sub` in a host file supplied through
   `RCP_DEMO_OWNER_SUBJECT`; an email/username is not a valid substitute. The earlier
   `seed-example-monitor` flag is removed because PR #4 does not implement it.
-  Merge PRs #3 then #4 before deploying the application.
+  Application phases 1–2 are merged into main at `4eea1ea` (PRs #3 and #5).
+  Deploy the reviewed combined application and hosting commit.
 - Lambda uses Java 21/ARM64/512 MiB, 30-second timeout, one job per invocation,
   a maximum of ten SQS invocations per region, and partial failures.
   The current handler is sequential, and scheduled jobs have a 30-second result
@@ -100,9 +101,9 @@ includes provider checksums for Linux and both Mac architectures.
    hide consumption. An existing budget can be imported by an operator, or use
    the matching name when creating it. This root does not enforce resource
    creation ordering; a full apply is not a substitute for the initial alarm.
-2. Finish and merge Claude's session fixes, read-only backend role, demo login,
-   quotas, and seeding. PR #4 implements `rcp.monitors.max-timeout-ms`; this root
-   supplies 5000. Verify the final merged backend actually reads those values.
+2. Verify the merged session fixes, read-only backend role, demo login,
+   quotas, and seeding in the combined application/hosting commit. The backend
+   implements `rcp.monitors.max-timeout-ms`; this root supplies 5000. Verify the final merged backend actually reads those values.
 3. Build and verify the shaded probe artifact with Java 21:
 
    ```sh
