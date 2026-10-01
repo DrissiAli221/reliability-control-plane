@@ -19,7 +19,7 @@ main through PR #5 after PR #4 merged into its original base branch. The patch i
 
 - Use and verify the final combined application/hosting commit: expired-session handling,
   stale public status data, backend read-only `demo` group, 60-second minimum,
-  25 global/3 owner monitor caps, maximum 5-second check timeout, example seeding,
+  8 global/3 owner monitor caps, maximum 5-second check timeout, example seeding,
   and `/api/demo/session`. The new property names alone do not enforce limits on
   the pre-Phase-2 backend. PR #4 supplies backend group enforcement, concurrent
   quota protection, and a 30/minute demo-login limit for the single backend.
@@ -36,6 +36,14 @@ main through PR #5 after PR #4 merged into its original base branch. The patch i
   builds, PostgreSQL, logs, and backups. A 1 GiB instance is too tight for the
   configured 1 GiB JVM container plus 512 MiB PostgreSQL and the OS. Building the
   Java image on a small VM may need additional memory; build elsewhere if needed.
+
+Oracle Always Free ARM is the selected host, subject to available capacity. Pick
+the home region carefully before signup: it cannot be changed and Always Free
+compute must be created there. An out-of-capacity error can be retried later or
+in another availability domain, but a retry time does not guarantee capacity.
+Keep off-host backups because Oracle can reclaim idle Always Free instances.
+See [Oracle Always Free resources](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm)
+and [home-region rules](https://docs.oracle.com/en-us/iaas/Content/Identity/Tasks/managingregions.htm).
 
 ## Host preparation
 
@@ -77,6 +85,12 @@ Terraform outputs. No secrets are embedded in Compose, build arguments, or Vite.
    quotas, polling, and API origin. These files are ignored by Git. The exact
    region-keyed map is passed through `SPRING_APPLICATION_JSON`, not flattened
    region environment names.
+
+   The global cap is a backend setting, with no application source change. This
+   deployment supplies `rcp.monitors.max-total=8` in the generated JSON. Change
+   that JSON and restart the backend to revise the cap; a conflicting
+   `RCP_MONITORS_MAX_TOTAL` environment variable does not override
+   `SPRING_APPLICATION_JSON`.
 
 2. Create the runtime user's access key with an operator AWS identity. The runtime
    username is the `server_iam_user` Terraform output. Redirect the command's

@@ -37,7 +37,7 @@ def check(plan):
     require({r["region"] for r in lambdas} == {"eu-west-1", "us-east-1"}, "Wrong worker regions")
     for function in lambdas:
         require(function["runtime"] == "java21" and function["architectures"] == ["arm64"], "Wrong Lambda runtime")
-        require(function["memory_size"] == 512 and function["timeout"] == 30, "Unexpected compute sizing")
+        require(function["memory_size"] == 256 and function["timeout"] == 30, "Unexpected compute sizing")
         require(function["reserved_concurrent_executions"] == -1, "Offline default must work without concurrency reservation")
         require(not function["vpc_config"], "Demo probes must not depend on VPC/NAT")
         require(function["tracing_config"] == [{"mode": "PassThrough"}], "Active tracing costs are not configured")

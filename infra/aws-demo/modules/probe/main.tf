@@ -85,7 +85,7 @@ resource "aws_lambda_function" "probe" {
   runtime                        = "java21"
   architectures                  = ["arm64"]
   handler                        = "dev.ali.rcp.lambda.ProbeLambdaHandler"
-  memory_size                    = 512
+  memory_size                    = 256
   timeout                        = 30
   reserved_concurrent_executions = var.reserve_concurrency ? 10 : -1
   s3_bucket                      = aws_s3_bucket.artifact.id

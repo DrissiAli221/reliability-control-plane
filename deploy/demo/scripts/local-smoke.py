@@ -57,7 +57,7 @@ def verify_phase2(origin):
     status, identity = request_json(origin, "/api/me", token=token)
     assert status == 200 and identity["readOnly"] is True
     assert identity["subject"] == "11111111-2222-3333-4444-555555555555", "Seeding must use the token's subject"
-    assert identity["limits"] == {"maxPerOwner": 3, "maxTotal": 25, "minIntervalSeconds": 60, "maxTimeoutMs": 5000}
+    assert identity["limits"] == {"maxPerOwner": 3, "maxTotal": 8, "minIntervalSeconds": 60, "maxTimeoutMs": 5000}
     status, monitors = request_json(origin, "/api/monitors", token=token)
     assert status == 200 and {m["name"] for m in monitors} == {"Example Domain", "Wikipedia"}
     details = [request_json(origin, "/api/monitors/" + m["id"], token=token)[1] for m in monitors]
@@ -104,7 +104,7 @@ def main():
         }}
         if args.phase2:
             config["rcp"].update({
-                "monitors": {"max-per-owner": 3, "max-total": 25, "min-interval-seconds": 60, "max-timeout-ms": 5000},
+                "monitors": {"max-per-owner": 3, "max-total": 8, "min-interval-seconds": 60, "max-timeout-ms": 5000},
                 "local-worker": {"enabled": False},
                 "demo": {"monitors": "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org",
                          "example-monitor-url": "https://example.com"},

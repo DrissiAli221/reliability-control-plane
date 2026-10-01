@@ -55,7 +55,7 @@ The hosting branch now includes merged main as its base, with no application
 source modifications; final-main checks are recorded separately below.
 
 1. Runtime JSON supplies `max-per-owner=3`, `min-interval-seconds=60`,
-   `max-total=25`, `max-timeout-ms=5000` and `read-only-group=demo`. PR #4 now
+   `max-total=8`, `max-timeout-ms=5000` and `read-only-group=demo`. PR #4 now
    implements those limits, including the maximum timeout; the earlier unresolved
    30-second timeout concern is addressed by this configuration plus PR #4.
 2. `rcp.demo.monitors` supplies Example Domain and Wikipedia for the shared demo;
@@ -194,12 +194,43 @@ source.
   RCP containers and live database volume were retained.
 
 Next: review, publish and merge the hosting branch with explicit publication
-approval; choose the VM provider, initial public monitor capacity, API hostname
-and off-host backup destination; establish the AWS account-wide USD1 alert before
+approval; provision the selected Oracle host, confirm the eight-monitor cap,
+choose an API hostname and off-host backup destination; establish the AWS
+account-wide USD1 alert before
 application resources; then perform a separately authorized deployment and live
 Cognito/probe/HTTPS verification. No cloud resources were created by these checks.
 
-## Cost correction
+## Launch defaults (2026-10-01)
+
+Oracle Always Free ARM is the selected host. Start with the two seeded monitors,
+an eight-monitor global cap, and 256 MiB regional Java 21/ARM64 Lambda workers.
+No backend source change is needed: the cap is passed in `server_application_json`.
+The five-second check timeout and three-monitor owner quota remain configured.
+Measure live Lambda peak memory, cold starts and deadline misses before deciding
+whether 512 MiB is needed; CPU allocation also scales with Lambda memory.
+
+The cost model now defaults to 256 MiB and accepts `--memory-mb` for comparisons.
+With monthly allowances available, the Lambda/SQS subtotal is USD 0.58 for two
+fast monitors or USD 1.83 for eight (0.5 s average billed duration, no retries).
+Eight monitors averaging 5 s billed duration with 10% retries give USD 9.33 at
+256 MiB. These exclude the additional services listed below and are not bill caps.
+Record the AWS account signup date and set a month-five reminder to review the
+Free plan expiry; continuing beyond six months requires a Paid plan upgrade.
+
+Verification of these defaults: the 11 deployment tests and CloudFront routing
+test pass; Terraform format/init/validate and the fake-credential, empty-state
+plan pass with 50 resources, including two 256 MiB workers. The estimator reports
+the subtotals above. After disk recovery and restarting Docker Desktop, the
+Phase 2 container smoke passes using the existing image built from main at
+`4eea1ea`: `/api/me` reports the eight-monitor cap; both demo monitors are seeded
+under the correct subject; demo mutations/onboarding return 403; interval and
+timeout restrictions, one-time onboarding, health, CORS and private management
+routes pass. A backup marker survives the isolated restore. No image rebuild was
+needed. Temporary smoke/restore volumes were removed, the volume inventory is
+unchanged, and the original `rcp_rcp-postgres-data` database is healthy. Live AWS
+validation of the 256 MiB workers is still pending.
+
+## Historical cost correction (previous 512 MiB configuration)
 
 The documented model is illustrative and uses available account-wide free
 allowances. At 512 MiB, one invocation/check, 60 seconds and two regions:

@@ -24,7 +24,7 @@ def outputs():
             region: f"https://sqs.{region}.amazonaws.com/123456789012/jobs" for region in ["eu-west-1", "us-east-1"]},
             "probe-result-queue-region": "us-east-1", "probe-result-queue-url": "https://sqs.us-east-1.amazonaws.com/123456789012/results",
             "result-wait-time-seconds": 20, "result-visibility-timeout-seconds": 60},
-        "monitors": {"max-per-owner": 3, "min-interval-seconds": 60, "max-total": 25, "max-timeout-ms": 5000},
+        "monitors": {"max-per-owner": 3, "min-interval-seconds": 60, "max-total": 8, "max-timeout-ms": 5000},
         "demo": {"monitors": "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org", "example-monitor-url": "https://example.com"},
     }}
     return {

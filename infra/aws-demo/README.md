@@ -46,7 +46,7 @@ costs. Local validation proves configuration, not AWS deployment or availability
 - Runtime IAM: send only to two job queues; receive/delete/change visibility/read
   attributes only on the result queue; `AdminInitiateAuth` only on this user pool.
 - The output `server_application_json` preserves the region keys exactly. It also
-  wires 3 monitors/owner, 60-second minimum interval, 25 monitors globally, demo
+  wires 3 monitors/owner, 60-second minimum interval, 8 monitors globally, demo
   group enforcement, and a 5,000 ms maximum timeout. `rcp.demo.monitors` seeds
   Example Domain and Wikipedia for the shared account, and
   `rcp.demo.example-monitor-url=https://example.com` enables one-time onboarding.
@@ -55,12 +55,15 @@ costs. Local validation proves configuration, not AWS deployment or availability
   `seed-example-monitor` flag is removed because PR #4 does not implement it.
   Application phases 1–2 are merged into main at `4eea1ea` (PRs #3 and #5).
   Deploy the reviewed combined application and hosting commit.
-- Lambda uses Java 21/ARM64/512 MiB, 30-second timeout, one job per invocation,
+- Lambda uses Java 21/ARM64/256 MiB, 30-second timeout, one job per invocation,
   a maximum of ten SQS invocations per region, and partial failures.
   The current handler is sequential, and scheduled jobs have a 30-second result
   grace period. Larger batches can consume that grace while later records wait.
-  The concurrency limit provides burst capacity for the full 25-monitor cap; measure
-  cold starts and end-to-end lateness after deployment. Reserved concurrency is off
+  The concurrency limit provides burst capacity for the eight-monitor cap; measure
+  cold starts, peak memory and end-to-end lateness after deployment. Lambda CPU
+  scales with memory, so 256 MiB is a starting configuration, not a proven optimum.
+  Raise it to 512 MiB if live measurements show memory pressure or late probes,
+  updating the plan checker and cost model together. Reserved concurrency is off
   by default: new AWS accounts can have reduced regional quotas, and AWS requires
   100 slots to remain unreserved. Verify each region's capacity before opting into
   `reserve_probe_concurrency=true` (ten reserved slots/region). The SQS maximum of
@@ -135,12 +138,12 @@ includes provider checksums for Linux and both Mac architectures.
 current regional prices, and usage shared with other projects. Credits are
 finite; free-tier allowances are account-wide and not doubled by two regions.
 
-The supplied request-only estimate misses Lambda GB-seconds. At 25 monitors,
+The supplied request-only estimate misses Lambda GB-seconds. At 8 monitors,
 60 seconds, two regions and 30 days, the configured one-job batches produce
-2,160,000 checks/invocations before retries. Average billed duration must include
+691,200 checks/invocations before retries. Average billed duration must include
 probe time, DNS/TLS setup, result publishing, cold starts, and failures.
 
-`cost-estimate.py` is an explicit illustrative model, using 512 MiB, ARM duration
+`cost-estimate.py` is an explicit illustrative model, defaulting to 256 MiB, ARM duration
 at $0.0000133334/GB-second, requests at $0.20/million, standard SQS at $0.40/million,
 and available account-wide allowances of 1M Lambda requests, 400k GB-seconds and
 1M SQS requests. It conservatively counts six SQS calls/check plus up to five idle
@@ -149,22 +152,32 @@ batching and busy/idle overlap change this; retries increase it.
 
 ```sh
 python3 infra/aws-demo/cost-estimate.py --monitors 8 --seconds 0.5
-python3 infra/aws-demo/cost-estimate.py --monitors 25 --seconds 0.5
-python3 infra/aws-demo/cost-estimate.py --monitors 25 --seconds 5 --retry-percent 10
+python3 infra/aws-demo/cost-estimate.py --monitors 8 --seconds 5 --retry-percent 10
+python3 infra/aws-demo/cost-estimate.py --monitors 8 --seconds 5 --retry-percent 10 --memory-mb 512
 ```
 
 S3 storage/requests, CloudFront requests/transfer/functions, cross-region result
 traffic, CloudWatch logs, Cognito users/email quotas, budget service charges, VM
 storage/traffic, backups, and a domain are **additional**, not assumed to be cents.
-At 25 monitors, an average billed duration of 0.5 seconds and no retries gives
-about $7.45/month for Lambda and SQS in this model. An average of 5 seconds with
-10% retries gives about $80.01/month. The 5-second probe timeout reduces the
+At 2 seeded monitors, an average billed duration of 0.5 seconds and no retries
+gives about $0.58/month for Lambda and SQS in this model. At the eight-monitor
+cap, that is about $1.83/month. An average of 5 seconds with 10% retries gives
+about $9.33/month at 256 MiB, compared with $22.01 at 512 MiB for the same billed
+duration. The fast-check estimates are unchanged because Lambda usage already
+fits within its monthly allowance; reducing memory does not halve the total bill.
+The 5-second probe timeout reduces the
 worst case, but does not cap total Lambda billed duration: startup, DNS/TLS, and
 result publishing also contribute. Sustained outages can still cost substantially
 more than fast successful checks.
 The $1 alarm is an early warning, not a promise to remain below $1.
 
-Official references, checked 2026-09-30:
+For accounts opened on the current AWS Free plan, the account closes after six
+months or when its credits run out unless upgraded to the Paid plan. Record the
+signup date and set a reminder around month five; upgrade before expiry if the
+demo should remain online. The Paid plan retains eligible monthly free allowances,
+but credits expire and actual usage determines the bill.
+
+Official references, pricing checked 2026-10-01:
 [Lambda pricing](https://aws.amazon.com/lambda/pricing/),
 [SQS pricing](https://aws.amazon.com/sqs/pricing/),
 [S3 pricing](https://aws.amazon.com/s3/pricing/),
@@ -174,6 +187,8 @@ Official references, checked 2026-09-30:
 [refresh token rotation](https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-the-refresh-token.html),
 [reserved concurrency](https://docs.aws.amazon.com/lambda/latest/dg/configuration-concurrency.html),
 [new-account quotas](https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html).
+For the CPU/memory tradeoff, see
+[Lambda memory configuration](https://docs.aws.amazon.com/lambda/latest/dg/configuration-memory.html).
 
 ## State and teardown
 

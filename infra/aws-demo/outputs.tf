@@ -41,7 +41,7 @@ output "server_iam_user" {
 }
 
 output "server_application_json" {
-  description = "Nonsecret Spring configuration. New guardrails require Claude's Phase 2 implementation."
+  description = "Nonsecret Spring configuration for the merged demo guardrails."
   value = jsonencode({
     rcp = {
       identity = {
@@ -61,7 +61,7 @@ output "server_application_json" {
       monitors = {
         max-per-owner        = 3
         min-interval-seconds = 60
-        max-total            = 25
+        max-total            = 8
         max-timeout-ms       = 5000
       }
       demo = {
