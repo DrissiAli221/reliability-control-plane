@@ -10,8 +10,9 @@ React operator console and public status pages.
 ## What it does
 
 - **Monitors HTTP(S) endpoints** on a schedule, each check fanned out to `eu-west-1` and `us-east-1`.
-- **Decides per check, across regions.** Both regions succeed → `UP`. Both reach the site and get a failure →
-  `DOWN`. Anything else (they disagree, a region has no answer, a probe was blocked by policy) → inconclusive.
+- **Decides per check, across regions.** Both regions get a 2xx or 3xx response → `UP`. Both regions observe a
+  target failure (an HTTP error status, a connection or TLS failure, or a timeout) → `DOWN`. Anything else (the
+  regions disagree, a region has no answer, a probe was blocked by policy or failed internally) → inconclusive.
 - **Opens an incident on the 2nd consecutive `DOWN`** and resolves it after 2 consecutive `UP`s. An inconclusive
   check resets both streaks, so one flaky region can neither open an incident nor close one.
 - **Measures availability with its evidence.** Reports show measured availability *and* how many of the expected
@@ -40,40 +41,49 @@ flowchart LR
 PostgreSQL decides what is due and records every outcome; the queues only carry work. Delivery is at least once, so
 duplicates are expected and rejected by database constraints rather than prevented.
 
-## Two deployments: the full design and the live demo
+## Two deployments: the full design and the planned demo
 
-The repository describes two AWS setups. They run the same application code and differ only in where the control
-plane and database live.
+**Neither is deployed yet.** The production design is Terraform in this repository; the low-cost demo is planned
+and its infrastructure is in review. Both run the same application code and differ only in where the control plane
+and database live. The browser loads the dashboard from CloudFront and calls the API directly on the load balancer
+or VM.
 
 ```mermaid
 flowchart TB
     subgraph prod["Production design (Terraform in infra/aws, not deployed)"]
         direction LR
-        CF1["CloudFront + S3<br/>dashboard"] --- ALB["ALB"] --- ECS["ECS Fargate<br/>control plane"] --- RDS[("RDS PostgreSQL<br/>private subnets")]
-        ECS --- SQS1["SQS + Lambda probes<br/>2 regions"]
+        B1(["Browser"]) --> CF1["CloudFront + S3<br/>dashboard files"]
+        B1 --> ALB["ALB"] --> ECS["ECS Fargate<br/>control plane"] --> RDS[("RDS PostgreSQL<br/>private subnets")]
+        ECS --> SQS1["SQS + Lambda probes<br/>2 regions"]
     end
-    subgraph demo["Live demo (low-cost)"]
+    subgraph demo["Planned demo (low-cost, not deployed yet)"]
         direction LR
-        CF2["CloudFront + S3<br/>dashboard"] --- VM["One small VM<br/>Caddy · control plane · PostgreSQL"]
-        VM --- SQS2["SQS + Lambda probes<br/>2 regions"]
+        B2(["Browser"]) --> CF2["CloudFront + S3<br/>dashboard files"]
+        B2 --> VM["One small VM<br/>Caddy → control plane → PostgreSQL"]
+        VM --> SQS2["SQS + Lambda probes<br/>2 regions"]
     end
 ```
 
-| | Production design | Live demo |
+| | Production design | Planned demo |
 | --- | --- | --- |
 | Control plane | ECS Fargate behind an ALB, in a VPC with NAT | One container on a small VM behind Caddy (HTTPS) |
 | Database | RDS PostgreSQL in private subnets | PostgreSQL 17.6 on the same VM, with daily dumps |
 | Probes, queues, sign-in, dashboard hosting | Lambda in 2 regions, SQS, Cognito, S3 + CloudFront | The same |
-| Estimated cost if left running | About $130/month (NAT gateways, ALB, Fargate, RDS) | The VM, plus a few dollars of Lambda time at demo scale |
+| Estimated cost if left running | About $130/month (NAT gateways, ALB, Fargate, RDS) | The VM (free tier or about $10–13/month), plus Lambda and SQS usage |
 
 The demo exists because the production design is too expensive to leave running for a portfolio. Keeping probes,
-queues and sign-in on real AWS means the two-region evidence is real; only the always-on pieces moved.
+queues and sign-in on AWS means its two-region evidence will be real; only the always-on pieces move.
 
-### Trying the demo
+Demo costs are estimates, not bills. Lambda and SQS for 8 monitors checked every 60 seconds from both regions, at
+an average of 0.5 seconds per check and no retries, come to about $2 a month; 25 monitors at the 5-second timeout
+with 10% retries would be about $80. Logs, storage, traffic, CloudFront, Cognito, backups and a domain are extra.
+A $1 AWS budget alert is set up before anything is deployed; it warns, it does not stop spending.
 
-The sign-in page offers **Try the live demo**: a shared, read-only account with a few neutral monitors already
+### Trying the demo (once deployed)
+
+The sign-in page will offer **Try the live demo**: a shared, read-only account with a few neutral monitors already
 running. Read-only is enforced by the API (a Cognito `demo` group), not just hidden buttons, and the demo password
-never reaches the browser because the backend signs in on the visitor's behalf. Anyone can also **create an
+never reaches the browser because the backend signs in on the visitor's behalf. Anyone will also be able to **create an
 account** to monitor their own site, within deployment-wide limits on interval, timeout and monitor count.
 
 ## Design decisions
@@ -91,13 +101,14 @@ Each decision has a full record (context, alternatives, consequences, and when t
 | **Regions diversify observations, not authority** ([ADR-009](docs/accepted-adrs.md#adr-009--central-region-authority-boundary)) | Two regions buy independent evidence about the target | The control plane itself is single-region; this is not multi-region HA |
 | **Inconclusive is not down** | A broken probe or a one-sided failure says nothing reliable about the target | A real outage seen by only one region shows as disagreement, not an incident |
 | **Coverage gates the SLO** | 100% availability measured over 3% of the expected checks is not a result | Reports can say "insufficient evidence" instead of giving a number |
-| **Cognito sign-in, read-only enforced on the server** ([ADR-010](docs/accepted-adrs.md#adr-010--oidc-operator-identity)) | No home-made password handling; the demo cannot be changed even with a hand-crafted request | The live demo depends on Cognito being reachable |
+| **Cognito sign-in, read-only enforced on the server** ([ADR-010](docs/accepted-adrs.md#adr-010--oidc-operator-identity)) | No home-made password handling; the demo cannot be changed even with a hand-crafted request | Demo sign-in depends on Cognito being reachable |
 
 ## What is proven, and what is not
 
 - **Proven locally:** the full pipeline with PostgreSQL and an SQS-compatible queue (ElasticMQ), concurrency and
   idempotency under Testcontainers, incident open and resolve through fault injection, a k6 load run, and a
-  backup-and-restore exercise. CI runs the Java suite, the dashboard tests and an offline Terraform plan.
+  backup-and-restore exercise. CI runs the Java suite, the dashboard tests, and Terraform formatting and validation. An offline Terraform plan
+  has been run by hand, not in CI.
 - **Not proven:** real-AWS behaviour of the production design (it has never been applied), network-level egress
   isolation for probes, failover of the control plane, and production capacity.
 
@@ -129,11 +140,17 @@ The [implementation status](docs/implementation-status.md) is the evidence ledge
 
 ## Run it locally
 
-Requirements: Docker Desktop, Java 21 and Node.js. From the repository root:
+Requirements: Docker Desktop, Java 21 and Node.js. Point `JAVA_HOME` at a Java 21 JDK first; on macOS:
+
+```bash
+export JAVA_HOME=$(/usr/libexec/java_home -v 21)
+```
+
+Then, from the repository root:
 
 ```bash
 docker compose up -d
-JAVA_HOME=$(/usr/libexec/java_home -v 21) ./rcp-control-plane/mvnw -q -DskipTests install
+./rcp-control-plane/mvnw -q -DskipTests install
 cd rcp-control-plane && RCP_LOCAL_JWT_SECRET="$(openssl rand -base64 48)" ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
