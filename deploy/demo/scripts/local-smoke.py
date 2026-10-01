@@ -57,11 +57,11 @@ def verify_phase2(origin):
     status, identity = request_json(origin, "/api/me", token=token)
     assert status == 200 and identity["readOnly"] is True
     assert identity["subject"] == "11111111-2222-3333-4444-555555555555", "Seeding must use the token's subject"
-    assert identity["limits"] == {"maxPerOwner": 3, "maxTotal": 25, "minIntervalSeconds": 60, "maxTimeoutMs": 10000}
+    assert identity["limits"] == {"maxPerOwner": 3, "maxTotal": 25, "minIntervalSeconds": 60, "maxTimeoutMs": 5000}
     status, monitors = request_json(origin, "/api/monitors", token=token)
     assert status == 200 and {m["name"] for m in monitors} == {"Example Domain", "Wikipedia"}
     details = [request_json(origin, "/api/monitors/" + m["id"], token=token)[1] for m in monitors]
-    assert all(m["checkIntervalSeconds"] == 60 and m["timeoutMs"] <= 10000 for m in details)
+    assert all(m["checkIntervalSeconds"] == 60 and m["timeoutMs"] <= 5000 for m in details)
     create = {"name": "Forbidden write", "targetUrl": "https://example.com", "checkIntervalSeconds": 60, "timeoutMs": 5000}
     assert request_json(origin, "/api/monitors", "POST", create, token)[0] == 403
     assert request_json(origin, "/api/onboarding", "POST", token=token)[0] == 403
@@ -70,11 +70,11 @@ def verify_phase2(origin):
     developer_token = developer["accessToken"]
     assert request_json(origin, "/api/me", token=developer_token)[1]["readOnly"] is False
     assert request_json(origin, "/api/monitors", "POST", create | {"checkIntervalSeconds": 30}, developer_token)[0] == 400
-    assert request_json(origin, "/api/monitors", "POST", create | {"timeoutMs": 10001}, developer_token)[0] == 400
+    assert request_json(origin, "/api/monitors", "POST", create | {"timeoutMs": 5001}, developer_token)[0] == 400
     assert request_json(origin, "/api/onboarding", "POST", token=developer_token)[0] == 201
     assert request_json(origin, "/api/onboarding", "POST", token=developer_token)[0] == 204
     assert len(request_json(origin, "/api/monitors", token=developer_token)[1]) == 1
-    print("Phase 2 contract PASS: seeded subject, read-only writes, 60-second/10-second limits, one-time onboarding.")
+    print("Phase 2 contract PASS: seeded subject, read-only writes, 60-second/5-second limits, one-time onboarding.")
 
 
 def main():
@@ -104,7 +104,7 @@ def main():
         }}
         if args.phase2:
             config["rcp"].update({
-                "monitors": {"max-per-owner": 3, "max-total": 25, "min-interval-seconds": 60, "max-timeout-ms": 10000},
+                "monitors": {"max-per-owner": 3, "max-total": 25, "min-interval-seconds": 60, "max-timeout-ms": 5000},
                 "local-worker": {"enabled": False},
                 "demo": {"monitors": "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org",
                          "example-monitor-url": "https://example.com"},

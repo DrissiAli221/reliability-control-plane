@@ -18,7 +18,7 @@ Claude must integrate that application fix before deployment.
 
 - Merge and verify Claude's Phase 1–2 implementation: expired-session handling,
   stale public status data, backend read-only `demo` group, 60-second minimum,
-  25 global/3 owner monitor caps, maximum 10-second check timeout, example seeding,
+  25 global/3 owner monitor caps, maximum 5-second check timeout, example seeding,
   and `/api/demo/session`. The new property names alone do not enforce limits on
   the pre-Phase-2 backend. PR #4 supplies backend group enforcement, concurrent
   quota protection, and a 30/minute demo-login limit for the single backend.
@@ -278,7 +278,7 @@ python3 deploy/demo/scripts/local-smoke.py --build --phase2
 
 This second mode uses local JWTs, enables the actual Phase 2 configuration, disables
 both queue polling and local workers, and verifies the seeded demo UUID, two
-monitors, server-side read-only rejection, 60-second/10-second limits, and one-time
+monitors, server-side read-only rejection, 60-second/5-second limits, and one-time
 onboarding. It uses a fresh local database, not the developer's running services.
 The local token endpoint exists only in this loopback test's `local` profile;
 production Compose still uses `aws`. To test an immutable application snapshot

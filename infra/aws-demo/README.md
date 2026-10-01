@@ -47,7 +47,7 @@ costs. Local validation proves configuration, not AWS deployment or availability
   attributes only on the result queue; `AdminInitiateAuth` only on this user pool.
 - The output `server_application_json` preserves the region keys exactly. It also
   wires 3 monitors/owner, 60-second minimum interval, 25 monitors globally, demo
-  group enforcement, and a 10,000 ms maximum timeout. `rcp.demo.monitors` seeds
+  group enforcement, and a 5,000 ms maximum timeout. `rcp.demo.monitors` seeds
   Example Domain and Wikipedia for the shared account, and
   `rcp.demo.example-monitor-url=https://example.com` enables one-time onboarding.
   Provisioning captures the Cognito UUID `sub` in a host file supplied through
@@ -102,7 +102,7 @@ includes provider checksums for Linux and both Mac architectures.
    creation ordering; a full apply is not a substitute for the initial alarm.
 2. Finish and merge Claude's session fixes, read-only backend role, demo login,
    quotas, and seeding. PR #4 implements `rcp.monitors.max-timeout-ms`; this root
-   supplies 10000. Verify the final merged backend actually reads those values.
+   supplies 5000. Verify the final merged backend actually reads those values.
 3. Build and verify the shaded probe artifact with Java 21:
 
    ```sh
@@ -149,13 +149,18 @@ batching and busy/idle overlap change this; retries increase it.
 ```sh
 python3 infra/aws-demo/cost-estimate.py --monitors 8 --seconds 0.5
 python3 infra/aws-demo/cost-estimate.py --monitors 25 --seconds 0.5
-python3 infra/aws-demo/cost-estimate.py --monitors 25 --seconds 10 --retry-percent 10
+python3 infra/aws-demo/cost-estimate.py --monitors 25 --seconds 5 --retry-percent 10
 ```
 
 S3 storage/requests, CloudFront requests/transfer/functions, cross-region result
 traffic, CloudWatch logs, Cognito users/email quotas, budget service charges, VM
 storage/traffic, backups, and a domain are **additional**, not assumed to be cents.
-A 10-second outage can cost substantially more than fast successful checks.
+At 25 monitors, an average billed duration of 0.5 seconds and no retries gives
+about $7.45/month for Lambda and SQS in this model. An average of 5 seconds with
+10% retries gives about $80.01/month. The 5-second probe timeout reduces the
+worst case, but does not cap total Lambda billed duration: startup, DNS/TLS, and
+result publishing also contribute. Sustained outages can still cost substantially
+more than fast successful checks.
 The $1 alarm is an early warning, not a promise to remain below $1.
 
 Official references, checked 2026-09-30:

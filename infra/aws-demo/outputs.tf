@@ -62,7 +62,7 @@ output "server_application_json" {
         max-per-owner        = 3
         min-interval-seconds = 60
         max-total            = 25
-        max-timeout-ms       = 10000
+        max-timeout-ms       = 5000
       }
       demo = {
         monitors            = "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org"

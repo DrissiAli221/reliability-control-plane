@@ -26,29 +26,35 @@ pushed and no cloud deployment has been performed.
   private actuator routes; consistent dumps, daily systemd timer and isolated restore.
 - Deployment/build/configuration runbooks and a parameterized illustrative cost model.
 
-## Blocking application fix found during compatibility checks
+## Application startup fix confirmed (2026-10-01)
 
-**Do not deploy or merge PR #4's tested head until this is fixed.** The `aws`
-profile fails to start with demo credentials configured: Spring reports
+**Resolved in PR #4 commit `e561da2ea805af8f7c2a91d5a766759fee794ed6`, whose
+Java, dashboard, and production Terraform CI checks are green.** PRs #3 and #4
+are still open as of this check. The previously tested head `1513158` failed
+to start under the `aws` profile with demo credentials configured: Spring reports
 `CognitoDemoSessionIssuer: No default constructor found`. The component has both
-its production constructor and a test constructor, but neither is annotated for
+its production constructor and a test constructor, but neither was annotated for
 Spring injection. Local demo tests select a different issuer and miss this failure.
 
 `patches/pr4-cognito-constructor.patch` contains the explicit `@Autowired` on the
 production constructor plus a Spring-context regression test. This patch is a
-review artifact for Claude's application branch; no backend source in either Git
-checkout was edited. A temporary test snapshot reproduced the failure before the
-patch and passed the new context test after it. Apply/review the patch on PR #4
-and rerun its checks, including the `aws`-profile Compose smoke with fake credentials.
+review artifact for Claude's application branch; this hosting task did not edit
+backend source in either Git checkout. A temporary test snapshot reproduced the failure before the
+patch and passed the new context test after it. Claude has now applied the
+constructor annotation and a context regression test in PR #4; the patch is
+historical and should not be reapplied. Rebuild and run the `aws`-profile smoke
+on the final merged application after local disk/Docker recovery.
 
 ## Phase 2 contract aligned with PR #4
 
-Application reference: PR #4 head `1513158e1f8e0ae0e0fbe164966f8af4f6a4fc3c`.
+Current application reference: PR #4 head `e561da2ea805af8f7c2a91d5a766759fee794ed6`.
+The full local integration below tested the previous head `1513158` and a
+temporary constructor fix; it has not been repeated on the new head.
 PR #4 is stacked on PR #3; merge #3 first. This hosting branch stays based on
 merged PR #2 and does not import or modify Claude's application commits.
 
 1. Runtime JSON supplies `max-per-owner=3`, `min-interval-seconds=60`,
-   `max-total=25`, `max-timeout-ms=10000` and `read-only-group=demo`. PR #4 now
+   `max-total=25`, `max-timeout-ms=5000` and `read-only-group=demo`. PR #4 now
    implements those limits, including the maximum timeout; the earlier unresolved
    30-second timeout concern is addressed by this configuration plus PR #4.
 2. `rcp.demo.monitors` supplies Example Domain and Wikipedia for the shared demo;
@@ -123,6 +129,20 @@ mode verifies live Cognito/AWS probes, real HTTPS issuance, x86 execution, or
 Oracle/EC2 deployment. Production Compose still uses the `aws` profile. Rebuild
 and rerun the checks on the final merged application commit before deployment.
 
+## Timeout update and lightweight verification (2026-10-01)
+
+The demo probe timeout is reduced from 10,000 ms to 5,000 ms in Terraform's
+runtime output, configuration validation, test fixtures, and the local smoke
+contract. The smoke now checks rejection at 5,001 ms. Lambda's 30-second execution
+timeout and SQS visibility remain unchanged: they cover invocation overhead and
+queue redelivery, not the application's HTTP probe timeout.
+
+Docker builds and container tests were not repeated: the Mac has only 2.3 GiB
+free and Docker was reported to have metadata I/O errors. Non-Docker configuration,
+provisioning, backup-failure and routing tests plus Terraform validation/offline
+plan were rerun. Prior container evidence above used the 10,000 ms setting.
+Recover disk/Docker and rerun the updated container smoke before deployment.
+
 ## Cost correction
 
 The documented model is illustrative and uses available account-wide free
@@ -132,7 +152,11 @@ allowances. At 512 MiB, one invocation/check, 60 seconds and two regions:
 |---|---:|
 | 8 monitors, average billed duration 0.5 s, no retries | USD 1.83 |
 | 25 monitors, average billed duration 0.5 s, no retries | USD 7.45 |
-| 25 monitors, average billed duration 10 s, 10% retries | USD 159.22 |
+| 25 monitors, average billed duration 5 s, 10% retries | USD 80.01 |
+| Previous 10 s scenario: 25 monitors, 10% retries | USD 159.22 |
+
+The 5-second probe cap does not guarantee the fast-check estimate or cap total
+Lambda billed duration; invocation overhead also counts.
 
 Those totals exclude logs, storage, traffic, CloudFront, Cognito, VM, backups and
 domain costs; they are not measured deployment bills. See the infrastructure
