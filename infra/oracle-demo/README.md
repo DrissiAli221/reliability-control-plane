@@ -169,7 +169,12 @@ you still have access; updating Terraform alone does not update that old script.
 Copy the reviewed release and configuration to `/opt/rcp` and follow
 [`deploy/demo`](../../deploy/demo/README.md). Verify HTTPS, login, both probe regions,
 read-only access, private database/management ports, and an off-host backup before
-publishing the dashboard URL. Test external 80/443 reachability and restricted SSH
+publishing the dashboard URL. Its `pull-backup.py` helper copies the latest verified
+archive to the operator machine using SSH; run its isolated restore check there
+and keep downloads current. An offline laptop does not provide automatic backups.
+Set the AWS demo `api_origin` to your API's **HTTPS origin with no trailing slash**
+(for example `https://api.example.com`); Caddy obtains the certificate after DNS
+and TCP 80/443 are configured. Test external 80/443 reachability and restricted SSH
 from an independent connection; local syntax checks do not prove packet filtering.
 
 ## Recovery and teardown

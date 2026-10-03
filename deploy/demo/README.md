@@ -253,11 +253,41 @@ service's `RCP_BACKUP_RETENTION_DAYS` environment value. Inspect failures with
 `journalctl -u rcp-demo-backup.service`; a stale `.backup-lock` requires inspection
 before removal. Do not declare backups working just because the timer is enabled.
 
-**Copy backups off the VM** to an operator-chosen private, encrypted store. Same-host
-dumps cannot survive VM/disk loss. No external backup service or upload is configured
-here; its cost, credentials, and retention need an explicit choice. PostgreSQL
-storage and backups have no automatic total-size cap: watch disk growth and define
-an application history-retention policy before long-running public use.
+**Download a backup off the VM before sharing the live demo.** The operator can
+pull the latest completed archive onto their Mac/Linux machine using the existing
+SSH key; no cloud-storage credentials or public backup endpoint are needed.
+Ensure the reviewed release (including both backup helpers) is installed under
+`/opt/rcp` on the server and the daily backup service has completed at least once.
+Verify the SSH host-key fingerprint through a trusted channel on first connection;
+the helper requires an existing trusted host key and never disables that check.
+
+From the repository root on your operator machine:
+
+```sh
+python3 deploy/demo/scripts/pull-backup.py \
+  --host ubuntu@YOUR_VM_PUBLIC_IP --identity "$HOME/.ssh/YOUR_EXISTING_KEY" \
+  --directory "$HOME/Backups/rcp"
+```
+
+If the key is in your SSH agent, omit `--identity`. The server helper uses
+`sudo -n` to read the backup service's root-owned 0600 archives; the Ubuntu operator
+must retain their existing noninteractive sudo access. The download selects only
+completed filenames, excludes partial files/symlinks, validates length and SHA-256,
+and requires SSH to exit successfully before publishing a private 0600 file.
+Interrupted/corrupt downloads never overwrite an existing archive. Repeating an
+identical download is safe. The default size limit is 1 GiB; increase
+`--max-size-mb` only after checking available operator storage.
+
+Run `restore-check.sh` against the downloaded archive on the operator machine and
+repeat the download after each daily backup. This is an operator-initiated copy,
+not an unattended cloud upload: a sleeping/offline laptop does not fetch backups.
+Record the latest off-server backup time and check its age before relying on it.
+Keep the destination outside Git on a protected/encrypted disk. The helper keeps
+downloaded archives until you explicitly prune them; same-host retention stays
+seven days. For unattended long-term hosting, choose a private external storage
+destination and its credential/retention policy before removing this operator task.
+PostgreSQL storage and backups have no automatic total-size cap: watch disk growth
+and define an application history-retention policy before long-running public use.
 
 For disaster recovery, first restore to an isolated DB and verify it. Stop all
 writers, take a safety backup of surviving data, prepare a fresh named volume,
