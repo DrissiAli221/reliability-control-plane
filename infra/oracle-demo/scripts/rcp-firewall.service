@@ -1,0 +1,14 @@
+[Unit]
+Description=RCP host and Docker ingress firewall
+Requires=docker.service
+After=network-online.target docker.service
+Wants=network-online.target
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/rcp-firewall
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
