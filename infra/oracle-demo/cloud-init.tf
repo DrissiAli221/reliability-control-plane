@@ -15,9 +15,7 @@ locals {
         path        = "/usr/local/sbin/rcp-firewall"
         owner       = "root:root"
         permissions = "0700"
-        content = templatefile("${path.module}/scripts/firewall.sh.tftpl", {
-          ssh_allowed_cidrs = sort(tolist(var.ssh_allowed_cidrs))
-        })
+        content     = file("${path.module}/scripts/firewall.sh.tftpl")
       },
       {
         path        = "/etc/systemd/system/rcp-firewall.service"

@@ -132,14 +132,19 @@ and test upgrades. Log out/in after bootstrap to pick up Docker group membership
 If bootstrap failed, inspect `/var/log/cloud-init-output.log` before retrying.
 Do not assume Terraform instance creation means the host is ready.
 
-Both OCI and the host firewall restrict SSH and allow TCP 80/443. A dedicated
+OCI restricts SSH to the configured operator CIDRs. The host accepts port 22
+without a source-IP restriction, with password SSH and direct root login disabled.
+Both layers allow TCP 80/443. A dedicated
 `DOCKER-USER` chain restricts Docker's forwarded public ports too, using their
 original destination ports. UDP 443/HTTP3 and IPv6 are intentionally not enabled;
 Caddy serves HTTPS over TCP. The script preserves OCI's existing rules and
 link-local outbound storage access. Its systemd unit reapplies on reboot and
-Docker restart. If your home IP changes, update the Terraform SSH CIDR and the
-host's `/usr/local/sbin/rcp-firewall` through your current session/OCI console;
-cloud-init is not rerun by a Terraform update. Check this before disconnecting.
+Docker restart. If your home IP changes, update `ssh_allowed_cidrs` and apply the
+reviewed network-rule change, or update the security list in the OCI console and
+reconcile Terraform afterwards. You do not need an existing SSH session or a VM
+console password. Cloud-init is not rerun by a Terraform update. For a VM created
+with an older source-restricted host firewall, remove those restrictions while
+you still have access; updating Terraform alone does not update that old script.
 
 Copy the reviewed release and configuration to `/opt/rcp` and follow
 [`deploy/demo`](../../deploy/demo/README.md). Verify HTTPS, login, both probe regions,
