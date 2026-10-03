@@ -1,6 +1,6 @@
 resource "aws_cognito_user_pool" "demo" {
   name                     = "${var.name}-users"
-  user_pool_tier           = "LITE"
+  user_pool_tier           = "ESSENTIALS"
   username_attributes      = ["email"]
   auto_verified_attributes = ["email"]
   mfa_configuration        = "OPTIONAL"

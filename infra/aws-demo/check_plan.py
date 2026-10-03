@@ -64,7 +64,7 @@ def check(plan):
     require(client["refresh_token_rotation"][0]["feature"] == "ENABLED", "Refresh rotation required")
     require(client["access_token_validity"] == 15, "Use short-lived demo tokens")
     pool = resources("aws_cognito_user_pool")[0]
-    require(pool["region"] == "us-east-1" and pool["user_pool_tier"] == "LITE", "Wrong identity placement/tier")
+    require(pool["region"] == "us-east-1" and pool["user_pool_tier"] == "ESSENTIALS", "Wrong identity placement/tier")
     require(pool["admin_create_user_config"][0]["allow_admin_create_user_only"] is False, "Self sign-up disabled")
     require(pool["auto_verified_attributes"] == ["email"], "Email verification is required")
     require(resources("aws_cognito_user_group")[0]["name"] == "demo", "Wrong demo group")

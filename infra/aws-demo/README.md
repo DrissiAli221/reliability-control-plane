@@ -30,7 +30,8 @@ costs. Local validation proves configuration, not AWS deployment or availability
 ## Contract
 
 - Cognito is in **us-east-1**; self sign-up and email-code verification are enabled.
-  Lite tier, the production password policy, and optional TOTP are explicit.
+  Essentials tier (Lite does not support refresh-token rotation; both are free up to
+  10,000 monthly active users), the production password policy, and optional TOTP are explicit.
 - A public OAuth client uses authorization code flow; the browser supplies PKCE.
   The backend may use `ADMIN_USER_PASSWORD_AUTH` via its IAM user for the demo
   button. Refresh-token rotation is enabled; the incompatible
