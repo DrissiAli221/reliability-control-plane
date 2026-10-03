@@ -53,7 +53,8 @@ registration is a separate potential cost. The dashboard uses the generated
 CloudFront HTTPS hostname; Cognito callback and backend CORS must match it exactly.
 
 Allow TCP 80/443 through both the provider firewall and host firewall. Restrict
-SSH to operator IPs; optionally permit UDP 443 for HTTP/3. Caddy uses port 80 for
+SSH to operator IPs at the provider firewall. This setup exposes HTTPS over TCP;
+UDP 443/HTTP3 is not published. Caddy uses port 80 for
 ACME validation/redirects and renews HTTPS certificates automatically. Do not open
 5432, 8080, or actuator endpoints to the Internet. Docker published ports need
 rules that account for Docker's forwarding behavior, not just host INPUT rules.
