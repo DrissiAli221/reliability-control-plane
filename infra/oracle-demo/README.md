@@ -4,8 +4,8 @@ Terraform for the VM used by [`deploy/demo`](../../deploy/demo/README.md), separ
 from the AWS resources and state in [`infra/aws-demo`](../aws-demo/README.md).
 
 Creates six resources: one VCN, Internet Gateway, route table, restricted security
-list, public subnet, and `VM.Standard.A1.Flex` instance. Defaults are **2 OCPUs,
-12 GB RAM, and a 50 GB Balanced boot disk**. No NAT gateway, load balancer, managed
+list, public subnet, and `VM.Standard.A1.Flex` instance. Defaults are **1 OCPU,
+6 GB RAM, and a 50 GB Balanced boot disk**. No NAT gateway, load balancer, managed
 database, extra disk, or paid image is included.
 
 The cloud-init bootstrap installs Docker Engine and Compose from Docker's signed
@@ -27,10 +27,30 @@ different latest image on every plan.
 Capacity is not guaranteed. An out-of-capacity response can require waiting or
 choosing another availability domain in the same home region. Inspect partial
 state before retrying; do not launch parallel copies. Idle free VMs may be
-reclaimed. Keep PostgreSQL backups outside this VM.
+reclaimed. Oracle's documented idle criteria are CPU (95th percentile), network,
+and A1 memory usage all below 20% over seven days. Right-sizing to 1 OCPU / 6 GB
+reduces unused capacity; it is not a reclamation guarantee. For example, 1.5 GB of
+actual resident memory would be 25% of 6 GB, but container memory limits do not
+establish actual usage. Measure the running VM and keep off-server backups.
 
-References, checked 2026-10-02:
+Before provisioning, create a **$1 monthly Oracle budget** in Billing & Cost
+Management → Budgets, targeted at the tenancy root compartment. Add email alerts
+for actual spend at 10% and 100%, and forecast spend at 100%. Confirm the target
+includes the demo compartment and that the alert recipients are correct. Budget
+alerts are delayed notifications, not spending limits, and are separate from the
+AWS budget. This Terraform root does not create the initial budget.
+
+Pay As You Go is an optional account decision made by the account owner in the
+console. Oracle confirms eligible Always Free resources remain available after
+upgrade, with charges for usage beyond free amounts. Upgrading cannot be undone.
+The current public Free Tier documentation does not explicitly confirm an
+exemption from idle reclamation for paid accounts; verify the current terms with
+Oracle before relying on that claim. Do not drop backups after upgrading.
+
+References, checked 2026-10-03:
 [Always Free resources](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm),
+[Free Tier FAQ](https://www.oracle.com/cloud/free/faq/),
+[Oracle budgets](https://docs.oracle.com/en-us/iaas/Content/Billing/Concepts/budgetsoverview.htm),
 [provider authentication](https://docs.oracle.com/en-us/iaas/Content/dev/terraform/configuring.htm),
 [Docker installation](https://docs.docker.com/engine/install/ubuntu/),
 [Docker firewall behavior](https://docs.docker.com/engine/network/packet-filtering-firewalls/).
