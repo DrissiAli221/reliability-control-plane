@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+uplink="$(ip -4 route show default | awk 'NR == 1 {print $5}')"
+test -n "$uplink"
+
+# Modify only our chains; preserve OCI's link-local storage/metadata rules.
+iptables -w -N RCP-INPUT 2>/dev/null || true
+iptables -w -F RCP-INPUT
+iptables -w -A RCP-INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -w -A RCP-INPUT -i lo -j ACCEPT
+iptables -w -A RCP-INPUT -p udp --sport 67 --dport 68 -j ACCEPT
+%{ for cidr in ssh_allowed_cidrs ~}
+iptables -w -A RCP-INPUT -p tcp -s '${cidr}' --dport 22 -j ACCEPT
+%{ endfor ~}
+iptables -w -A RCP-INPUT -p tcp -m multiport --dports 80,443 -j ACCEPT
+iptables -w -A RCP-INPUT -p icmp --icmp-type 3 -j ACCEPT
+iptables -w -A RCP-INPUT -p icmp --icmp-type 11 -j ACCEPT
+iptables -w -A RCP-INPUT -j REJECT
+iptables -w -C INPUT -j RCP-INPUT 2>/dev/null || iptables -w -I INPUT 1 -j RCP-INPUT
+
+# Docker DNAT bypasses INPUT. Restrict new inbound container connections using
+# the original public destination port, not the translated container port.
+iptables -w -N RCP-DOCKER 2>/dev/null || true
+iptables -w -F RCP-DOCKER
+iptables -w -A RCP-DOCKER -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+iptables -w -A RCP-DOCKER -i "$uplink" -p tcp -m conntrack --ctorigdstport 80 -j RETURN
+iptables -w -A RCP-DOCKER -i "$uplink" -p tcp -m conntrack --ctorigdstport 443 -j RETURN
+iptables -w -A RCP-DOCKER -i "$uplink" -j DROP
+iptables -w -A RCP-DOCKER -j RETURN
+iptables -w -C DOCKER-USER -j RCP-DOCKER 2>/dev/null || iptables -w -I DOCKER-USER 1 -j RCP-DOCKER
