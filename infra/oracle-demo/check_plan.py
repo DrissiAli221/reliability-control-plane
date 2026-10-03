@@ -91,6 +91,10 @@ def check(plan, *, offline=False):
     for path in ("/usr/local/sbin/rcp-bootstrap", "/usr/local/sbin/rcp-firewall"):
         require(files[path]["permissions"] == "0700", "Bootstrap scripts must be root-only.")
         subprocess.run(["bash", "-n"], input=files[path]["content"], text=True, check=True)
+    firewall = files["/usr/local/sbin/rcp-firewall"]["content"]
+    ssh_lines = [line for line in firewall.splitlines() if "--dport 22" in line]
+    require(ssh_lines == ["iptables -w -A RCP-INPUT -p tcp --dport 22 -j ACCEPT"],
+            "The host must not bake in SSH source IPs; OCI owns the CIDR restriction.")
     require(cloud["runcmd"] == [["/usr/local/sbin/rcp-bootstrap"]], "Unexpected bootstrap command.")
     return user_data
 

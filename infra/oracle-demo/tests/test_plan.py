@@ -1,5 +1,6 @@
 """Exercise deployment guardrails by mutating a real offline Terraform plan."""
 import copy
+import base64
 import json
 import os
 import sys
@@ -42,6 +43,14 @@ class PlanGuardrails(unittest.TestCase):
         rules = self.values("oci_core_security_list")["ingress_security_rules"]
         rule = next(r for r in rules if r["protocol"] == "6" and r["tcp_options"][0]["min"] == 80)
         rule["tcp_options"] = [{"min": 5432, "max": 5432}]
+        self.reject()
+
+    def test_stale_home_ip_in_host_firewall_is_rejected(self):
+        metadata = self.values("oci_core_instance")["metadata"]
+        cloud = json.loads(base64.b64decode(metadata["user_data"]).decode().split("\n", 1)[1])
+        firewall = next(f for f in cloud["write_files"] if f["path"] == "/usr/local/sbin/rcp-firewall")
+        firewall["content"] = firewall["content"].replace("-p tcp --dport 22", "-p tcp -s 203.0.113.10/32 --dport 22")
+        metadata["user_data"] = base64.b64encode(("#cloud-config\n" + json.dumps(cloud)).encode()).decode()
         self.reject()
 
     def test_unconfigured_ipv6_firewall(self):
