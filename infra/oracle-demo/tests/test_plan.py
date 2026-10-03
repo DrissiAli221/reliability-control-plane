@@ -29,6 +29,9 @@ class PlanGuardrails(unittest.TestCase):
 
     def test_default_plan(self):
         check(self.plan, offline=True)
+        shape = self.values("oci_core_instance")["shape_config"][0]
+        self.assertEqual(shape["ocpus"], 1)
+        self.assertEqual(shape["memory_in_gbs"], 6)
 
     def test_offline_plan_not_accepted_for_deployment(self):
         with self.assertRaises(ValueError):

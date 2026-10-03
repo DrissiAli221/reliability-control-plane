@@ -74,7 +74,7 @@ variable "ssh_allowed_cidrs" {
 
 variable "ocpus" {
   type        = number
-  default     = 2
+  default     = 1
   description = "ARM cores allocated to the single VM; bounded by the current 2-OCPU free allowance."
   validation {
     condition     = contains([1, 2], var.ocpus)
@@ -84,7 +84,7 @@ variable "ocpus" {
 
 variable "memory_in_gbs" {
   type        = number
-  default     = 12
+  default     = 6
   description = "VM RAM; account-wide Always Free allocation must also be checked."
   validation {
     condition     = var.memory_in_gbs >= 4 && var.memory_in_gbs <= 12 && floor(var.memory_in_gbs) == var.memory_in_gbs
