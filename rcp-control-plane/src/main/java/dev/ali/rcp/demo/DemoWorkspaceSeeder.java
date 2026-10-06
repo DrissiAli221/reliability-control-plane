@@ -1,7 +1,10 @@
 package dev.ali.rcp.demo;
 
 import dev.ali.rcp.monitors.CreateMonitorRequest;
+import dev.ali.rcp.monitors.MonitorCapacityReachedException;
+import dev.ali.rcp.monitors.MonitorOverview;
 import dev.ali.rcp.monitors.MonitorQueryService;
+import dev.ali.rcp.monitors.MonitorQuotaExceededException;
 import dev.ali.rcp.monitors.MonitorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,10 +15,13 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
- * Gives the read-only demo account something to look at: when it owns no monitors, the configured ones are created
- * on startup, through the same validation as any other monitor. After that the demo's history simply accumulates.
+ * Gives the read-only demo account something to look at: on startup, every configured monitor the account does not
+ * have yet (matched by name) is created through the same validation as any other monitor. Adding an entry to
+ * rcp.demo.monitors therefore adds it to a running demo on the next restart, without touching existing history.
  */
 @Component
 @ConditionalOnProperty(prefix = "rcp.demo", name = {"owner-subject", "monitors"})
@@ -41,11 +47,23 @@ class DemoWorkspaceSeeder implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments arguments) {
-        if (ownerSubject.isBlank() || !monitorQueryService.listForOwner(ownerSubject).isEmpty()) return;
-        List<CreateMonitorRequest> requests = DemoMonitors.parse(monitors, monitorService.limits());
-        for (CreateMonitorRequest request : requests) {
-            monitorService.create(ownerSubject, request);
+        if (ownerSubject.isBlank()) return;
+        Set<String> existing = monitorQueryService.listForOwner(ownerSubject).stream()
+                .map(MonitorOverview::name)
+                .collect(Collectors.toSet());
+        List<CreateMonitorRequest> missing = DemoMonitors.parse(monitors, monitorService.limits()).stream()
+                .filter(request -> !existing.contains(request.name()))
+                .toList();
+        int created = 0;
+        for (CreateMonitorRequest request : missing) {
+            try {
+                monitorService.create(ownerSubject, request);
+                created++;
+            } catch (MonitorQuotaExceededException | MonitorCapacityReachedException exception) {
+                // A full deployment must not stop the application from starting; the demo just shows fewer monitors.
+                log.warn("Could not add demo monitor {}: {}", request.name(), exception.getMessage());
+            }
         }
-        log.info("Seeded the demo workspace with {} monitors", requests.size());
+        if (created > 0) log.info("Added {} configured monitors to the demo workspace", created);
     }
 }
