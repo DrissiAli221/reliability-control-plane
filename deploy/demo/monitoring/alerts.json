@@ -1,0 +1,38 @@
+[
+  {
+    "uid": "rcp-pipeline-stuck",
+    "name": "RCP pipeline has stopped ingesting results",
+    "expr": "(sum(increase(rcp_probe_results_stored_total{job=\"rcp-app\",project=\"rcp\",environment=\"demo\"}[5m])) == bool 0) * (max(rcp_system_monitors_enabled{job=\"rcp-app\",project=\"rcp\",environment=\"demo\"}) > bool 0) * (min(up{job=\"rcp-app\",project=\"rcp\",environment=\"demo\"}) == bool 1) * ((time() - max(process_start_time_seconds{job=\"rcp-app\",project=\"rcp\",environment=\"demo\"})) > bool 300) * ((time() - max(rcp_system_metrics_last_success_epoch_seconds{job=\"rcp-app\",project=\"rcp\",environment=\"demo\"})) < bool 120)",
+    "for": "1m",
+    "no_data_state": "OK",
+    "summary": "No probe results were stored in five minutes while monitors are enabled.",
+    "description": "Check result-consumer errors, job publication and the two regional Lambdas. Startup has a five-minute grace period; disabled monitors do not trigger this rule. With the pending period and ingestion delay, delivery is usually around six minutes."
+  },
+  {
+    "uid": "rcp-telemetry-missing",
+    "name": "RCP app metrics are missing or stale",
+    "expr": "max(max(up{job=\"rcp-app\",project=\"rcp\",environment=\"demo\"} == bool 0) or absent(up{job=\"rcp-app\",project=\"rcp\",environment=\"demo\"}) or absent(rcp_probe_results_stored_total{job=\"rcp-app\",project=\"rcp\",environment=\"demo\"}) or absent(rcp_system_monitors_enabled{job=\"rcp-app\",project=\"rcp\",environment=\"demo\"}) or absent(process_start_time_seconds{job=\"rcp-app\",project=\"rcp\",environment=\"demo\"}) or absent(rcp_system_metrics_last_success_epoch_seconds{job=\"rcp-app\",project=\"rcp\",environment=\"demo\"}) or ((time() - rcp_system_metrics_last_success_epoch_seconds{job=\"rcp-app\",project=\"rcp\",environment=\"demo\"}) > bool 120))",
+    "for": "2m",
+    "no_data_state": "Alerting",
+    "summary": "The app scrape failed, an expected metric disappeared, or database metrics stopped refreshing.",
+    "description": "Check Alloy, its remote-write token and the private management listener. If the VM is gone, use the external API alert and restore an off-host backup."
+  },
+  {
+    "uid": "rcp-dashboard-unavailable",
+    "name": "RCP dashboard is unavailable",
+    "expr": "min(probe_success{job=\"rcp-dashboard\",project=\"rcp\",environment=\"demo\"}) == bool 0",
+    "for": "3m",
+    "no_data_state": "Alerting",
+    "summary": "An external location cannot get HTTP 200 over HTTPS from the dashboard.",
+    "description": "Inspect the Synthetic Monitoring check history and CloudFront/S3. This checks page delivery, not JavaScript execution or sign-in."
+  },
+  {
+    "uid": "rcp-api-unavailable",
+    "name": "RCP API is unavailable",
+    "expr": "min(probe_success{job=\"rcp-api\",project=\"rcp\",environment=\"demo\"}) == bool 0",
+    "for": "3m",
+    "no_data_state": "Alerting",
+    "summary": "An external location cannot get UP from the API readiness route.",
+    "description": "Check DuckDNS, HTTPS, Caddy, the control plane and PostgreSQL. This check and its alert run outside the Oracle VM. The scheduled /drill/status.html outage should not trigger this rule."
+  }
+]
