@@ -1303,23 +1303,28 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 :root[data-theme="light"] .hero:not(.incident) .hero-value { color: #4a4a45; }
 
 /* ---------- Sign-in ---------- */
-.signin { background:
-  radial-gradient(ellipse 60% 50% at 50% 0, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%),
-  radial-gradient(circle, var(--dot) 1px, transparent 1.2px) 0 0 / 16px 16px, var(--bg); }
-.signin-card {
-  display: grid; gap: 12px; width: min(420px, 100%); padding: 28px; background: var(--surface);
-  border: 1px solid var(--border); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35); animation: rise 320ms ease-out backwards;
+/* Sign-in: one calm centred column, like a product's own login, with a faint accent glow from the top. */
+.signin { position: relative; display: grid; grid-template-rows: 1fr auto; min-height: 100vh; padding: 24px; background: var(--bg); isolation: isolate; }
+.signin::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse 45% 35% at 50% -5%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%);
 }
-.signin-brand { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--text-2); }
-.signin-card h1 { margin-top: 10px; font-family: var(--font-dots); font-size: 30px; font-weight: 800; line-height: 1.15; letter-spacing: 0.01em; }
-.signin-lede { margin-bottom: 8px; color: var(--text-2); font-size: 13.5px; line-height: 1.55; }
-.signin-card .button { width: 100%; height: 40px; font-size: 14px; }
-.signin-demo { position: relative; }
+:root[data-theme="light"] .signin::after { display: none; }
+.signin-panel { display: grid; justify-items: center; align-self: center; justify-self: center; width: min(360px, 100%); gap: 0; text-align: center; animation: rise 320ms ease-out backwards; }
+.signin-panel .brand-mark { width: 40px; height: 40px; margin-bottom: 24px; }
+.signin-panel h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.25; }
+.signin-lede { margin-top: 8px; font-size: 14px; line-height: 1.55; color: var(--text-2); }
+.signin-actions { display: grid; gap: 10px; width: 100%; margin-top: 28px; }
+.signin-actions .button { width: 100%; height: 40px; font-size: 14px; }
+.signin-demo { position: relative; font-weight: 600; }
 .signin-go { position: absolute; right: 14px; transition: transform 160ms; }
 .signin-demo:hover:not(:disabled) .signin-go { transform: translateX(3px); }
-.signin-note { margin-top: -4px; font-size: 12px; color: var(--text-3); text-align: center; }
-.signin-or { display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; font-size: 11.5px; color: var(--text-3); }
-.signin-or::before, .signin-or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.signin-note { margin-top: 18px; font-size: 12.5px; line-height: 1.5; color: var(--text-3); }
+.signin-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 20px; padding-top: 24px; font-size: 12px; color: var(--text-3); }
+.signin-footer a { color: var(--text-3); text-decoration: none; }
+.signin-footer a:hover { color: var(--text); }
+.signin-status { display: inline-flex; align-items: center; gap: 8px; }
+.signin-status i { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
 
 /* ---------- Demo session ---------- */
 .demo-banner {

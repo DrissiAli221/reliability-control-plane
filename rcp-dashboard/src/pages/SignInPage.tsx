@@ -1,8 +1,11 @@
-import { ArrowRight, LogIn, Play } from "lucide-react";
+import { ArrowRight, LogIn } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { isLocalAuth, login, safeNext, startDemoSession } from "../auth";
 import { BrandMark } from "../components/AppShell";
+import { drillPhase, utcClock } from "../drill";
+import { useNow } from "../useLiveData";
+
 
 /**
  * The front door: most visitors should be looking at live data in one click, so the read-only demo comes first and
@@ -48,33 +51,49 @@ export function SignInPage() {
   }
 
   return (
-    <main className="centered-shell signin">
-      <section className="signin-card" aria-labelledby="signin-title">
-        <div className="signin-brand"><BrandMark /><span>Reliability Control Plane</span></div>
-        <h1 id="signin-title">Uptime you can prove.</h1>
-        <p className="signin-lede">
-          Every check runs from several regions, a verdict needs them to agree, and every decision can be traced back to
-          the requests behind it.
-        </p>
+    <main className="signin">
+      <section className="signin-panel" aria-labelledby="signin-title">
+        <BrandMark />
+        <h1 id="signin-title">Sign in to Reliability Control Plane</h1>
+        <p className="signin-lede">Multi-region uptime checks with verdicts you can trace back to every request.</p>
 
-        <button type="button" className="button primary signin-demo" onClick={() => void tryDemo()} disabled={busy != null}>
-          <Play size={15} aria-hidden="true" /> {busy === "demo" ? "Opening the demo…" : "Try the live demo"}
-          <ArrowRight size={15} className="signin-go" aria-hidden="true" />
-        </button>
-        <p className="signin-note">Read-only · real checks, running now · no sign-up</p>
+        <div className="signin-actions">
+          <button type="button" className="button primary signin-demo" onClick={() => void tryDemo()} disabled={busy != null}>
+            {busy === "demo" ? "Opening the demo…" : "Try the live demo"}
+            <ArrowRight size={15} className="signin-go" aria-hidden="true" />
+          </button>
+          <button type="button" className="button secondary" onClick={() => void account()} disabled={busy != null}>
+            <LogIn size={15} aria-hidden="true" />
+            {local ? "Continue as local developer" : busy === "account" ? "Opening sign-in…" : "Sign in or create an account"}
+          </button>
+          {error && <p className="form-error" role="alert">{error}</p>}
+        </div>
 
-        <div className="signin-or" role="separator"><span>or</span></div>
-
-        <button type="button" className="button secondary signin-account" onClick={() => void account()} disabled={busy != null}>
-          <LogIn size={15} aria-hidden="true" />
-          {local ? "Continue as local developer" : busy === "account" ? "Opening sign-in…" : "Sign in or create an account"}
-        </button>
         <p className="signin-note">
-          {local ? "Local profile: full access with a development identity." : "Your own private workspace to monitor your own sites."}
+          {local
+            ? "Local profile: full access with a development identity."
+            : "The demo is read-only and needs no account. Sign in for a private workspace to monitor your own sites."}
         </p>
-
-        {error && <p className="form-error" role="alert">{error}</p>}
       </section>
+
+      <footer className="signin-footer">
+        <DemoStatus />
+        <a href="https://github.com/DrissiAli221/reliability-control-plane" target="_blank" rel="noreferrer">Source</a>
+      </footer>
     </main>
+  );
+}
+
+/** One quiet line of what the demo is doing right now. */
+function DemoStatus() {
+  const now = useNow(30_000);
+  const phase = drillPhase(now);
+  return (
+    <span className="signin-status">
+      <i aria-hidden="true" />
+      {phase.active
+        ? "Demo live in 2 regions · outage drill running"
+        : `Demo live in 2 regions · next drill ${utcClock(phase.nextStart)} UTC`}
+    </span>
   );
 }
