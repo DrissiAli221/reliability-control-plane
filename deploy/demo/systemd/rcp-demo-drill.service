@@ -1,0 +1,19 @@
+[Unit]
+Description=Ten-minute RCP demo outage drill
+Requires=rcp-demo-drill-restore.service
+After=rcp-demo-drill-restore.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/rcp/deploy/demo
+ExecStart=/usr/bin/python3 /opt/rcp/deploy/demo/scripts/outage-drill.py outage
+# Also restore after a forced termination, including SIGKILL.
+ExecStopPost=/usr/bin/python3 /opt/rcp/deploy/demo/scripts/outage-drill.py restore
+TimeoutStartSec=12min
+TimeoutStopSec=30s
+UMask=0022
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/rcp/deploy/demo/drill

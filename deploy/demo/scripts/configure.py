@@ -41,7 +41,9 @@ def render(outputs, api_domain, acme_email):
     demo = rcp["demo"]
     if "seed-example-monitor" in demo:
         raise ValueError("The old seed-example-monitor flag is unsupported; regenerate outputs")
-    if demo.get("monitors") != "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org":
+    expected_monitors = ("Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org, "
+                         f"Scheduled outage drill|https://{api_domain}/drill/status.html")
+    if demo.get("monitors") != expected_monitors:
         raise ValueError("Unexpected shared demo seed targets")
     if demo.get("example-monitor-url") != "https://example.com":
         raise ValueError("Unexpected onboarding example URL")

@@ -1,0 +1,12 @@
+[Unit]
+Description=RCP demo outage drill every two hours
+
+[Timer]
+OnCalendar=*-*-* 00/2:00:00 UTC
+AccuracySec=1s
+# Never replay a missed outage when the VM boots.
+Persistent=false
+Unit=rcp-demo-drill.service
+
+[Install]
+WantedBy=timers.target

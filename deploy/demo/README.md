@@ -17,9 +17,9 @@ half is documented in [`infra/aws-demo`](../../infra/aws-demo/README.md).
   and `/api/demo/session`. Verify backend group enforcement, concurrent quota
   protection, and the 30/minute demo-login limit for the single backend.
   Stock Caddy does not add another login rate limiter here.
-- The shared demo account must retain `demo` membership. The backend seeds its two
-  neutral monitors (Example Domain and Wikipedia) on startup using the Cognito
-  UUID `sub`. Capture that subject during provisioning; do not substitute its
+- The shared demo account must retain `demo` membership. The backend seeds its three
+  monitors (Example Domain, Wikipedia, and Scheduled outage drill) on startup
+  using the Cognito UUID `sub`. Capture that subject during provisioning; do not substitute its
   email or remove group membership to seed monitors.
 - Establish the AWS budget alert before creating application resources.
 - Confirm the chosen VM's actual availability, billing/egress/storage terms, and
@@ -152,6 +152,7 @@ the control-plane container; disable the previous key after verification.
 From `/opt/rcp/deploy/demo`:
 
 ```sh
+python3 scripts/outage-drill.py restore
 docker compose config --quiet
 docker compose build control-plane
 docker compose up -d
@@ -182,6 +183,90 @@ Caddy access logging is deliberately not enabled: avoid recording public tokens 
 sensitive query strings by default. Use bounded service logs for startup diagnosis.
 A missing/incorrect API DNS record or blocked port 80 prevents public certificates.
 No ACME request is needed for the local smoke test described below.
+
+## Scheduled outage drill
+
+`GET https://rcp-ali.duckdns.org/drill/status.html` returns **200** while
+`deploy/demo/drill/status.html` exists and **404** while it is absent. Caddy mounts
+that directory read-only and serves only this exact GET/HEAD route; API proxying
+and the public `/actuator` 404 stay unchanged. Responses use `Cache-Control:
+no-store`. The page is tiny and has no credentials or external dependencies.
+Runtime contents are ignored by Git, so updating the checkout cannot accidentally
+restore the page during an outage.
+
+After review, install on the VM from `/opt/rcp` (these are deployment commands,
+not part of local tests):
+
+```sh
+sudo mkdir -p /opt/rcp/deploy/demo/drill
+sudo chmod 755 /opt/rcp/deploy/demo/drill
+sudo python3 deploy/demo/scripts/outage-drill.py restore
+sudo install -m 644 deploy/demo/systemd/rcp-demo-drill*.service /etc/systemd/system/
+sudo install -m 644 deploy/demo/systemd/rcp-demo-drill.timer /etc/systemd/system/
+sudo systemd-analyze verify /etc/systemd/system/rcp-demo-drill*.service /etc/systemd/system/rcp-demo-drill.timer
+systemd-analyze calendar --iterations=3 '*-*-* 00/2:00:00 UTC'
+sudo systemctl daemon-reload
+sudo systemctl enable --now rcp-demo-drill-restore.service
+cd /opt/rcp/deploy/demo
+docker compose up -d --no-deps --force-recreate caddy
+sudo systemctl enable --now rcp-demo-drill.timer
+sudo systemctl list-timers rcp-demo-drill.timer
+curl -sS -o /dev/null -w '%{http_code}\n' https://rcp-ali.duckdns.org/drill/status.html
+```
+
+The timer starts at **00:00, 02:00, …, 22:00 UTC**, removes the file for 600
+seconds, then atomically restores it. It has no missed-run catch-up. Incident
+opening and resolution happen after the monitor's normal checks and incident
+thresholds, not exactly at the file transitions. With a 60-second interval, the
+ten-minute outage supplies several failed checks from both regions.
+
+Duplicate outage starts do nothing while one is running. Normal completion,
+errors, and SIGTERM restore the page; systemd's `ExecStopPost` also restores after
+a forced kill. A separate enabled recovery service restores the page **before
+Docker starts at boot**, including after power loss during an outage. Install both
+services and the timer. Python 3 is required on the VM. If you change the
+`/opt/rcp` checkout location, update all three units' paths first.
+
+To inspect or stop the drill and bring the page back:
+
+```sh
+sudo journalctl -u rcp-demo-drill.service -u rcp-demo-drill-restore.service --since today
+sudo systemctl disable --now rcp-demo-drill.timer
+sudo systemctl stop rcp-demo-drill.service
+sudo python3 /opt/rcp/deploy/demo/scripts/outage-drill.py restore
+```
+
+Leave the boot recovery service enabled while Caddy serves the route. To resume,
+run `sudo systemctl enable --now rcp-demo-drill.timer`. For a deliberate manual
+**ten-minute** drill, run `sudo systemctl start --no-block rcp-demo-drill.service`.
+
+### Add the monitor to the existing deployment
+
+New generated configuration seeds three monitors, using the configured HTTPS
+API origin for the drill target, while keeping the global cap **8** and owner
+quota **3**. Regenerating configuration or restarting the backend does **not**
+add a monitor to a workspace that already has monitors. Never delete its existing
+monitors or remove its `demo` group to reseed.
+
+For the existing live demo, after verifying the drill URL returns 200, download
+and verify a database backup using the backup instructions below. Then, from
+`/opt/rcp/deploy/demo`, run this operator-only transaction:
+
+```sh
+docker compose exec -T postgres psql -X -U rcp -d rcp -v ON_ERROR_STOP=1 \
+  -v demo_subject="$(cat secrets/demo_owner_subject)" \
+  < scripts/add-drill-monitor.sql
+```
+
+This uses the locally stored Cognito subject, not an email or login credential.
+It adds only the fixed `rcp-ali.duckdns.org` target, retains all existing history,
+and leaves the read-only group untouched. The transaction checks both quotas,
+requires an existing workspace, and does nothing if that owner already monitors
+the drill URL. It locks monitor writes briefly while checking capacity; the
+existing trigger creates schedule history. If a quota is full or the subject is
+wrong, it fails without adding anything. Verify the new monitor in the demo UI;
+no backend restart is required. This SQL is for the named live deployment only:
+review its fixed URL before using it on a different hostname.
 
 ## Publish the dashboard
 
@@ -302,6 +387,14 @@ python3 -m unittest discover -s deploy/demo/tests -v
 python3 deploy/demo/scripts/local-smoke.py
 ```
 
+The tests use synthetic inputs. The routing integration runs when `caddy` is on
+PATH, or when `CADDY_BINARY=/path/to/caddy` is set (use version 2.10.2, matching
+Compose). The SQL integration uses an isolated temporary cluster when `initdb`,
+`pg_ctl` and `psql` are on PATH; it opens no TCP listener and removes the cluster
+afterward. Those integrations report skips when their tools are unavailable.
+The systemd units require Linux: verify their syntax and calendar using the
+commands in the drill installation section before enabling them on the VM.
+
 The default smoke builds/reuses `rcp-control-plane:demo`, runs an isolated Compose
 project with fake identity, disables queue polling, uses loopback HTTP Caddy, runs
 Flyway on PostgreSQL 17.6, verifies anonymous API rejection/management hiding,
@@ -315,7 +408,7 @@ python3 deploy/demo/scripts/local-smoke.py --build --phase2
 ```
 
 This second mode uses local JWTs, enables the demo configuration, disables
-both queue polling and local workers, and verifies the seeded demo UUID, two
+both queue polling and local workers, and verifies the seeded demo UUID, three
 monitors, server-side read-only rejection, 60-second/5-second limits, and one-time
 onboarding. It uses a fresh local database, not the developer's running services.
 The local token endpoint exists only in this loopback test's `local` profile;
