@@ -1,0 +1,21 @@
+/*
+ * Tailwind for the dither-kit charts only. No preflight (the reset would restyle the hand-written console), and
+ * class scanning is limited to the vendored chart folder so app class names like "table" never become utilities.
+ * The app's own stylesheet is unlayered, so it always wins over these layers.
+ */
+@layer theme, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@source "./components/dither-kit";
+
+/* shadcn colour names used by dither-kit, mapped to the console's tokens so both themes follow automatically. */
+@theme inline {
+  --color-foreground: var(--text);
+  --color-muted-foreground: var(--text-3);
+  --color-popover: var(--surface-2);
+  --color-popover-foreground: var(--text);
+  --color-background: var(--bg);
+  --color-border: var(--border-strong);
+  --color-muted: var(--gray-bar);
+  --color-card: var(--surface);
+}
