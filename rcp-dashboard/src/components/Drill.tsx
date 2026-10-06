@@ -63,16 +63,19 @@ export function DrillPanel({ now, overview }: { now: number; overview?: MonitorO
             This is a planned failure. The server removes this page on a timer so you can watch the pipeline react
             to a real outage, then recover on its own, with nobody touching anything.
           </p>
-          <ol className="drill-steps">
-            {STEPS.map((item, index) => (
-              <li key={item.title} className={step === index ? "now" : step != null && index < step ? "done" : undefined}>
-                <span className="drill-step-index">{index + 1}</span>
-                <span><strong>{item.title}</strong><small>{item.detail}</small></span>
-              </li>
-            ))}
-          </ol>
           {step == null && <p className="drill-idle">Healthy between drills. Come back during the window to watch it happen.</p>}
         </div>
+      </div>
+      <div className="drill-track">
+        <ol className="drill-steps" aria-label="Drill steps">
+          {STEPS.map((item, index) => (
+            <li key={item.title} className={step === index ? "now" : step != null && index < step ? "done" : undefined}
+              aria-current={step === index ? "step" : undefined}>
+              <span className="drill-step-index">{index + 1}</span>
+              <span><strong>{item.title}</strong><small>{item.detail}</small></span>
+            </li>
+          ))}
+        </ol>
       </div>
       <DrillCycle phase={phase} now={now} />
     </section>

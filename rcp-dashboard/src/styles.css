@@ -324,8 +324,19 @@ a { color: inherit; }
 .drill-clock { font-family: var(--font-dots); font-size: 44px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; color: color-mix(in srgb, var(--drill-hue) 55%, var(--text)); }
 .drill-count .subtle { font-size: 12px; }
 .drill-story > p { max-width: 640px; font-size: 13px; color: var(--text-2); }
-.drill-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; }
-.drill-steps li { display: flex; gap: 10px; padding: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-3); transition: border-color 200ms, color 200ms, background 200ms; }
+/* A connected stepper: cards joined by a line that fills in as the drill moves. A row when there is room, a
+   vertical track otherwise; the container query follows the panel's width, not the window's. */
+.drill-track { container-type: inline-size; padding: 4px 16px 6px; }
+.drill-steps { --step-gap: 14px; display: grid; grid-template-columns: 1fr; gap: var(--step-gap); margin: 0; padding: 0; list-style: none; counter-reset: step; }
+.drill-steps li { position: relative; display: flex; align-items: flex-start; gap: 10px; padding: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-3); transition: border-color 200ms, color 200ms, background 200ms; }
+.drill-steps li:not(:last-child)::after { content: ""; position: absolute; left: 20px; top: calc(100% + 1px); width: 1px; height: var(--step-gap); background: var(--border-strong); }
+.drill-steps li.done::after, .drill-steps li.now::after { background: color-mix(in srgb, var(--drill-hue) 55%, var(--border-strong)); }
+.drill-steps li.now::after { background: linear-gradient(var(--drill-hue), var(--border-strong)); }
+@container (min-width: 600px) {
+  .drill-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .drill-steps li:not(:last-child)::after { left: calc(100% + 1px); top: 19px; width: var(--step-gap); height: 1px; }
+  .drill-steps li.now::after { background: linear-gradient(90deg, var(--drill-hue), var(--border-strong)); }
+}
 .drill-steps strong { display: block; font-size: 12.5px; font-weight: 600; }
 .drill-steps small { display: block; font-size: 11.5px; line-height: 1.35; }
 .drill-step-index { display: grid; place-items: center; flex: none; width: 20px; height: 20px; border: 1px solid currentColor; font-family: var(--font-mono); font-size: 11px; }
@@ -333,7 +344,7 @@ a { color: inherit; }
 .drill-steps li.done .drill-step-index { border-color: transparent; background: color-mix(in srgb, var(--drill-hue) 30%, var(--surface-2)); color: var(--text); }
 .drill-steps li.now { border-color: color-mix(in srgb, var(--drill-hue) 60%, transparent); background: color-mix(in srgb, var(--drill-hue) 12%, var(--surface-2)); color: var(--text); }
 .drill-steps li.now .drill-step-index { border-color: var(--drill-hue); background: var(--drill-hue); color: var(--bg); animation: breathe 2.4s ease-in-out infinite; }
-.drill-idle { margin-top: 10px; font-size: 12px; color: var(--text-3); }
+.drill-idle { margin-top: 8px; font-size: 12px; color: var(--text-3); }
 
 .drill-cycle { padding: 12px 16px 14px; }
 .drill-cells { position: relative; display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; height: 14px; }
