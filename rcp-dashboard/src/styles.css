@@ -1286,23 +1286,64 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 :root[data-theme="light"] .hero:not(.incident) .hero-value { color: #4a4a45; }
 
 /* ---------- Sign-in ---------- */
-.signin { background:
-  radial-gradient(ellipse 60% 50% at 50% 0, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%),
-  radial-gradient(circle, var(--dot) 1px, transparent 1.2px) 0 0 / 16px 16px, var(--bg); }
-.signin-card {
-  display: grid; gap: 12px; width: min(420px, 100%); padding: 28px; background: var(--surface);
-  border: 1px solid var(--border); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35); animation: rise 320ms ease-out backwards;
+/* Sign-in: a halftone field, dense at the edges and fading toward the content, frames the pitch and a live readout. */
+.signin { position: relative; display: grid; min-height: 100vh; place-items: center; padding: 48px 24px; overflow: hidden; background: var(--bg); isolation: isolate; }
+.signin::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: radial-gradient(circle, color-mix(in srgb, var(--text) 26%, transparent) 1.1px, transparent 1.4px) 0 0 / 11px 11px;
+  -webkit-mask-image: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 35%, #000 100%);
+  mask-image: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 35%, #000 100%);
 }
+.signin::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse 50% 40% at 50% 0, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%);
+}
+.signin-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 400px); gap: 56px; align-items: center; width: min(960px, 100%); animation: rise 320ms ease-out backwards; }
+.signin-pitch { display: grid; gap: 14px; max-width: 440px; }
 .signin-brand { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--text-2); }
-.signin-card h1 { margin-top: 10px; font-family: var(--font-dots); font-size: 30px; font-weight: 800; line-height: 1.15; letter-spacing: 0.01em; }
-.signin-lede { margin-bottom: 8px; color: var(--text-2); font-size: 13.5px; line-height: 1.55; }
-.signin-card .button { width: 100%; height: 40px; font-size: 14px; }
-.signin-demo { position: relative; }
+.signin-pitch h1 { margin-top: 18px; font-family: var(--font-dots); font-size: clamp(34px, 5vw, 48px); font-weight: 800; line-height: 1.08; letter-spacing: 0.01em; }
+.signin-lede { color: var(--text-2); font-size: 14.5px; line-height: 1.6; }
+.signin-actions { display: grid; gap: 10px; margin-top: 14px; max-width: 360px; }
+.signin-actions .button { width: 100%; height: 42px; font-size: 14px; }
+/* The one bright control on the page: the demo is what most visitors came for. */
+.signin-demo { position: relative; border-color: var(--text); background: var(--text); color: var(--bg); font-weight: 600; }
+.signin-demo:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 88%, var(--bg)); }
 .signin-go { position: absolute; right: 14px; transition: transform 160ms; }
 .signin-demo:hover:not(:disabled) .signin-go { transform: translateX(3px); }
 .signin-note { margin-top: -4px; font-size: 12px; color: var(--text-3); text-align: center; }
 .signin-or { display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; font-size: 11.5px; color: var(--text-3); }
 .signin-or::before, .signin-or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+.signin-instrument { display: grid; background: var(--surface); border: 1px solid var(--border-strong); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35); }
+.instrument-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-2); }
+.instrument-head > span:first-child { display: inline-flex; align-items: center; gap: 8px; color: var(--text); }
+.instrument-head .mono { font-size: 11px; color: var(--text-3); }
+.instrument-row { display: grid; gap: 8px; padding: 14px; border-bottom: 1px solid var(--border); }
+.instrument-row:last-child { border-bottom: 0; }
+.instrument-label { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.instrument-note { font-size: 12px; line-height: 1.45; color: var(--text-3); }
+.instrument-regions { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.instrument-regions li { display: grid; grid-template-columns: 8px 92px 1fr; align-items: center; gap: 10px; font-size: 13px; color: var(--text-2); }
+.instrument-regions i { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: breathe 2.4s ease-in-out infinite; }
+.instrument-regions li:nth-child(2) i { animation-delay: 1.2s; }
+.instrument-regions .mono { color: var(--text); }
+.instrument-rule { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--text-2); }
+.rule-dot { width: 10px; height: 10px; border: 1px solid var(--green); background: var(--green-bg); }
+.rule-eq { color: var(--text-3); }
+.rule-verdict { padding: 1px 6px; border: 1px solid var(--border-strong); color: var(--text); }
+.instrument-drill { --drill-hue: var(--blue); background: radial-gradient(ellipse at 0 100%, color-mix(in srgb, var(--drill-hue) 10%, transparent), transparent 60%); }
+.instrument-drill.drill-active { --drill-hue: var(--amber); }
+.instrument-drill .instrument-label { color: color-mix(in srgb, var(--drill-hue) 70%, var(--text)); }
+.instrument-clock { font-family: var(--font-dots); font-size: 38px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; color: color-mix(in srgb, var(--drill-hue) 55%, var(--text)); }
+
+@media (max-width: 860px) {
+  .signin { place-items: start center; }
+  .signin-layout { grid-template-columns: 1fr; gap: 32px; }
+  .signin-pitch h1 { margin-top: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .instrument-regions i { animation: none; }
+}
 
 /* ---------- Demo session ---------- */
 .demo-banner {
