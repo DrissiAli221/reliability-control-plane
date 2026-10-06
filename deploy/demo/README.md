@@ -244,11 +244,13 @@ run `sudo systemctl enable --now rcp-demo-drill.timer`. For a deliberate manual
 
 New generated configuration seeds three monitors, using the configured HTTPS
 API origin for the drill target, while keeping the global cap **8** and owner
-quota **3**. Regenerating configuration or restarting the backend does **not**
-add a monitor to a workspace that already has monitors. Never delete its existing
-monitors or remove its `demo` group to reseed.
+quota **3**. On startup the backend adds any configured demo monitor the workspace
+lacks (matched by name) and leaves existing monitors and their history alone, so
+adding an entry to `rcp.demo.monitors` and restarting is enough. Never delete its
+existing monitors or remove its `demo` group to reseed.
 
-For the existing live demo, after verifying the drill URL returns 200, download
+The live demo received the drill monitor before that behaviour existed. For a
+deployment running an older backend, after verifying the drill URL returns 200, download
 and verify a database backup using the backup instructions below. Then, from
 `/opt/rcp/deploy/demo`, run this operator-only transaction:
 
