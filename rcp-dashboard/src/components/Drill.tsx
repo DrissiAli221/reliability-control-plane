@@ -47,22 +47,8 @@ export function DrillPanel({ now, overview }: { now: number; overview?: MonitorO
   const step = currentStep(phase, overview);
   const start = phase.active ? phase.cycleStart : phase.nextStart;
 
-  // Between drills (110 of every 120 minutes) a compact strip is enough; the full story appears when it happens.
-  if (step == null) {
-    return (
-      <section className="panel drill drill-compact" aria-label="Scheduled outage drill">
-        <div className="drill-compact-row">
-          <span className="drill-eyebrow"><FlaskConical size={14} aria-hidden="true" /> Planned outage drill</span>
-          <span className="drill-compact-text">
-            Next in <b>{countdown(phase.nextStart - now)}</b>
-            <span className="mono subtle"> · {utcClock(phase.nextStart)}–{utcClock(phase.nextStart + DRILL_OUTAGE_MS)} UTC</span>
-          </span>
-          <span className="drill-compact-note">This page goes down on purpose for 10 minutes every 2 hours; come back then to watch it.</span>
-        </div>
-        <DrillCycle phase={phase} now={now} />
-      </section>
-    );
-  }
+  // Between drills (110 of every 120 minutes) a compact card is enough; the full story appears when it happens.
+  if (step == null) return <DrillCountdown phase={phase} now={now} />;
 
   return (
     <section className={`panel drill${phase.active ? " drill-active" : ""}`} aria-label="Scheduled outage drill">
@@ -120,5 +106,43 @@ function DrillCycle({ phase, now }: { phase: DrillPhase; now: number }) {
         {ticks.map((tick) => <span key={tick}>{utcClock(tick)}</span>)}
       </div>
     </div>
+  );
+}
+
+/**
+ * The card between drills. Its track runs from the end of the last outage to the end of the next one, so it fills
+ * toward the hatched window the countdown refers to (the cycle bar would show the outage that already happened).
+ */
+function DrillCountdown({ phase, now }: { phase: DrillPhase; now: number }) {
+  const trackStart = phase.outageEnd;
+  const span = phase.nextStart + DRILL_OUTAGE_MS - trackStart;
+  const progress = Math.min(1, Math.max(0, (now - trackStart) / span));
+  const outageShare = DRILL_OUTAGE_MS / span;
+  return (
+    <section className="panel drill-countdown" aria-label="Planned outage drill">
+      <div className="drill-countdown-head">
+        <div className="drill-countdown-title">
+          <FlaskConical size={15} aria-hidden="true" />
+          <div>
+            <h2>Planned outage drill</h2>
+            <p>This page goes down on purpose for 10 minutes every 2 hours, so you can watch an incident open and resolve on its own.</p>
+          </div>
+        </div>
+        <div className="drill-countdown-next">
+          <span>Next outage in</span>
+          <strong>{countdown(phase.nextStart - now)}</strong>
+          <span className="mono">{utcClock(phase.nextStart)}–{utcClock(phase.nextStart + DRILL_OUTAGE_MS)} UTC</span>
+        </div>
+      </div>
+      <div className="drill-progress" role="img" aria-label={`${Math.round(progress * 100)}% of the way to the next outage`}>
+        <span className="drill-progress-fill" style={{ width: `${progress * 100}%` }} />
+        <span className="drill-progress-outage" style={{ width: `${outageShare * 100}%` }} />
+        <span className="drill-progress-now" style={{ left: `${progress * 100}%` }} />
+      </div>
+      <div className="drill-progress-ticks mono" aria-hidden="true">
+        <span>{utcClock(trackStart)}</span>
+        <span style={{ left: `${(1 - outageShare) * 100}%` }}>{utcClock(phase.nextStart)}</span>
+      </div>
+    </section>
   );
 }

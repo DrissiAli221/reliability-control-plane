@@ -317,7 +317,8 @@ a { color: inherit; }
 .drill { --drill-hue: var(--blue); border-color: color-mix(in srgb, var(--drill-hue) 30%, var(--border)); background: radial-gradient(ellipse at 0 0, color-mix(in srgb, var(--drill-hue) 9%, transparent), transparent 55%), var(--surface); }
 .drill.drill-active { --drill-hue: var(--amber); }
 .drill-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
-.drill-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 11.5px; color: color-mix(in srgb, var(--drill-hue) 70%, var(--text)); }
+.drill-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
+.drill-eyebrow svg { color: color-mix(in srgb, var(--drill-hue) 70%, var(--text)); }
 .drill-body { display: grid; grid-template-columns: minmax(200px, auto) minmax(0, 1fr); gap: 28px; padding: 18px 16px 8px; }
 .drill-count { display: flex; flex-direction: column; gap: 4px; }
 .drill-label { font-size: 12.5px; color: var(--text-2); }
@@ -344,11 +345,27 @@ a { color: inherit; }
 .drill-steps li.done .drill-step-index { border-color: transparent; background: color-mix(in srgb, var(--drill-hue) 30%, var(--surface-2)); color: var(--text); }
 .drill-steps li.now { border-color: color-mix(in srgb, var(--drill-hue) 60%, transparent); background: color-mix(in srgb, var(--drill-hue) 12%, var(--surface-2)); color: var(--text); }
 .drill-steps li.now .drill-step-index { border-color: var(--drill-hue); background: var(--drill-hue); color: var(--bg); animation: breathe 2.4s ease-in-out infinite; }
-.drill-compact-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; padding: 12px 16px 2px; }
-.drill-compact-text { font-size: 13px; color: var(--text-2); }
-.drill-compact-text b { font-family: var(--font-mono); font-weight: 500; font-variant-numeric: tabular-nums; color: var(--blue-text); }
-.drill-compact-note { flex-basis: 100%; font-size: 12px; color: var(--text-3); }
-.drill-compact .drill-cycle { padding-top: 10px; }
+/* Between drills: an ordinary panel (no tint), titled like the others, with a thin track filling toward the outage. */
+.drill-countdown { display: grid; gap: 12px; padding: 16px; }
+.drill-countdown-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 32px; }
+.drill-countdown-title { display: flex; flex: 1 1 320px; align-items: flex-start; gap: 12px; min-width: 0; }
+.drill-countdown-title > svg { flex: none; margin-top: 2px; color: var(--blue-text); }
+.drill-countdown-title h2 { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+.drill-countdown-title p { max-width: 520px; margin-top: 2px; font-size: 12.5px; line-height: 1.5; color: var(--text-3); }
+.drill-countdown-next { display: grid; justify-items: end; gap: 1px; text-align: right; }
+.drill-countdown-next > span:first-child { font-size: 12px; color: var(--text-3); }
+.drill-countdown-next strong { font-family: var(--font-mono); font-size: 20px; font-weight: 500; line-height: 1.2; font-variant-numeric: tabular-nums; color: var(--text); }
+.drill-countdown-next .mono { font-size: 11.5px; color: var(--text-3); }
+.drill-progress { position: relative; height: 6px; margin-top: 4px; background: var(--gray-bar); }
+.drill-progress-fill { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--blue) 45%, var(--gray-bar)); }
+.drill-progress-outage { position: absolute; inset: 0 0 0 auto; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--red) 75%, transparent) 0 3px, transparent 3px 6px), var(--red-bg); }
+.drill-progress-now { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text); transition: left 1s linear; }
+.drill-progress-ticks { position: relative; height: 14px; font-size: 11px; color: var(--text-3); }
+.drill-progress-ticks span { position: absolute; top: 0; left: 0; }
+.drill-progress-ticks span + span { transform: translateX(-50%); }
+@media (max-width: 600px) {
+  .drill-countdown-next { justify-items: start; text-align: left; }
+}
 
 .drill-cycle { padding: 12px 16px 14px; }
 .drill-cells { position: relative; display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; height: 14px; }
