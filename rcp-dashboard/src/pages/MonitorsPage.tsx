@@ -6,6 +6,8 @@ import { ActionMenu } from "../components/ActionMenu";
 import { RollingText } from "../components/RollingText";
 import { RowPreview } from "../components/RowPreview";
 import { CreateMonitorDialog } from "../components/CreateMonitorDialog";
+import { DrillLine, DrillTag } from "../components/Drill";
+import { isDrillMonitor } from "../drill";
 import { LiveLed, StatusBadge, StatusDot } from "../components/StatusBadge";
 import { downloadReport } from "../reportDownload";
 import { Tracker } from "../components/Tracker";
@@ -221,6 +223,7 @@ function FleetTableRow({ row, now, index, changed, readOnly, onOpen, onToggle, o
   const { monitor, availability: report, history } = row;
   const state = monitorState(monitor);
   const latency = aggregateLatency(history);
+  const drill = isDrillMonitor(monitor.targetUrl);
   const [preview, setPreview] = useState<DOMRect | null>(null);
   const hoverTimer = useRef<number | undefined>(undefined);
 
@@ -257,8 +260,9 @@ function FleetTableRow({ row, now, index, changed, readOnly, onOpen, onToggle, o
         <div className="monitor-cell">
           <StatusDot tone={state.tone} pulse={state.tone === "fault"} />
           <div>
-            <strong>{monitor.name}</strong>
+            <strong>{monitor.name}{drill && <DrillTag />}</strong>
             <span className="mono subtle">{compactUrl(monitor.targetUrl)}</span>
+            {drill && monitor.enabled && <DrillLine now={now} />}
           </div>
         </div>
       </td>

@@ -301,6 +301,58 @@ a { color: inherit; }
 .banner.fault { border-color: rgba(229, 72, 77, 0.35); background: var(--red-bg); color: var(--red-text); }
 .banner.muted { border-color: var(--border-strong); background: var(--surface); color: var(--text); }
 
+/* ---------- Scheduled outage drill ---------- */
+/* Blue, not red: the drill is information about a planned event. Real failures keep the status colours. */
+.drill-tag {
+  display: inline-flex; align-items: center; gap: 4px; height: 18px; margin-left: 8px; padding: 0 6px; vertical-align: 1px;
+  border: 1px solid color-mix(in srgb, var(--blue) 40%, transparent); border-radius: var(--radius-pill);
+  background: var(--blue-bg); color: var(--blue-text); font-size: 11px; font-weight: 500; letter-spacing: 0.02em;
+}
+.title-row .drill-tag { height: 22px; margin-left: 0; padding: 0 8px; font-size: 12px; }
+.drill-line { display: block; margin-top: 2px; font-size: 12px; color: var(--text-3); }
+.drill-line b { font-family: var(--font-mono); font-weight: 500; font-variant-numeric: tabular-nums; color: var(--blue-text); }
+.drill-line.drill-active { color: var(--amber-text); }
+.drill-line.drill-active b { color: var(--amber-text); }
+
+.drill { --drill-hue: var(--blue); border-color: color-mix(in srgb, var(--drill-hue) 30%, var(--border)); background: radial-gradient(ellipse at 0 0, color-mix(in srgb, var(--drill-hue) 9%, transparent), transparent 55%), var(--surface); }
+.drill.drill-active { --drill-hue: var(--amber); }
+.drill-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.drill-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 11.5px; color: color-mix(in srgb, var(--drill-hue) 70%, var(--text)); }
+.drill-body { display: grid; grid-template-columns: minmax(200px, auto) minmax(0, 1fr); gap: 28px; padding: 18px 16px 8px; }
+.drill-count { display: flex; flex-direction: column; gap: 4px; }
+.drill-label { font-size: 12.5px; color: var(--text-2); }
+.drill-clock { font-family: var(--font-dots); font-size: 44px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; color: color-mix(in srgb, var(--drill-hue) 55%, var(--text)); }
+.drill-count .subtle { font-size: 12px; }
+.drill-story > p { max-width: 640px; font-size: 13px; color: var(--text-2); }
+.drill-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; }
+.drill-steps li { display: flex; gap: 10px; padding: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-3); transition: border-color 200ms, color 200ms, background 200ms; }
+.drill-steps strong { display: block; font-size: 12.5px; font-weight: 600; }
+.drill-steps small { display: block; font-size: 11.5px; line-height: 1.35; }
+.drill-step-index { display: grid; place-items: center; flex: none; width: 20px; height: 20px; border: 1px solid currentColor; font-family: var(--font-mono); font-size: 11px; }
+.drill-steps li.done { border-color: color-mix(in srgb, var(--drill-hue) 25%, var(--border)); color: var(--text-2); }
+.drill-steps li.done .drill-step-index { border-color: transparent; background: color-mix(in srgb, var(--drill-hue) 30%, var(--surface-2)); color: var(--text); }
+.drill-steps li.now { border-color: color-mix(in srgb, var(--drill-hue) 60%, transparent); background: color-mix(in srgb, var(--drill-hue) 12%, var(--surface-2)); color: var(--text); }
+.drill-steps li.now .drill-step-index { border-color: var(--drill-hue); background: var(--drill-hue); color: var(--bg); animation: breathe 2.4s ease-in-out infinite; }
+.drill-idle { margin-top: 10px; font-size: 12px; color: var(--text-3); }
+
+.drill-cycle { padding: 12px 16px 14px; }
+.drill-cells { position: relative; display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; height: 14px; }
+.drill-cells i { background: var(--gray-bar); }
+.drill-cells i.past { background: color-mix(in srgb, var(--blue) 35%, var(--gray-bar)); }
+.drill-cells i.outage { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--red) 55%, transparent) 0 3px, transparent 3px 6px), var(--red-bg); }
+.drill-cells i.outage.past { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--red) 30%, transparent) 0 3px, transparent 3px 6px), var(--gray-bar); }
+.drill-cells i.current { box-shadow: inset 0 0 0 1px var(--text-2); }
+.drill-cursor { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; background: var(--text); box-shadow: 0 0 8px color-mix(in srgb, var(--text) 50%, transparent); transition: left 1s linear; }
+.drill-ticks { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--text-3); }
+
+@media (max-width: 900px) {
+  .drill-body { grid-template-columns: 1fr; gap: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .drill-cursor, .drill-steps li { transition: none; }
+  .drill-steps li.now .drill-step-index { animation: none; }
+}
+
 /* ---------- Uptime tracker ---------- */
 .tracker { position: relative; }
 .tracker-bars { display: flex; gap: 2px; height: 32px; align-items: stretch; }

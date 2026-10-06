@@ -8,6 +8,7 @@ import { isLocalAuth } from "../auth";
 import { ChaosPanel } from "../components/ChaosPanel";
 import { CheckTimeline } from "../components/CheckTimeline";
 import { DownloadReportButton } from "../components/DownloadReportButton";
+import { DrillPanel, DrillTag } from "../components/Drill";
 import { EvidenceRail } from "../components/EvidenceRail";
 import { Explain } from "../components/Explain";
 import { IncidentMachine } from "../components/IncidentMachine";
@@ -23,6 +24,7 @@ import {
   relativeTime,
 } from "../format";
 import type { AvailabilityReport, IncidentStateView, LatencyHeatmap as Heatmap, MonitorDetail, MonitorHistory, MonitorOverview, ReliabilityReport } from "../types";
+import { isDrillMonitor } from "../drill";
 import { machineNode } from "../machine";
 import { useReadOnly } from "../session";
 import { useLiveData, useNow } from "../useLiveData";
@@ -87,6 +89,7 @@ export function MonitorDetailPage() {
   const ongoing = incidents.find((incident) => !incident.resolvedAt);
   const machineOpen = machineToggle ?? (incident ? machineNode(incident) !== "healthy" : false);
   const setMachineOpen = (open: boolean) => setMachineToggle(open);
+  const drill = isDrillMonitor(monitor.targetUrl);
 
   async function toggle() {
     await setMonitorEnabled(monitor.id, !monitor.enabled);
@@ -103,6 +106,7 @@ export function MonitorDetailPage() {
             <StatusDot tone={state.tone} pulse={state.tone === "fault"} />
             <h1>{monitor.name}</h1>
             <StatusBadge label={state.label} tone={state.tone} />
+            {drill && <DrillTag />}
           </div>
           <div className="meta-row">
             <a className="mono" href={monitor.targetUrl} target="_blank" rel="noreferrer">
@@ -132,6 +136,7 @@ export function MonitorDetailPage() {
               Consecutive checks were DOWN in every region.
               {ongoing?.openedAt && <> Opened {relativeTime(ongoing.openedAt, now)} ({absoluteTime(ongoing.openedAt)}).</>}
               {" "}It resolves after consecutive UP checks.
+              {drill && <> This is the scheduled drill: the outage is planned and recovers on its own.</>}
             </p>
           </div>
         </div>
@@ -145,6 +150,8 @@ export function MonitorDetailPage() {
           </div>
         </div>
       )}
+
+      {drill && monitor.enabled && <DrillPanel now={now} overview={overview} />}
 
       <section className="metric-grid" aria-label="Seven-day summary" data-tour="metrics">
         <Metric
