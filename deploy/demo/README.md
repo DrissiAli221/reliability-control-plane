@@ -179,6 +179,12 @@ read-only API writes fail, CORS accepts only the CloudFront origin, and both reg
 produce results within the result deadline. The backend enforces authentication
 and read-only access; verify both through API requests after deployment.
 
+The management listener is now **9091**, unpublished outside Docker. Caddy exposes
+only `GET /healthz` as `UP` (200) or `DOWN` (503). For the external checks, private
+metrics collection and email alerts, follow [Grafana Cloud monitoring](monitoring/README.md)
+after reviewing the monitoring configuration. The Alloy service is opt-in with
+the `monitoring` Compose profile; the default deployment needs no Grafana token.
+
 Caddy access logging is deliberately not enabled: avoid recording public tokens or
 sensitive query strings by default. Use bounded service logs for startup diagnosis.
 A missing/incorrect API DNS record or blocked port 80 prevents public certificates.
