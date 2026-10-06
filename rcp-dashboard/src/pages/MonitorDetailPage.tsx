@@ -12,6 +12,8 @@ import { DrillPanel, DrillTag } from "../components/Drill";
 import { EvidenceRail } from "../components/EvidenceRail";
 import { Explain } from "../components/Explain";
 import { IncidentMachine } from "../components/IncidentMachine";
+import { ChartBoundary } from "../components/ChartBoundary";
+import { LatencyChart } from "../components/LatencyChart";
 import { LatencyHeatmap } from "../components/LatencyHeatmap";
 import { BudgetMeter, CoverageMeter, LatencyRange } from "../components/MetricVisuals";
 import { MonitorToggleButton } from "../components/MonitorToggleButton";
@@ -231,7 +233,13 @@ export function MonitorDetailPage() {
           <span className="subtle">HTTP responses · last 24 h</span>
         </header>
         <div className="panel-body">
-          {heatmap ? <LatencyHeatmap heatmap={heatmap} /> : <p className="subtle">Latency heatmap unavailable.</p>}
+          {heatmap ? (
+            <>
+              <ChartBoundary><LatencyChart heatmap={heatmap} /></ChartBoundary>
+              <h3 className="latency-subhead">Distribution</h3>
+              <LatencyHeatmap heatmap={heatmap} />
+            </>
+          ) : <p className="subtle">Latency unavailable.</p>}
         </div>
       </section>
 
