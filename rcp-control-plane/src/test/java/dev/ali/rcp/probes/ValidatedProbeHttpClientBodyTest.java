@@ -5,20 +5,22 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayInputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ValidatedProbeHttpClientBodyTest {
     @Test
     void countsTheResponseWithoutRetainingIt() throws Exception {
-        assertThat(ValidatedProbeHttpClient.readWithLimit(
+        assertThat(ValidatedProbeHttpClient.countUpTo(
                 new ByteArrayInputStream("healthy".getBytes()), 64
         )).isEqualTo(7);
     }
 
     @Test
-    void stopsWhenTheResponseExceedsTheLimit() {
-        assertThatThrownBy(() -> ValidatedProbeHttpClient.readWithLimit(
-                new ByteArrayInputStream(new byte[65]), 64
-        )).isInstanceOf(ResponseTooLargeException.class);
+    void stopsReadingOnceTheBodyPassesTheCap() throws Exception {
+        ByteArrayInputStream body = new ByteArrayInputStream(new byte[100_000]);
+
+        long counted = ValidatedProbeHttpClient.countUpTo(body, 64);
+
+        assertThat(counted).isGreaterThan(64);
+        assertThat(body.available()).isPositive();
     }
 }

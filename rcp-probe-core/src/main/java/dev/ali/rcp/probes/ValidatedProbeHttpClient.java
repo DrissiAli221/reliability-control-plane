@@ -83,14 +83,23 @@ public final class ValidatedProbeHttpClient implements ProbeHttpClient {
                 if (response.getEntity() == null) {
                     return new ProbeHttpResponse(response.getCode(), 0);
                 }
-                try (InputStream body = response.getEntity().getContent()) {
-                    return new ProbeHttpResponse(response.getCode(), readWithLimit(body, maximumBodyBytes));
+                InputStream body = response.getEntity().getContent();
+                long bytesRead = countUpTo(body, maximumBodyBytes);
+                if (bytesRead > maximumBodyBytes) {
+                    // The status line already answers the probe. Closing the stream normally would drain
+                    // the rest of a huge or endless body, so drop the connection instead.
+                    request.cancel();
+                    throw new BodyCapReached(new ProbeHttpResponse(response.getCode(), bytesRead));
                 }
+                body.close();
+                return new ProbeHttpResponse(response.getCode(), bytesRead);
             });
             if (request.isCancelled()) {
                 throw new SocketTimeoutException("total probe request deadline exceeded");
             }
             return result;
+        } catch (BodyCapReached capReached) {
+            return capReached.response;
         } catch (IOException exception) {
             if (request.isCancelled()) {
                 SocketTimeoutException timeoutException =
@@ -104,16 +113,27 @@ public final class ValidatedProbeHttpClient implements ProbeHttpClient {
         }
     }
 
-    static long readWithLimit(InputStream body, int maximumBodyBytes) throws IOException {
+    /** Counts the body without keeping it, stopping as soon as it passes the cap. */
+    static long countUpTo(InputStream body, int maximumBodyBytes) throws IOException {
         byte[] buffer = new byte[8_192];
         long total = 0;
         int read;
         while ((read = body.read(buffer)) != -1) {
             total += read;
             if (total > maximumBodyBytes) {
-                throw new ResponseTooLargeException(maximumBodyBytes);
+                return total;
             }
         }
         return total;
+    }
+
+    /** Carries the response out of the handler, the only path that skips draining the body. */
+    private static final class BodyCapReached extends IOException {
+        private final transient ProbeHttpResponse response;
+
+        BodyCapReached(ProbeHttpResponse response) {
+            super("response body reached the probe cap");
+            this.response = response;
+        }
     }
 }
