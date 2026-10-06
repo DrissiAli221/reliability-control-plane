@@ -36,6 +36,12 @@ prometheus.relabel "host" {
 		target_label = "instance"
 		replacement  = "rcp-demo"
 	}
+
+	// The exporter's targets carry job="integrations/unix", which overrides job_name above.
+	rule {
+		target_label = "job"
+		replacement  = "rcp-host"
+	}
 }
 
 prometheus.scrape "app" {
