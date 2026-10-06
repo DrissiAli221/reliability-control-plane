@@ -992,8 +992,25 @@ a { color: inherit; }
 .hero-stats dd { margin: 0; color: var(--ink-dots); font-family: var(--font-dots); font-size: 24px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .hero-stats small { margin-left: 4px; font-family: var(--font-sans); font-size: 12px; font-weight: 400; color: var(--text-3); }
 
+.pulse { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .pulse-readout { min-height: 18px; font-size: 12px; color: var(--text-3); }
 .pulse-readout b { color: var(--text); font-weight: 500; }
+.pulse-bars { display: flex; gap: 2px; height: 44px; }
+.pulse-bar {
+  flex: 1; min-width: 2px; display: flex; flex-direction: column; overflow: hidden; background: var(--gray-bar);
+  transform-origin: bottom; animation: grow 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both; transition: opacity 120ms;
+}
+/* Quiet by default: empty time is a thin baseline, healthy time a muted green, and only failures carry full colour. */
+.pulse-bar.idle { background: linear-gradient(var(--gray-bar), var(--gray-bar)) bottom / 100% 2px no-repeat; animation: none; }
+.pulse-bar i { display: block; flex-basis: 0; min-height: 0; }
+.pulse-bar i + i { box-shadow: 0 -1px 0 var(--surface); }
+.pulse-bar i.up { background: var(--green-muted); }
+.pulse-bar i.down { background: var(--red); }
+.pulse-bar i.disagreement { background: var(--amber); }
+.pulse-bar i.no-data { background: var(--no-data); }
+.pulse-bars:hover .pulse-bar:not(.active) { opacity: 0.5; }
+.pulse-bar.active i.up { background: var(--green); }
+.pulse-axis { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
 /* Quiet by default: empty time is a thin baseline, healthy time a muted green, and only failures carry full colour. */
 
 .timeline { display: grid; gap: 14px; }
@@ -1342,8 +1359,3 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 }
 .demo-banner-cta:hover { text-decoration: underline; text-underline-offset: 3px; }
 .demo-identity { display: inline-flex; align-items: center; gap: 6px; color: var(--accent-text); }
-
-/* ---------- Dithered fleet chart (dither-kit) ---------- */
-.fleet-chart { display: grid; gap: 10px; }
-.fleet-chart-canvas { position: relative; height: 170px; }
-.fleet-chart-canvas > * { height: 100%; }

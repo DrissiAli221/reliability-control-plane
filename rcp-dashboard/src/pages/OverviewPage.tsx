@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { fleetOverview, listMonitors, pipelineSnapshot } from "../api";
 import { EventStream } from "../components/EventStream";
 import { IncidentTimeline } from "../components/IncidentTimeline";
-import { FleetChart } from "../components/FleetChart";
+import { PulseStrip } from "../components/PulseStrip";
 import { RollingText } from "../components/RollingText";
 import { LiveLed, StatusDot } from "../components/StatusBadge";
 import { compactUrl, count, elapsed, milliseconds, monitorState, relativeTime } from "../format";
@@ -130,7 +130,7 @@ function Hero({ overview, monitors, regions, now, updatedAt }: {
         )}
         {stats}
       </div>
-      <FleetChart buckets={overview.buckets} from={overview.from} bucketSeconds={overview.bucketSeconds} />
+      <PulseStrip buckets={overview.buckets} from={overview.from} bucketSeconds={overview.bucketSeconds} />
     </section>
   );
 }
