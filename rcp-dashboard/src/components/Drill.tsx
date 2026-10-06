@@ -46,6 +46,24 @@ export function DrillPanel({ now, overview }: { now: number; overview?: MonitorO
   const phase = drillPhase(now);
   const step = currentStep(phase, overview);
   const start = phase.active ? phase.cycleStart : phase.nextStart;
+
+  // Between drills (110 of every 120 minutes) a compact strip is enough; the full story appears when it happens.
+  if (step == null) {
+    return (
+      <section className="panel drill drill-compact" aria-label="Scheduled outage drill">
+        <div className="drill-compact-row">
+          <span className="drill-eyebrow"><FlaskConical size={14} aria-hidden="true" /> Planned outage drill</span>
+          <span className="drill-compact-text">
+            Next in <b>{countdown(phase.nextStart - now)}</b>
+            <span className="mono subtle"> · {utcClock(phase.nextStart)}–{utcClock(phase.nextStart + DRILL_OUTAGE_MS)} UTC</span>
+          </span>
+          <span className="drill-compact-note">This page goes down on purpose for 10 minutes every 2 hours; come back then to watch it.</span>
+        </div>
+        <DrillCycle phase={phase} now={now} />
+      </section>
+    );
+  }
+
   return (
     <section className={`panel drill${phase.active ? " drill-active" : ""}`} aria-label="Scheduled outage drill">
       <div className="drill-head">
@@ -63,7 +81,6 @@ export function DrillPanel({ now, overview }: { now: number; overview?: MonitorO
             This is a planned failure. The server removes this page on a timer so you can watch the pipeline react
             to a real outage, then recover on its own, with nobody touching anything.
           </p>
-          {step == null && <p className="drill-idle">Healthy between drills. Come back during the window to watch it happen.</p>}
         </div>
       </div>
       <div className="drill-track">

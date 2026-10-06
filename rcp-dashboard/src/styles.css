@@ -344,7 +344,11 @@ a { color: inherit; }
 .drill-steps li.done .drill-step-index { border-color: transparent; background: color-mix(in srgb, var(--drill-hue) 30%, var(--surface-2)); color: var(--text); }
 .drill-steps li.now { border-color: color-mix(in srgb, var(--drill-hue) 60%, transparent); background: color-mix(in srgb, var(--drill-hue) 12%, var(--surface-2)); color: var(--text); }
 .drill-steps li.now .drill-step-index { border-color: var(--drill-hue); background: var(--drill-hue); color: var(--bg); animation: breathe 2.4s ease-in-out infinite; }
-.drill-idle { margin-top: 8px; font-size: 12px; color: var(--text-3); }
+.drill-compact-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; padding: 12px 16px 2px; }
+.drill-compact-text { font-size: 13px; color: var(--text-2); }
+.drill-compact-text b { font-family: var(--font-mono); font-weight: 500; font-variant-numeric: tabular-nums; color: var(--blue-text); }
+.drill-compact-note { flex-basis: 100%; font-size: 12px; color: var(--text-3); }
+.drill-compact .drill-cycle { padding-top: 10px; }
 
 .drill-cycle { padding: 12px 16px 14px; }
 .drill-cells { position: relative; display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; height: 14px; }
