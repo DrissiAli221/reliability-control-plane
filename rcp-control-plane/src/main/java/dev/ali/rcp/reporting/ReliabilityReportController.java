@@ -54,7 +54,7 @@ public class ReliabilityReportController {
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("text/html; charset=UTF-8"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=rcp-reliability-report.html")
-                .header("Content-Security-Policy", "sandbox; default-src 'none'")
+                .header("Content-Security-Policy", "sandbox; default-src 'none'; style-src 'unsafe-inline'")
                 .body(htmlRenderer.render(report));
     }
 }

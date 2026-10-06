@@ -68,6 +68,8 @@ class ReliabilityReportApiTest {
                         .queryParam("to", WINDOW_START.plusSeconds(120).toString()))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", "attachment; filename=rcp-reliability-report.html"))
+                .andExpect(header().string("Content-Security-Policy",
+                        "sandbox; default-src 'none'; style-src 'unsafe-inline'"))
                 .andReturn().getResponse().getContentAsString();
         assertThat(html).contains("50.00000%", "OPENED", "RESOLVED", "&lt;script&gt;");
         assertThat(html).doesNotContain("<script>");
