@@ -1339,3 +1339,20 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 }
 .demo-banner-cta:hover { text-decoration: underline; text-underline-offset: 3px; }
 .demo-identity { display: inline-flex; align-items: center; gap: 6px; color: var(--accent-text); }
+
+/* ---------- Panel sections: one panel, several titled parts divided by a rule ---------- */
+.panel-section + .panel-section { border-top: 1px solid var(--border); }
+.section-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 14px 16px 0; }
+.section-header h3 { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+.section-header .subtle { font-size: 12px; }
+.section-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+.section-body { padding: 12px 16px 16px; }
+
+/* ---------- Latency chart (dither-kit) ---------- */
+.latency-legend { display: inline-flex; gap: 14px; font-size: 12px; color: var(--text-3); }
+.latency-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.latency-legend i { width: 10px; height: 10px; }
+.latency-legend i.p50 { background: rgb(53 143 243); }
+.latency-legend i.p95 { background: radial-gradient(circle, rgb(140 140 150) 0.9px, transparent 1.2px) 0 0 / 3px 3px; box-shadow: inset 0 0 0 1px rgb(140 140 150 / 0.4); }
+.latency-chart-canvas { position: relative; height: 220px; }
+.latency-chart-canvas > * { height: 100%; }

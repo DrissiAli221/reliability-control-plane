@@ -197,7 +197,8 @@ export type LatencyHeatmap = {
   to: string;
   bucketSeconds: number;
   latencyBoundsMs: number[];
-  regions: Array<{ region: string; samples: number; counts: number[][] }>;
+  /** p50Ms/p95Ms: per-column nearest-rank percentiles, null where a column has no HTTP response. */
+  regions: Array<{ region: string; samples: number; counts: number[][]; p50Ms: Array<number | null>; p95Ms: Array<number | null> }>;
 };
 
 export type PipelineEvent = {

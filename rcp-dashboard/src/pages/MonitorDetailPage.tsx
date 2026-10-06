@@ -12,6 +12,8 @@ import { DrillPanel, DrillTag } from "../components/Drill";
 import { EvidenceRail } from "../components/EvidenceRail";
 import { Explain } from "../components/Explain";
 import { IncidentMachine } from "../components/IncidentMachine";
+import { ChartBoundary } from "../components/ChartBoundary";
+import { LatencyChart } from "../components/LatencyChart";
 import { LatencyHeatmap } from "../components/LatencyHeatmap";
 import { BudgetMeter, CoverageMeter, LatencyRange } from "../components/MetricVisuals";
 import { MonitorToggleButton } from "../components/MonitorToggleButton";
@@ -230,9 +232,18 @@ export function MonitorDetailPage() {
           <h2>Latency</h2>
           <span className="subtle">HTTP responses · last 24 h</span>
         </header>
-        <div className="panel-body">
-          {heatmap ? <LatencyHeatmap heatmap={heatmap} /> : <p className="subtle">Latency heatmap unavailable.</p>}
-        </div>
+        {heatmap ? (
+          <>
+            <ChartBoundary><LatencyChart heatmap={heatmap} /></ChartBoundary>
+            <div className="panel-section">
+              <header className="section-header">
+                <h3>Distribution</h3>
+                <span className="subtle">Responses per latency band · log scale</span>
+              </header>
+              <div className="section-body"><LatencyHeatmap heatmap={heatmap} /></div>
+            </div>
+          </>
+        ) : <div className="panel-body"><p className="subtle">Latency unavailable.</p></div>}
       </section>
 
       <section className="panel decisions" data-tour="machine">
