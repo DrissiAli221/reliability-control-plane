@@ -55,12 +55,12 @@
 
   /* Corner scale: every rounded corner reads one of these, so the whole system changes in one place.
      The operator console is square, like an instrument panel; status dots stay round. */
-  --radius-xs: 3px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius: 8px;
-  --radius-lg: 12px;
-  --radius-pill: 999px;
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius: 0;
+  --radius-lg: 0;
+  --radius-pill: 0;
   --shadow-pop: 0 8px 30px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--border-strong);
 
   color-scheme: dark;

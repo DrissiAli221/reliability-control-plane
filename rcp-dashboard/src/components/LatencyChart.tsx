@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Area } from "./dither-kit/area";
 import { AreaChart } from "./dither-kit/area-chart";
 import { Tooltip } from "./dither-kit/tooltip";
@@ -38,17 +38,22 @@ export function LatencyChart({ heatmap }: { heatmap: LatencyHeatmap }) {
     return () => window.clearTimeout(timer);
   }, []);
 
+  // dither-kit replays its entrance whenever `data` changes identity, so rebuild it only when the data does.
+  // A fresh array on every render made the chart restart its wave and jump to the end when `animate` flipped.
+  const data = useMemo(() => {
+    if (!region) return [];
+    const from = new Date(heatmap.from).getTime();
+    const step = heatmap.bucketSeconds * 1000;
+    return region.p50Ms.flatMap((p50, column) => {
+      const p95 = region.p95Ms[column];
+      if (p50 == null || p95 == null) return [];
+      const start = from + column * step;
+      return [{ tick: clock(start), time: `${clock(start)}–${clock(start + step)}`, p50, p95 }];
+    });
+  }, [heatmap.from, heatmap.bucketSeconds, region]);
+
   // Nothing to draw (no responses, or a backend without percentiles): the heatmap below says why.
   if (!region) return null;
-
-  const from = new Date(heatmap.from).getTime();
-  const step = heatmap.bucketSeconds * 1000;
-  const data = region.p50Ms.flatMap((p50, column) => {
-    const p95 = region.p95Ms[column];
-    if (p50 == null || p95 == null) return [];
-    const start = from + column * step;
-    return [{ tick: clock(start), time: `${clock(start)}–${clock(start + step)}`, p50, p95 }];
-  });
 
   return (
     <div className="latency-chart">
