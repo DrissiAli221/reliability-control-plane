@@ -65,7 +65,7 @@ output "server_application_json" {
         max-timeout-ms       = 5000
       }
       demo = {
-        monitors            = "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org"
+        monitors            = "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org, Scheduled outage drill|${var.api_origin}/drill/status.html"
         example-monitor-url = "https://example.com"
       }
     }

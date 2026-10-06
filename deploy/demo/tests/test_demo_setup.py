@@ -25,7 +25,7 @@ def outputs():
             "probe-result-queue-region": "us-east-1", "probe-result-queue-url": "https://sqs.us-east-1.amazonaws.com/123456789012/results",
             "result-wait-time-seconds": 20, "result-visibility-timeout-seconds": 60},
         "monitors": {"max-per-owner": 3, "min-interval-seconds": 60, "max-total": 8, "max-timeout-ms": 5000},
-        "demo": {"monitors": "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org", "example-monitor-url": "https://example.com"},
+        "demo": {"monitors": "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org, Scheduled outage drill|https://api.example.invalid/drill/status.html", "example-monitor-url": "https://example.com"},
     }}
     return {
         "identity": {"value": {"issuer_uri": issuer, "client_id": "fake-client"}},
@@ -45,6 +45,7 @@ class ConfigurationContract(unittest.TestCase):
 
     def test_rejects_contract_drift(self):
         mutations = [
+            lambda c: c["rcp"]["demo"].update({"monitors": "Example Domain|https://example.com"}),
             lambda c: c["rcp"]["runtime"]["probe-job-queue-urls"].pop("eu-west-1"),
             lambda c: c["rcp"]["runtime"]["probe-job-queue-urls"].update({"eu-west-1": "https://sqs.us-east-1.amazonaws.com/123456789012/jobs"}),
             lambda c: c["rcp"]["monitors"].update({"min-interval-seconds": 30}),

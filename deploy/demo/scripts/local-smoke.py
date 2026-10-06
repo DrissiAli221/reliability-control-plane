@@ -59,7 +59,7 @@ def verify_phase2(origin):
     assert identity["subject"] == "11111111-2222-3333-4444-555555555555", "Seeding must use the token's subject"
     assert identity["limits"] == {"maxPerOwner": 3, "maxTotal": 8, "minIntervalSeconds": 60, "maxTimeoutMs": 5000}
     status, monitors = request_json(origin, "/api/monitors", token=token)
-    assert status == 200 and {m["name"] for m in monitors} == {"Example Domain", "Wikipedia"}
+    assert status == 200 and {m["name"] for m in monitors} == {"Example Domain", "Wikipedia", "Scheduled outage drill"}
     details = [request_json(origin, "/api/monitors/" + m["id"], token=token)[1] for m in monitors]
     assert all(m["checkIntervalSeconds"] == 60 and m["timeoutMs"] <= 5000 for m in details)
     create = {"name": "Forbidden write", "targetUrl": "https://example.com", "checkIntervalSeconds": 60, "timeoutMs": 5000}
@@ -94,6 +94,7 @@ def main():
         shutil.copy(SOURCE / "compose.yaml", deploy / "compose.yaml")
         shutil.copy(SOURCE / "Caddyfile", deploy / "Caddyfile")
         shutil.copytree(SOURCE / "scripts", deploy / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
+        command(["python3", str(deploy / "scripts/outage-drill.py"), "restore"])
         secrets_dir = deploy / "secrets"
         secrets_dir.mkdir(mode=0o700)
         config = {"rcp": {
@@ -106,7 +107,7 @@ def main():
             config["rcp"].update({
                 "monitors": {"max-per-owner": 3, "max-total": 8, "min-interval-seconds": 60, "max-timeout-ms": 5000},
                 "local-worker": {"enabled": False},
-                "demo": {"monitors": "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org",
+                "demo": {"monitors": "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org, Scheduled outage drill|https://rcp-ali.duckdns.org/drill/status.html",
                          "example-monitor-url": "https://example.com"},
             })
             config["rcp"]["identity"]["read-only-group"] = "demo"
@@ -150,6 +151,11 @@ def main():
                 "Origin": "https://dashboard.example.invalid", "Access-Control-Request-Method": "GET"})
             with urllib.request.urlopen(request, timeout=10) as response:
                 assert response.headers["Access-Control-Allow-Origin"] == "https://dashboard.example.invalid"
+            assert http_status(origin, "/drill/status.html") == 200
+            (deploy / "drill/status.html").unlink()
+            assert http_status(origin, "/drill/status.html") == 404
+            command(["python3", str(deploy / "scripts/outage-drill.py"), "restore"])
+            assert http_status(origin, "/drill/status.html") == 200
             if args.phase2:
                 verify_phase2(origin)
             # A marker proves backup data, not just an empty schema, survives restoration.

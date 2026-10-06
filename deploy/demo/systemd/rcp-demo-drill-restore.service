@@ -1,0 +1,18 @@
+[Unit]
+Description=Restore the RCP drill page before containers start
+Before=docker.service rcp-demo-drill.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/rcp/deploy/demo
+ExecStart=/usr/bin/python3 /opt/rcp/deploy/demo/scripts/outage-drill.py restore
+UMask=0022
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/rcp/deploy/demo/drill
+
+[Install]
+WantedBy=multi-user.target

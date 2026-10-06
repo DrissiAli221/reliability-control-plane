@@ -10,6 +10,16 @@
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 	}
+	@drill {
+		method GET HEAD
+		path /drill/status.html
+	}
+	handle @drill {
+		header Cache-Control "no-store"
+		root * /srv/drill
+		rewrite * /status.html
+		file_server
+	}
 	# Metrics and health are available within Docker, not on the public API origin.
 	@management path /actuator /actuator/*
 	handle @management {
