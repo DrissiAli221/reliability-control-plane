@@ -53,3 +53,60 @@ jobs:
       - run: terraform fmt -check -recursive
       - run: terraform init -backend=false -lockfile=readonly -input=false
       - run: terraform validate -no-color
+
+  demo-terraform:
+    name: Demo Terraform (${{ matrix.name }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: AWS
+            directory: infra/aws-demo
+            validate: ./validate.sh
+          - name: Oracle
+            directory: infra/oracle-demo
+            validate: ./validate.sh
+          - name: Grafana
+            directory: deploy/demo/monitoring
+            validate: |
+              terraform fmt -check -recursive
+              terraform init -backend=false -lockfile=readonly -input=false
+              terraform validate -no-color
+              terraform test -no-color
+    defaults:
+      run:
+        working-directory: ${{ matrix.directory }}
+    env:
+      TF_IN_AUTOMATION: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        if: matrix.name == 'AWS'
+        with:
+          node-version: '22'
+      - name: Validate offline plans and guardrails
+        run: ${{ matrix.validate }}
+
+  demo-deployment:
+    name: Demo deployment
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check test runner failure handling
+        run: python3 -m unittest discover -s .github/tests -v
+      - name: Install native deployment test tools
+        run: bash .github/scripts/setup-demo-tools.sh
+      - name: Run deployment tests without skips
+        run: python3 .github/scripts/test-demo.py

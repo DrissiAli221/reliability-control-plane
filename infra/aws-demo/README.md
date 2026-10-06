@@ -90,9 +90,9 @@ for excluded resource types, region placement, IAM actions, and runtime settings
 Provider downloads contact the Terraform registry; AWS APIs are not needed.
 Never apply a plan made with `offline_mode=true`.
 
-The existing repository CI validates `infra/aws/` only. Until a separately approved
-workflow change adds this folder, run this validation explicitly. The lockfile
-includes provider checksums for Linux and both Mac architectures.
+CI runs this validator alongside the production, Oracle demo and Grafana
+Terraform checks. The lockfile includes provider checksums for Linux and both
+Mac architectures. CI uses fake inputs and never applies infrastructure.
 
 ## Later deployment sequence (requires account and deployment authorization)
 
