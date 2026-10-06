@@ -64,6 +64,37 @@ class DataRetentionIntegrationTest {
     }
 
     @Test
+    void anOldCheckWhoseIncidentDecisionIsStillPendingIsKept() {
+        UUID unevaluated = execution(now.minus(Duration.ofDays(120)), true);
+        jdbc.update("DELETE FROM incident_evaluations WHERE execution_id = ?", unevaluated);
+
+        retention.prune();
+
+        assertThat(exists("probe_executions", unevaluated)).isTrue();
+        assertThat(count("probe_results", unevaluated)).isEqualTo(2);
+    }
+
+    @Test
+    void aPausedMonitorKeepsTheCheckItsIncidentStateRefersTo() {
+        Instant lastEvaluated = now.minus(Duration.ofDays(150));
+        UUID earlier = execution(lastEvaluated.minus(Duration.ofMinutes(1)), true);
+        UUID last = execution(lastEvaluated, true);
+        jdbc.update("""
+                INSERT INTO monitor_incident_state (monitor_id, status, consecutive_down, consecutive_up, last_evaluated_at)
+                VALUES (?, 'HEALTHY', 0, 1, ?)
+                """, monitor.getId(), timestamp(lastEvaluated));
+
+        retention.prune();
+
+        assertThat(exists("probe_executions", earlier)).isFalse();
+        assertThat(exists("probe_executions", last)).isTrue();
+        // The lookup incident processing makes when the monitor resumes.
+        assertThat(jdbc.queryForObject(
+                "SELECT monitor_behavior_version FROM probe_executions WHERE monitor_id = ? AND scheduled_at = ?",
+                Long.class, monitor.getId(), timestamp(lastEvaluated))).isEqualTo(monitor.getBehaviorVersion());
+    }
+
+    @Test
     void publishedOutboxEventsAndProcessedMessageIdsExpireButPendingEventsStay() {
         UUID oldPublished = outboxEvent(now.minus(Duration.ofDays(20)), true);
         UUID recentPublished = outboxEvent(now.minus(Duration.ofDays(2)), true);

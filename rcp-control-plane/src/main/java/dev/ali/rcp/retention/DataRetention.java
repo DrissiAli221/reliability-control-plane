@@ -14,8 +14,9 @@ import java.util.UUID;
  * <ul>
  *   <li>Check history (executions, their jobs, results and incident evaluations) older than the history window.
  *       The window must cover the longest view, the 45-day status page; older availability windows then report
- *       less coverage rather than a guessed number. Executions that opened or resolved an incident are kept, so
- *       incident timelines stay complete.</li>
+ *       less coverage rather than a guessed number. Only executions whose incident decision is recorded are
+ *       deleted. Executions that opened or resolved an incident are kept, so incident timelines stay complete, and so
+ *       is each monitor's last evaluated execution, which incident processing reads when a paused monitor resumes.</li>
  *   <li>Queue bookkeeping (published outbox events and processed-message ids) older than the bookkeeping window.
  *       Its job is deduplicating redelivered messages, and SQS keeps messages for at most four days.</li>
  * </ul>
@@ -85,6 +86,12 @@ public class DataRetention {
                 SELECT e.execution_id FROM probe_executions e
                 WHERE e.status = 'FINALIZED'
                   AND e.scheduled_at < CURRENT_TIMESTAMP - make_interval(days => ?)
+                  -- Finalized only means the regions answered; the incident decision is a separate, later step.
+                  AND EXISTS (SELECT 1 FROM incident_evaluations done WHERE done.execution_id = e.execution_id)
+                  -- Incident processing reads the monitor's last evaluated check to detect a changed configuration,
+                  -- which after a long pause can be far older than the history window.
+                  AND NOT EXISTS (SELECT 1 FROM monitor_incident_state s
+                                  WHERE s.monitor_id = e.monitor_id AND s.last_evaluated_at = e.scheduled_at)
                   AND NOT EXISTS (SELECT 1 FROM incidents i
                                   WHERE i.opened_by_execution_id = e.execution_id
                                      OR i.resolved_by_execution_id = e.execution_id)
