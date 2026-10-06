@@ -17,7 +17,10 @@ public record LatencyHeatmap(
         List<RegionHeatmap> regions
 ) {
 
-    /** counts.get(column).get(band): column 0 is the oldest time slot. */
-    public record RegionHeatmap(String region, long samples, List<List<Long>> counts) {
+    /**
+     * counts.get(column).get(band): column 0 is the oldest time slot. p50Ms and p95Ms hold each column's
+     * nearest-rank percentiles (null where the column has no HTTP response), so every value was actually measured.
+     */
+    public record RegionHeatmap(String region, long samples, List<List<Long>> counts, List<Long> p50Ms, List<Long> p95Ms) {
     }
 }

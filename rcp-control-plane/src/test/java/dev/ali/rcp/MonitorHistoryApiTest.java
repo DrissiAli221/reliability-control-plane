@@ -136,7 +136,15 @@ class MonitorHistoryApiTest {
                 .andExpect(jsonPath("$.regions[0].counts[*][2]", hasItem(1)))
                 .andExpect(jsonPath("$.regions[0].counts[*][3]", hasItem(1)))
                 .andExpect(jsonPath("$.regions[0].counts[*][1]", not(hasItem(1))))
-                .andExpect(jsonPath("$.regions[1].samples").value(2));
+                .andExpect(jsonPath("$.regions[1].samples").value(2))
+                // Nearest-rank percentiles per column: eu-west-1 measured 100 and 200 ms, us-east-1 300 and 400 ms.
+                // Columns without an HTTP response stay null rather than zero.
+                .andExpect(jsonPath("$.regions[0].p50Ms.length()").value(48))
+                .andExpect(jsonPath("$.regions[0].p50Ms[*]", hasItem(100)))
+                .andExpect(jsonPath("$.regions[0].p95Ms[*]", hasItem(200)))
+                .andExpect(jsonPath("$.regions[0].p50Ms[0]").value(nullValue()))
+                .andExpect(jsonPath("$.regions[1].p50Ms[*]", hasItem(300)))
+                .andExpect(jsonPath("$.regions[1].p95Ms[*]", hasItem(400)));
     }
 
     @Test

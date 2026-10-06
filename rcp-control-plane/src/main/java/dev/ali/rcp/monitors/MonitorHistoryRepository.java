@@ -198,6 +198,31 @@ public class MonitorHistoryRepository {
     public record LatencyCell(String region, int column, int band, long samples) {
     }
 
+    /** Nearest-rank p50 and p95 of HTTP-response latency per region and time column, like the region summaries. */
+    public List<ColumnPercentiles> latencyPercentiles(UUID monitorId, Instant from, Instant to, int bucketSeconds) {
+        return jdbcTemplate.query(
+                """
+                SELECT probe_region,
+                       FLOOR(EXTRACT(EPOCH FROM (scheduled_at - ?)) / ?)::int AS column_index,
+                       percentile_disc(0.5) WITHIN GROUP (ORDER BY latency_ms) AS p50_ms,
+                       percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_ms
+                FROM probe_results
+                WHERE monitor_id = ? AND scheduled_at >= ? AND scheduled_at < ? AND outcome = 'HTTP_RESPONSE'
+                GROUP BY 1, 2
+                """,
+                (resultSet, rowNumber) -> new ColumnPercentiles(
+                        resultSet.getString("probe_region"),
+                        resultSet.getInt("column_index"),
+                        resultSet.getLong("p50_ms"),
+                        resultSet.getLong("p95_ms")
+                ),
+                timestamp(from), bucketSeconds, monitorId, timestamp(from), timestamp(to)
+        );
+    }
+
+    public record ColumnPercentiles(String region, int column, long p50Ms, long p95Ms) {
+    }
+
     private OffsetDateTime timestamp(Instant instant) {
         return instant.atOffset(ZoneOffset.UTC);
     }
