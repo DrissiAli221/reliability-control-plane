@@ -79,14 +79,22 @@ public class MonitorHistoryService {
             p95ByRegion.computeIfAbsent(column.region(), region -> new Long[HEATMAP_COLUMNS])[index] = column.p95Ms();
         }
 
+        Map<String, MonitorHistoryRepository.WindowPercentiles> window =
+                historyRepository.windowPercentiles(monitorId, from, to);
+
         List<LatencyHeatmap.RegionHeatmap> regions = byRegion.entrySet().stream()
-                .map(entry -> new LatencyHeatmap.RegionHeatmap(
-                        entry.getKey(),
-                        entry.getValue().stream().flatMap(List::stream).mapToLong(Long::longValue).sum(),
-                        entry.getValue().stream().map(List::copyOf).toList(),
-                        nullableColumns(p50ByRegion.get(entry.getKey())),
-                        nullableColumns(p95ByRegion.get(entry.getKey()))
-                ))
+                .map(entry -> {
+                    MonitorHistoryRepository.WindowPercentiles overall = window.get(entry.getKey());
+                    return new LatencyHeatmap.RegionHeatmap(
+                            entry.getKey(),
+                            entry.getValue().stream().flatMap(List::stream).mapToLong(Long::longValue).sum(),
+                            entry.getValue().stream().map(List::copyOf).toList(),
+                            nullableColumns(p50ByRegion.get(entry.getKey())),
+                            nullableColumns(p95ByRegion.get(entry.getKey())),
+                            overall == null ? null : overall.p50Ms(),
+                            overall == null ? null : overall.p95Ms()
+                    );
+                })
                 .toList();
         return new LatencyHeatmap(monitorId, from, to, bucketSeconds, LATENCY_BOUNDS_MS, regions);
     }

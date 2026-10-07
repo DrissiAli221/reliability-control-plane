@@ -1,6 +1,7 @@
 package dev.ali.rcp.monitors;
 
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
@@ -14,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.UUID;
 
 @Repository
@@ -221,6 +223,30 @@ public class MonitorHistoryRepository {
     }
 
     public record ColumnPercentiles(String region, int column, long p50Ms, long p95Ms) {
+    }
+
+    /** Nearest-rank p50 and p95 of HTTP-response latency per region over the whole window. */
+    public Map<String, WindowPercentiles> windowPercentiles(UUID monitorId, Instant from, Instant to) {
+        Map<String, WindowPercentiles> byRegion = new TreeMap<>();
+        jdbcTemplate.query(
+                """
+                SELECT probe_region,
+                       percentile_disc(0.5) WITHIN GROUP (ORDER BY latency_ms) AS p50_ms,
+                       percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_ms
+                FROM probe_results
+                WHERE monitor_id = ? AND scheduled_at >= ? AND scheduled_at < ? AND outcome = 'HTTP_RESPONSE'
+                GROUP BY probe_region
+                """,
+                (RowCallbackHandler) resultSet -> byRegion.put(
+                        resultSet.getString("probe_region"),
+                        new WindowPercentiles(resultSet.getLong("p50_ms"), resultSet.getLong("p95_ms"))
+                ),
+                monitorId, timestamp(from), timestamp(to)
+        );
+        return byRegion;
+    }
+
+    public record WindowPercentiles(long p50Ms, long p95Ms) {
     }
 
     private OffsetDateTime timestamp(Instant instant) {

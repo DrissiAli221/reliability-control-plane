@@ -146,7 +146,12 @@ class MonitorHistoryApiTest {
                 .andExpect(jsonPath("$.regions[0].p95Ms[*]", hasItem(200)))
                 .andExpect(jsonPath("$.regions[0].p50Ms[0]").value(nullValue()))
                 .andExpect(jsonPath("$.regions[1].p50Ms[*]", hasItem(300)))
-                .andExpect(jsonPath("$.regions[1].p95Ms[*]", hasItem(400)));
+                .andExpect(jsonPath("$.regions[1].p95Ms[*]", hasItem(400)))
+                // The same nearest-rank percentiles over the whole window, per region.
+                .andExpect(jsonPath("$.regions[0].windowP50Ms").value(100))
+                .andExpect(jsonPath("$.regions[0].windowP95Ms").value(200))
+                .andExpect(jsonPath("$.regions[1].windowP50Ms").value(300))
+                .andExpect(jsonPath("$.regions[1].windowP95Ms").value(400));
     }
 
     @Test
