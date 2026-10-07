@@ -120,16 +120,18 @@ class MonitorHistoryApiTest {
 
     @Test
     void heatmapCountsHttpResponsesByRegionTimeColumnAndLatencyBand() throws Exception {
+        // 24 hours, not 48: a 48-hour window reaches into "two days ago" during the first hour of every UTC day,
+        // which made this test fail between 00:00 and 01:00 UTC.
         mockMvc.perform(get("/api/monitors/{id}/latency-heatmap", monitor.getId())
-                        .queryParam("hours", "48")
+                        .queryParam("hours", "24")
                         .with(jwt().jwt(token -> token.subject("ali-subject"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.bucketSeconds").value(3600))
+                .andExpect(jsonPath("$.bucketSeconds").value(1800))
                 .andExpect(jsonPath("$.latencyBoundsMs.length()").value(7))
                 .andExpect(jsonPath("$.regions.length()").value(2))
                 .andExpect(jsonPath("$.regions[0].region").value(EU))
                 // Today's two HTTP responses in eu-west-1: 100 ms (band 2: 100-200) and 200 ms (band 3: 200-400);
-                // the two-day-old 503 is outside 48 hours and the timeout carries no latency sample.
+                // the two-day-old 503 is outside 24 hours and the timeout carries no latency sample.
                 .andExpect(jsonPath("$.regions[0].samples").value(2))
                 .andExpect(jsonPath("$.regions[0].counts.length()").value(48))
                 .andExpect(jsonPath("$.regions[0].counts[0].length()").value(8))
