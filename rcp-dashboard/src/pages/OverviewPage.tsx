@@ -10,6 +10,7 @@ import { LiveLed, StatusDot } from "../components/StatusBadge";
 import { compactUrl, count, elapsed, milliseconds, monitorState, relativeTime } from "../format";
 import type { FleetOverview, MonitorOverview, PipelineSnapshot } from "../types";
 import { tour } from "../tour";
+import { drillPhase, isDrillMonitor, utcClock } from "../drill";
 import { useLiveData, useNow } from "../useLiveData";
 import { ErrorState, LiveIndicator } from "./MonitorsPage";
 
@@ -29,7 +30,10 @@ export function OverviewPage() {
       <header className="page-header">
         <div>
           <h1>Overview</h1>
-          <p>Every monitor, every region, the last 24 hours. Only checks where the regions agreed count toward uptime.</p>
+          <p>
+            {monitors.data && <><strong>{fleetSentence(monitors.data)}</strong>{" "}{contextSentence(monitors.data, pipeline.data, now)}{" "}</>}
+            Only checks where the regions agreed count toward uptime.
+          </p>
         </div>
         <div className="page-actions">
           <LiveIndicator updatedAt={overview.updatedAt} now={now} error={overview.error} />
@@ -70,6 +74,33 @@ export function OverviewPage() {
       )}
     </>
   );
+}
+
+/** The fleet's state as one plain sentence, counted from the backend's own verdicts and incident status. */
+function fleetSentence(monitors: MonitorOverview[]): string {
+  const enabled = monitors.filter((monitor) => monitor.enabled);
+  if (enabled.length === 0) return monitors.length ? "Every monitor is paused." : "No monitors yet.";
+  const incidents = enabled.filter((monitor) => monitor.incidentStatus === "OPEN").length;
+  if (incidents > 0) return incidents === 1 ? "1 incident is open." : `${incidents} incidents are open.`;
+  const up = enabled.filter((monitor) => monitor.latestVerdict === "UP").length;
+  if (up === enabled.length) return enabled.length === 1 ? "The monitor is up." : `All ${enabled.length} monitors are up.`;
+  return `${up} of ${enabled.length} monitors are up.`;
+}
+
+function contextSentence(monitors: MonitorOverview[], snapshot: PipelineSnapshot | null, now: number): string {
+  const parts: string[] = [];
+  if (snapshot && snapshot.regions.length > 0) {
+    const reporting = snapshot.regions.filter((region) => region.resultsReceived > 0).length;
+    const total = snapshot.regions.length;
+    parts.push(reporting === total ? (total === 2 ? "Both regions are reporting" : `All ${total} regions are reporting`) : `${reporting} of ${total} regions are reporting`);
+  }
+  if (monitors.some((monitor) => monitor.enabled && isDrillMonitor(monitor.targetUrl))) {
+    const phase = drillPhase(now);
+    parts.push(phase.active ? "a planned outage drill is running" : `the next planned drill is at ${utcClock(phase.nextStart)} UTC`);
+  }
+  if (parts.length === 0) return "";
+  const sentence = parts.join("; ");
+  return `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}.`;
 }
 
 function Hero({ overview, monitors, regions, now, updatedAt }: {

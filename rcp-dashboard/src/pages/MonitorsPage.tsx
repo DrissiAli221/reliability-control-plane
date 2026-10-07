@@ -119,7 +119,7 @@ export function MonitorsPage() {
       <header className="page-header">
         <div>
           <h1>Monitors</h1>
-          <p>HTTP(S) targets checked from every configured region. Verdicts need regional agreement.</p>
+          <p><strong>HTTP(S) targets, checked from every region.</strong> A verdict needs the regions to agree.</p>
         </div>
         <div className="page-actions">
           <LiveIndicator updatedAt={fleet.updatedAt} now={now} error={fleet.error} />

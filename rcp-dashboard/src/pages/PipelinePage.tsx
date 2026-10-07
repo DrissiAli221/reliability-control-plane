@@ -20,7 +20,7 @@ export function PipelinePage() {
       <header className="page-header">
         <div>
           <h1>Pipeline</h1>
-          <p>How every check travels from the scheduler to an incident decision. Counts cover your monitors only.</p>
+          <p><strong>How every check travels from the scheduler to an incident decision.</strong> Counts cover your monitors only.</p>
         </div>
         <div className="page-actions">
           <LiveIndicator updatedAt={snapshot.updatedAt} now={now} error={snapshot.error} />

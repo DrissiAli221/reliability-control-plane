@@ -8,6 +8,7 @@ import { useFleetWatch } from "../tabSignal";
 import { toggleTheme, useTheme } from "../theme";
 import { CommandPalette, PaletteButton } from "./CommandPalette";
 import { IncidentToasts } from "./IncidentToasts";
+import { StatusBar } from "./StatusBar";
 import { Tour } from "./Tour";
 
 const telemetryUrl = import.meta.env.VITE_GRAFANA_URL
@@ -106,6 +107,7 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
         )}
         {children}
       </div>
+      <StatusBar />
       <CommandPalette />
       <IncidentToasts changes={changes} dismiss={dismiss} />
       <Tour />

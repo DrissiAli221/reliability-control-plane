@@ -125,6 +125,8 @@ a { color: inherit; }
 .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
 .page-header h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.2; }
 .page-header p { margin-top: 4px; color: var(--text-2); max-width: 640px; }
+/* Two-tone descriptions: the first sentence says what matters in full contrast, the rest explains in grey. */
+.page-header p strong { font-weight: 500; color: var(--text); }
 .page-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .detail-header { align-items: flex-start; }
 .title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -1143,7 +1145,7 @@ kbd {
 .lost-actions .button { text-decoration: none; }
 
 /* ---------- Incident toasts ---------- */
-.toasts { position: fixed; right: 20px; bottom: 20px; z-index: 80; display: grid; gap: 8px; width: min(380px, calc(100vw - 32px)); margin: 0; padding: 0; list-style: none; }
+.toasts { position: fixed; right: 20px; bottom: 44px; z-index: 80; display: grid; gap: 8px; width: min(380px, calc(100vw - 32px)); margin: 0; padding: 0; list-style: none; }
 .toast {
   --hue: var(--red); display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 12px; padding: 12px 10px 12px 14px;
   background: radial-gradient(ellipse 70% 120% at 0 0, color-mix(in srgb, var(--hue) 16%, transparent), transparent 70%), var(--surface-2);
@@ -1417,6 +1419,27 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .fanout-link { animation: none; stroke-dashoffset: 0; }
 }
+
+/* ---------- Status bar: an instrument strip along the bottom of the console ---------- */
+.statusbar {
+  position: fixed; left: 248px; right: 0; bottom: 0; z-index: 20; display: flex; align-items: center; gap: 20px;
+  height: 30px; padding: 0 clamp(20px, 4vw, 48px); border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px);
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-3); white-space: nowrap;
+}
+.statusbar b { font-weight: 500; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.statusbar-live { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); }
+.statusbar-live.stale { color: var(--amber-text); }
+.statusbar-regions, .statusbar-queues { display: inline-flex; align-items: center; gap: 16px; min-width: 0; }
+.statusbar-regions { overflow: hidden; }
+.statusbar-regions .quiet { opacity: 0.5; }
+.statusbar-queues { margin-left: auto; }
+.statusbar .fault, .statusbar .fault b { color: var(--red-text); }
+.statusbar-window, .statusbar-updated { color: var(--text-3); }
+.main { padding-bottom: 72px; }
+@media (max-width: 1280px) { .statusbar-window, .statusbar-updated { display: none; } }
+@media (max-width: 1100px) { .statusbar-detail { display: none; } }
+@media (max-width: 860px) { .statusbar { display: none; } .toasts { bottom: 20px; } }
 
 /* ---------- Incidents as a short story: opened → resolved on a rail ---------- */
 .incident-story { display: grid; margin: 0; padding: 0; list-style: none; }
