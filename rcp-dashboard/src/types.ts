@@ -197,8 +197,19 @@ export type LatencyHeatmap = {
   to: string;
   bucketSeconds: number;
   latencyBoundsMs: number[];
-  /** p50Ms/p95Ms: per-column nearest-rank percentiles, null where a column has no HTTP response. */
-  regions: Array<{ region: string; samples: number; counts: number[][]; p50Ms: Array<number | null>; p95Ms: Array<number | null> }>;
+  /**
+   * p50Ms/p95Ms: per-column nearest-rank percentiles, null where a column has no HTTP response;
+   * windowP50Ms/windowP95Ms: the same over the whole window.
+   */
+  regions: Array<{
+    region: string;
+    samples: number;
+    counts: number[][];
+    p50Ms: Array<number | null>;
+    p95Ms: Array<number | null>;
+    windowP50Ms?: number | null;
+    windowP95Ms?: number | null;
+  }>;
 };
 
 export type PipelineEvent = {

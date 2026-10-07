@@ -13,7 +13,8 @@ import { EvidenceRail } from "../components/EvidenceRail";
 import { Explain } from "../components/Explain";
 import { IncidentMachine } from "../components/IncidentMachine";
 import { ChartBoundary } from "../components/ChartBoundary";
-import { LatencyChart } from "../components/LatencyChart";
+import { CheckFanout } from "../components/CheckFanout";
+import { LatencyChart, type LatencyWindow } from "../components/LatencyChart";
 import { LatencyHeatmap } from "../components/LatencyHeatmap";
 import { BudgetMeter, CoverageMeter, LatencyRange } from "../components/MetricVisuals";
 import { MonitorToggleButton } from "../components/MonitorToggleButton";
@@ -25,7 +26,7 @@ import {
   absoluteTime, compactUrl, count, interval, milliseconds, monitorState, outcomeLabel, outcomeTone, percent,
   relativeTime,
 } from "../format";
-import type { AvailabilityReport, IncidentStateView, LatencyHeatmap as Heatmap, MonitorDetail, MonitorHistory, MonitorOverview, ReliabilityReport } from "../types";
+import type { AvailabilityReport, IncidentStateView, LatencyHeatmap as Heatmap, MonitorDetail, MonitorHistory, MonitorOverview, RecentCheck, ReliabilityReport } from "../types";
 import { isDrillMonitor } from "../drill";
 import { machineNode } from "../machine";
 import { useReadOnly } from "../session";
@@ -47,6 +48,7 @@ type DetailData = {
 
 export function MonitorDetailPage() {
   const { monitorId = "" } = useParams();
+  const [latencyRange, setLatencyRange] = useState<LatencyWindow>(24);
   const load = useCallback(async (): Promise<DetailData> => {
     const monitor = await getMonitor(monitorId);
     const [overviews, history, report7d, report, incident, heatmap] = await Promise.allSettled([
@@ -55,7 +57,7 @@ export function MonitorDetailPage() {
       availability(monitorId),
       reliabilityReport(monitorId),
       incidentState(monitorId),
-      latencyHeatmap(monitorId),
+      latencyHeatmap(monitorId, latencyRange),
     ]);
     return {
       monitor,
@@ -66,7 +68,7 @@ export function MonitorDetailPage() {
       incident: incident.status === "fulfilled" ? incident.value : undefined,
       heatmap: heatmap.status === "fulfilled" ? heatmap.value : undefined,
     };
-  }, [monitorId]);
+  }, [monitorId, latencyRange]);
   const detail = useLiveData(load, 10_000);
   const now = useNow();
   const [params, setParams] = useSearchParams();
@@ -92,6 +94,7 @@ export function MonitorDetailPage() {
   const machineOpen = machineToggle ?? (incident ? machineNode(incident) !== "healthy" : false);
   const setMachineOpen = (open: boolean) => setMachineToggle(open);
   const drill = isDrillMonitor(monitor.targetUrl);
+  const latest = history?.recentChecks[0];
 
   async function toggle() {
     await setMonitorEnabled(monitor.id, !monitor.enabled);
@@ -133,11 +136,10 @@ export function MonitorDetailPage() {
         <div className="banner fault" role="status">
           <AlertTriangle size={16} aria-hidden="true" />
           <div>
-            <strong>Incident open</strong>
+            <strong>{incidentHeadline(latest, incident)}</strong>
             <p>
-              Consecutive checks were DOWN in every region.
-              {ongoing?.openedAt && <> Opened {relativeTime(ongoing.openedAt, now)} ({absoluteTime(ongoing.openedAt)}).</>}
-              {" "}It resolves after consecutive UP checks.
+              {ongoing?.openedAt ? <>Opened {relativeTime(ongoing.openedAt, now)} ({absoluteTime(ongoing.openedAt)})</> : "Opened"}
+              {incident ? ` after ${incident.failuresToOpen} DOWN checks in a row; it resolves after ${incident.successesToResolve} UP checks in a row.` : "."}
               {drill && <> This is the scheduled drill: the outage is planned and recovers on its own.</>}
             </p>
           </div>
@@ -154,6 +156,19 @@ export function MonitorDetailPage() {
       )}
 
       {drill && monitor.enabled && <DrillPanel now={now} overview={overview} />}
+
+      {latest && (
+        <CheckFanout
+          check={latest}
+          timeoutMs={monitor.timeoutMs}
+          intervalLabel={interval(monitor.checkIntervalSeconds)}
+          now={now}
+          onTrace={() => {
+            selectCheck(latest.executionId);
+            document.querySelector('[data-tour="machine"]')?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+        />
+      )}
 
       <section className="metric-grid" aria-label="Seven-day summary" data-tour="metrics">
         <Metric
@@ -230,11 +245,13 @@ export function MonitorDetailPage() {
       <section className="panel" data-tour="heatmap">
         <header className="panel-header">
           <h2>Latency</h2>
-          <span className="subtle">HTTP responses · last 24 h</span>
+          <span className="subtle">HTTP responses · last {latencyRange === 24 ? "24 h" : "7 days"}</span>
         </header>
         {heatmap ? (
           <>
-            <ChartBoundary><LatencyChart heatmap={heatmap} /></ChartBoundary>
+            <ChartBoundary>
+              <LatencyChart heatmap={heatmap} range={latencyRange} onRangeChange={setLatencyRange} incidents={incidents} now={now} />
+            </ChartBoundary>
             <div className="panel-section">
               <header className="section-header">
                 <h3>Distribution</h3>
@@ -328,18 +345,34 @@ export function MonitorDetailPage() {
           <span className="subtle">Last 7 days</span>
         </header>
         {incidents.length > 0 ? (
-          <ol className="incident-list">
-            {incidents.slice(0, INCIDENT_LIMIT).map((incident) => (
-              <li key={incident.id}>
-                <StatusDot tone={incident.resolvedAt ? "good" : "fault"} pulse={!incident.resolvedAt} />
-                <div>
-                  <strong>{incident.resolvedAt ? "Resolved" : "Ongoing"}</strong>
-                  <span className="subtle">
-                    {incident.openedAt ? `Opened ${absoluteTime(incident.openedAt)}` : "Opened before this window"}
-                    {incident.resolvedAt && ` · resolved ${absoluteTime(incident.resolvedAt)}`}
-                  </span>
+          <ol className="incident-story">
+            {incidents.slice(0, INCIDENT_LIMIT).map((item) => (
+              <li key={item.id} className={item.resolvedAt ? undefined : "ongoing"}>
+                <div className="incident-story-head">
+                  <StatusDot tone={item.resolvedAt ? "good" : "fault"} pulse={!item.resolvedAt} />
+                  <strong>{item.resolvedAt ? "Resolved" : "Ongoing"}</strong>
+                  <span className="subtle">{item.openedAt ? dayLabel(item.openedAt) : "Opened before this window"}</span>
+                  <span className="incident-story-duration mono">{item.resolvedAt ? "lasted " : "down for "}{duration(item.openedAt, item.resolvedAt, now)}</span>
                 </div>
-                <span className="mono subtle">{duration(incident.openedAt, incident.resolvedAt, now)}</span>
+                <ol className="incident-story-events">
+                  {item.openedAt && (
+                    <li className="opened">
+                      <time dateTime={item.openedAt}>{clockTime(item.openedAt)}</time>
+                      <span>Opened{incident ? ` after ${incident.failuresToOpen} DOWN checks in a row` : ""}</span>
+                    </li>
+                  )}
+                  {item.resolvedAt ? (
+                    <li className="resolved">
+                      <time dateTime={item.resolvedAt}>{clockTime(item.resolvedAt)}</time>
+                      <span>Resolved{incident ? ` after ${incident.successesToResolve} UP checks in a row` : ""}</span>
+                    </li>
+                  ) : (
+                    <li className="now">
+                      <time>now</time>
+                      <span>Still open; it resolves after {incident ? `${incident.successesToResolve} UP checks in a row` : "consecutive UP checks"}</span>
+                    </li>
+                  )}
+                </ol>
               </li>
             ))}
           </ol>
@@ -442,6 +475,21 @@ function SloMetric({ report }: { report?: AvailabilityReport }) {
   );
 }
 
+/** What the regions saw, as one sentence. It describes the backend's evidence; the incident decision stays there. */
+function incidentHeadline(latest: RecentCheck | undefined, state: IncidentStateView | undefined): string {
+  if (!latest) return "Incident open";
+  if (latest.verdict !== "DOWN") {
+    const progress = state ? ` (${state.consecutiveUp} of ${state.successesToResolve} UP checks)` : "";
+    return latest.verdict === "UP" ? `Incident open · recovering${progress}` : "Incident open · the latest check was inconclusive";
+  }
+  const seen = latest.results.map((result) =>
+    result.outcome === "HTTP_RESPONSE" ? `HTTP ${result.httpStatus}` : outcomeLabel(result.outcome, result.httpStatus));
+  if (seen.length > 0 && seen.every((label) => label === seen[0])) {
+    return `Incident open · ${seen.length === 2 ? "both regions" : `all ${seen.length} regions`} saw ${seen[0]}`;
+  }
+  return `Incident open · every region failed: ${latest.results.map((result, i) => `${result.region} ${seen[i]}`).join(", ")}`;
+}
+
 type IncidentSpan = { id: string; openedAt: string | null; resolvedAt: string | null };
 
 function pairIncidents(report?: ReliabilityReport): IncidentSpan[] {
@@ -454,6 +502,14 @@ function pairIncidents(report?: ReliabilityReport): IncidentSpan[] {
     spans.set(event.incidentId, span);
   }
   return [...spans.values()].reverse();
+}
+
+function dayLabel(value: string): string {
+  return new Date(value).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+}
+
+function clockTime(value: string): string {
+  return new Date(value).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
 function duration(openedAt: string | null, resolvedAt: string | null, now: number): string {
