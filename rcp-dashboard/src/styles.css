@@ -634,16 +634,16 @@ a { color: inherit; }
    near-black, accent is for interaction only and status colours are deepened so they hold their meaning on white.
    Every token defined on :root has a deliberate value here. */
 :root[data-theme="light"] {
-  --bg: #f4f4f5;
-  --bg-sidebar: #f4f4f5;
-  --surface: #fdfdfd;
-  --surface-2: #fafafa;
-  --surface-hover: #f4f4f5;
-  --border: #e6e6e9;
-  --border-strong: #d4d4d8;
-  --text: #0a0a0b;
-  --text-2: #52525b;
-  --text-3: #8b8b93; /* 3.4:1 on white, 3.1:1 on the page grey */
+  --bg: #ededf0;
+  --bg-sidebar: #f6f6f8;
+  --surface: #ffffff;
+  --surface-2: #f7f7f9;
+  --surface-hover: #f1f1f4;
+  --border: #dcdce1;
+  --border-strong: #c6c6cd;
+  --text: #09090b;
+  --text-2: #3f3f46;
+  --text-3: #6b6b74; /* 5.3:1 on white, 4.5:1 on the page grey */
   /* Accent: interaction and selection only. */
   --accent: #5b4be0;
   --accent-hover: #4a3bc7;
@@ -659,7 +659,7 @@ a { color: inherit; }
   --lift-hi-accent: inset 0 1px 0.4px rgba(255, 255, 255, 0.55);
   --lift-lo: inset 0 -1px 0.4px rgba(10, 10, 11, 0.04);
   --lift-outer: 0 1px 2px rgba(10, 10, 11, 0.06);
-  --lift-sheen: linear-gradient(180deg, #ffffff, #fafafa);
+  --lift-sheen: linear-gradient(180deg, #ffffff, #f7f7f9);
   --lift-pressed: inset 0 0 0 1px var(--lift-ring), inset 0 1px 2px rgba(10, 10, 11, 0.12);
   --lift-pressed-accent: inset 0 0 0 1px var(--lift-ring-accent), inset 0 1px 2px rgba(10, 10, 11, 0.12);
   /* Status: deeper than on black. */
@@ -673,20 +673,20 @@ a { color: inherit; }
   --red-text: #b42a25;
   --red-bg: rgba(209, 52, 47, 0.08);
   --green-muted: color-mix(in srgb, var(--green) 72%, var(--surface));
-  --gray-bar: #ededef;
+  --gray-bar: #e4e4e8;
   --gray-text: #6b6b73;
   --gray-bg: rgba(10, 10, 11, 0.05);
-  --no-data: #dadadd;
-  --hatch-a: #f1f1f3;
-  --hatch-b: #fafafa;
+  --no-data: #d2d2d8;
+  --hatch-a: #e6e6ea;
+  --hatch-b: #f4f4f6;
   --dot: rgba(10, 10, 11, 0.06);
   --log-outbox: #a21caf;
   --log-ingest: #0f766e;
-  --ink-dots: #0a0a0b;
+  --ink-dots: #09090b;
   --light-fall: 8%;
   --shadow-pop: 0 8px 28px rgba(10, 10, 11, 0.1), 0 0 0 1px var(--border-strong);
-  --sk-base: #efeff1;
-  --sk-sheen: #f7f7f8;
+  --sk-base: #e8e8ec;
+  --sk-sheen: #f3f3f5;
   --veil: rgba(10, 10, 11, 0.4);
   color-scheme: light;
 }
@@ -700,7 +700,7 @@ a { color: inherit; }
 :root[data-theme="light"] .statusbar { background: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none; }
 :root[data-theme="light"] .hero-stats div { background: var(--surface); }
 :root[data-theme="light"] .timeline-span { background: color-mix(in srgb, var(--red) 85%, var(--surface)); }
-:root[data-theme="light"] .drill-meter-cells i b { background: #cfcfd4; }
+:root[data-theme="light"] .drill-meter-cells i b { background: #c6c6cd; }
 :root[data-theme="light"] .led i { opacity: 0.4; }
 :root[data-theme="light"] .heatmap { --heat: #0e7490; }
 :root[data-theme="light"] .heatmap-grid i:not(.hot) { opacity: 0.7; }
@@ -710,15 +710,15 @@ a { color: inherit; }
    Dark keeps its touching hardware-panel grid. Cells inside a module (tiles, steps, nodes, rows) still share hairlines. ---- */
 :root[data-theme="light"] {
   --card-border: var(--border); /* modules touch and share this line, as in dark */
-  --card-shadow: 0 1px 2px rgba(10, 10, 11, 0.04), 0 2px 8px -2px rgba(10, 10, 11, 0.06), 0 12px 24px -12px rgba(10, 10, 11, 0.08);
-  --raise-sheen: linear-gradient(180deg, #ffffff, #fafafb);
+  --card-shadow: 0 1px 2px rgba(9, 9, 11, 0.05), 0 2px 8px -2px rgba(9, 9, 11, 0.08), 0 12px 24px -12px rgba(9, 9, 11, 0.10);
+  --raise-sheen: linear-gradient(180deg, #ffffff, #f7f7f9);
 }
-:root[data-theme="light"] body { background: linear-gradient(180deg, #f6f6f7, #f1f1f3) fixed; background-color: #f4f4f5; }
-:root[data-theme="light"] .sidebar { background: #f9f9fa; } /* near-white: between the grey page and the cards */
+:root[data-theme="light"] body { background: linear-gradient(180deg, #efeff2, #eaeaee) fixed; background-color: #ededf0; }
+:root[data-theme="light"] .sidebar { background: #f6f6f8; } /* near-white: between the grey page and the cards */
 :root[data-theme="light"] :is(.panel, .metric-grid, .banner) { border-color: var(--card-border); box-shadow: var(--card-shadow); }
-:root[data-theme="light"] .table th { background: #efeff1; border-bottom-color: var(--border-strong); color: var(--text-2); } /* title band */
+:root[data-theme="light"] .table th { background: #f0f0f3; border-bottom-color: var(--border-strong); color: var(--text-2); } /* title band */
 :where(:root[data-theme="light"] .table tbody tr) { background: #ffffff; } /* data rows; zero specificity so hover and selected still win */
-:root[data-theme="light"] .panel-header { background: linear-gradient(180deg, #fefefe, var(--surface)); }
+:root[data-theme="light"] .panel-header { background: linear-gradient(180deg, #ffffff, var(--surface)); }
 /* The tiles' own hairlines stay (grid gap); the whole grid is one card. */
 :root[data-theme="light"] .metric-grid { border-color: var(--card-border); background: var(--border); }
 /* Raised inner cells: a faint top-to-bottom sheen and a hairline. Status tints (.lit, [data-tone]) keep their own background. */
@@ -727,7 +727,7 @@ a { color: inherit; }
 :root[data-theme="light"] .drill-steps li.now { background: linear-gradient(180deg, color-mix(in srgb, var(--hue) var(--light-fall), transparent) 0%, transparent 55%), var(--raise-sheen); }
 :root[data-theme="light"] .segmented button[aria-pressed="true"], :root[data-theme="light"] .segmented button[aria-checked="true"] { background-color: #fff; }
 :root[data-theme="light"] .nav-item.active, :root[data-theme="light"] .nav-item.active:active { background: var(--raise-sheen); box-shadow: inset 0 0 0 1px var(--border), inset 2px 0 0 var(--accent), 0 1px 2px rgba(10, 10, 11, 0.06); }
-:root[data-theme="light"] .topbar { background: color-mix(in srgb, #f6f6f7 78%, transparent); transition: box-shadow 160ms; } /* keeps the hairline that lines up with the sidebar header */
+:root[data-theme="light"] .topbar { background: color-mix(in srgb, #efeff2 78%, transparent); transition: box-shadow 160ms; } /* keeps the hairline that lines up with the sidebar header */
 :root[data-theme="light"] .topbar::after { display: none; }
 :root[data-theme="light"] .topbar.scrolled { box-shadow: 0 4px 12px -6px rgba(10, 10, 11, 0.08); }
 :root[data-theme="light"] .statusbar { border-top-color: transparent; box-shadow: 0 -1px 0 rgba(10, 10, 11, 0.06), 0 -4px 12px -8px rgba(10, 10, 11, 0.06); }
