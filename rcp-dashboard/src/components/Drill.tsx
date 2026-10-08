@@ -1,4 +1,4 @@
-import { FlaskConical } from "lucide-react";
+import { Check, FlaskConical } from "lucide-react";
 import { countdown, DRILL_CYCLE_MS, DRILL_OUTAGE_MS, drillPhase, drillTrack, utcClock, type DrillPhase } from "../drill";
 import type { MonitorOverview } from "../types";
 
@@ -46,6 +46,8 @@ export function DrillPanel({ now, overview }: { now: number; overview?: MonitorO
   const phase = drillPhase(now);
   const step = currentStep(phase, overview);
   const start = phase.active ? phase.cycleStart : phase.nextStart;
+  // Status colour only: red while the page is down or the incident is open, green once it is recovering.
+  const tone = step === 3 ? "good" : "fault";
 
   // Between drills (110 of every 120 minutes) a compact card is enough; the full story appears when it happens.
   if (step == null) return <DrillCountdown phase={phase} now={now} />;
@@ -70,8 +72,10 @@ export function DrillPanel({ now, overview }: { now: number; overview?: MonitorO
         <ol className="drill-steps" aria-label="Drill steps">
           {STEPS.map((item, index) => (
             <li key={item.title} className={step === index ? "now" : step != null && index < step ? "done" : undefined}
-              aria-current={step === index ? "step" : undefined}>
-              <span className="drill-step-index">{index + 1}</span>
+              data-tone={step === index ? tone : undefined} aria-current={step === index ? "step" : undefined}>
+              <span className="drill-step-index">
+                {step != null && index < step ? <Check size={12} aria-label="done" role="img" /> : index + 1}
+              </span>
               <span><strong>{item.title}</strong><small>{item.detail}</small></span>
             </li>
           ))}
