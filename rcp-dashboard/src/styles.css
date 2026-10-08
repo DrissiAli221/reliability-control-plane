@@ -1187,7 +1187,9 @@ a { color: inherit; }
 .hero-stats small { margin-left: 4px; font-family: var(--font-sans); font-size: 12px; font-weight: 400; color: var(--text-3); }
 
 .pulse { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
-.pulse-readout { min-height: 16px; line-height: 16px; }
+/* One fixed line, so hovering a column never changes the strip's position under the pointer. */
+.pulse-readout { height: 16px; line-height: 16px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+@media (max-width: 560px) { .pulse-readout { height: 32px; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; } }
 .pulse-readout b { color: var(--text); font-weight: 500; }
 .pulse-bars { position: relative; display: flex; gap: 2px; height: 36px; }
 .pulse-bar {
