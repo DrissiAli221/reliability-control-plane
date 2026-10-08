@@ -6,7 +6,7 @@ import type { RecentCheck, Verdict } from "../types";
 const PLACES: Record<string, string> = { "eu-west-1": "Ireland", "us-east-1": "N. Virginia" };
 
 const NODE_HEIGHT = 56;
-const NODE_GAP = 10;
+const NODE_GAP = -1; // region nodes share one hairline
 const LINK_WIDTH = 56;
 
 const VERDICT_TONE: Record<Verdict, Tone> = { UP: "good", DOWN: "fault", DISAGREEMENT: "warn", NO_DATA: "muted" };
