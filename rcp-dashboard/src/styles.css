@@ -1376,7 +1376,7 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .chip[aria-pressed="false"] { opacity: 0.45; }
 .chip.static { cursor: default; color: var(--red-text); border-color: color-mix(in srgb, var(--red) 35%, var(--border)); }
 .chip i { width: 8px; height: 8px; flex: none; }
-.chip i.p50 { background: rgb(140 140 150); }
+.chip i.p50 { background: rgb(150 110 255); }
 .chip i.p95 { background: radial-gradient(circle, rgb(140 140 150 / 0.6) 0.9px, transparent 1.2px) 0 0 / 3px 3px; box-shadow: inset 0 0 0 1px rgb(140 140 150 / 0.3); }
 .chip i.incident { background: repeating-linear-gradient(135deg, var(--red) 0 1.5px, transparent 1.5px 3.5px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 50%, transparent); }
 /* Incident windows behind the latency data: hatched, with a solid edge where the incident opened. */

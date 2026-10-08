@@ -13,7 +13,7 @@ const ENTRANCE_MS = 900;
 
 const config = {
   p95: { label: "p95", color: "grey" },
-  p50: { label: "p50", color: "grey" },
+  p50: { label: "p50", color: "purple" },
 } as const;
 
 type Series = keyof typeof config;
@@ -35,7 +35,7 @@ function shortMs(value: number): string {
 
 /**
  * Response time for one region over the window: the backend's per-column p50 as a dithered area over a dotted p95
- * band. Grey by default; colour marks what happened: incident windows are shaded red behind the data. Chips carry
+ * band: p50 in the accent, p95 in grey behind it, and red only for incident windows shaded behind the data. Chips carry
  * the window's p50 and p95 and switch each series on or off. Columns without an HTTP response are left out rather
  * than drawn as zero, so a gap never looks fast.
  */
