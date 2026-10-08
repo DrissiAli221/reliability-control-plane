@@ -407,15 +407,16 @@ a { color: inherit; }
 .notice { margin-bottom: 12px; padding: 10px 12px; border-radius: var(--radius); font-size: 13px; }
 .notice.fault { background: var(--red-bg); color: var(--red-text); }
 
-/* A quiet strip: neutral surface, the status carried by a 2px edge and the icon and title. */
+/* A quiet strip: neutral border, the status carried by the faint top-down light (.lit recipe) and the icon and title. */
 .banner {
-  display: flex; gap: 12px; margin-bottom: 0; padding: 10px 16px; border: 1px solid var(--border); border-left: 2px solid var(--border-strong);
+  display: flex; gap: 12px; margin-bottom: 0; padding: 10px 16px; border: 1px solid var(--border);
   border-radius: var(--radius-lg); background: var(--surface); color: var(--text);
 }
 .banner svg { flex: none; margin-top: 2px; }
 .banner strong { font-weight: 600; }
 .banner p { margin-top: 2px; font-size: 13px; color: var(--text-2); }
-.banner.fault { border-left-color: var(--red); }
+.banner.fault { --hue: var(--red); --light-fall: 9%; background: linear-gradient(180deg, color-mix(in srgb, var(--hue) var(--light-fall), transparent) 0%, transparent 55%), var(--surface); }
+:root[data-theme="light"] .banner.fault { --light-fall: 7%; }
 .banner.fault svg, .banner.fault strong { color: var(--red-text); }
 
 /* ---------- Scheduled outage drill ---------- */
