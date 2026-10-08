@@ -5,7 +5,7 @@ import type { IncidentStateView } from "../types";
 import { StatusDot } from "./StatusBadge";
 
 const LABEL: Record<MachineNode, string> = { healthy: "Healthy", suspect: "Suspect", open: "Incident open", recovering: "Recovering" };
-const TONE: Record<MachineNode, Tone> = { healthy: "good", suspect: "warn", open: "fault", recovering: "info" };
+const TONE: Record<MachineNode, Tone> = { healthy: "good", suspect: "warn", open: "fault", recovering: "good" };
 
 /** The incident policy in one line: where the monitor is, how long the streak is, and what would move it next. */
 export function PolicyStrip({ state, now, expanded, onToggle }: {
@@ -36,7 +36,7 @@ export function PolicyStrip({ state, now, expanded, onToggle }: {
       <strong>{LABEL[node]}</strong>
       <span className="mono">{streak[node]}</span>
       <span className="subtle policy-next">next: {next[node]}</span>
-      <button type="button" className="policy-toggle" onClick={onToggle} aria-expanded={expanded}>
+      <button type="button" className="button secondary policy-toggle" onClick={onToggle} aria-expanded={expanded}>
         {expanded ? "Hide" : "State machine"} <ChevronDown size={13} aria-hidden="true" />
       </button>
     </div>

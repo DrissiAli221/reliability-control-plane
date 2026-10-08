@@ -4,69 +4,55 @@ import { machineNode, type MachineNode as Node } from "../machine";
 import type { IncidentStateView } from "../types";
 
 
-const NODE_TONE: Record<Node, Tone> = { healthy: "good", suspect: "warn", open: "fault", recovering: "info" };
-const NODE_X: Record<Node, number> = { healthy: 16, suspect: 212, open: 408, recovering: 604 };
-const WIDTH = 116;
-const Y = 70;
-const HEIGHT = 50;
-const right = (node: Node) => NODE_X[node] + WIDTH;
-const mid = (from: Node, to: Node) => (right(from) + NODE_X[to]) / 2;
+const NODES: Node[] = ["healthy", "suspect", "open", "recovering"];
+const NODE_TONE: Record<Node, Tone> = { healthy: "good", suspect: "warn", open: "fault", recovering: "good" };
+const TITLE: Record<Node, string> = { healthy: "Healthy", suspect: "Suspect", open: "Incident open", recovering: "Recovering" };
+const MEANING: Record<Node, string> = { healthy: "no incident", suspect: "one DOWN seen", open: "page is down", recovering: "one UP seen" };
 
+/** The incident policy as four touching cells (the states) and a legend of every move between them. */
 export function IncidentMachine({ state, now, showTape = true }: { state: IncidentStateView; now: number; showTape?: boolean }) {
-  // useId output can contain characters that break SVG url(#…) references.
-  const id = `machine-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const id = useId();
   const current = machineNode(state);
-  const subtitle: Record<Node, string> = {
-    healthy: "no incident",
-    suspect: `${state.consecutiveDown} of ${state.failuresToOpen} DOWN`,
-    open: state.openedAt ? `since ${relativeTime(state.openedAt, now).replace(" ago", "")}` : "incident",
-    recovering: `${state.consecutiveUp} of ${state.successesToResolve} UP`,
+  // The active cell reads the live streak against the thresholds; the others say what the state means.
+  const detail: Record<Node, string> = {
+    ...MEANING,
+    suspect: current === "suspect" ? `${state.consecutiveDown} of ${state.failuresToOpen} DOWN` : MEANING.suspect,
+    open: current === "open" && state.openedAt ? `since ${relativeTime(state.openedAt, now).replace(" ago", "")}` : MEANING.open,
+    recovering: current === "recovering" ? `${state.consecutiveUp} of ${state.successesToResolve} UP` : MEANING.recovering,
   };
-  const title: Record<Node, string> = { healthy: "Healthy", suspect: "Suspect", open: "Incident open", recovering: "Recovering" };
+  const moves: { from: Node; to: Node; on: string }[] = [
+    { from: "healthy", to: "suspect", on: "DOWN" },
+    { from: "suspect", to: "healthy", on: "UP" },
+    { from: "suspect", to: "open", on: `${ordinal(state.failuresToOpen)} DOWN` },
+    { from: "open", to: "recovering", on: "UP" },
+    { from: "recovering", to: "open", on: "DOWN" },
+    { from: "recovering", to: "healthy", on: `${ordinal(state.successesToResolve)} UP · resolved` },
+  ];
   const evaluations = [...state.recentEvaluations].reverse();
   const last = state.recentEvaluations[0];
 
   return (
     <div className="machine">
-      <svg viewBox="0 0 736 200" role="img" aria-labelledby={`${id}-title`} aria-describedby={`${id}-desc`}>
-        <title id={`${id}-title`}>Incident state machine</title>
-        <desc id={`${id}-desc`}>Current state: {title[current]}, {subtitle[current]}.</desc>
-        <defs>
-          <marker id={`${id}-arrow`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M0,0 L10,5 L0,10 z" className="machine-arrowhead" />
-          </marker>
-        </defs>
-
-        <Edge arrow={`${id}-arrow`} d={`M${right("healthy")} ${Y + 25} H${NODE_X.suspect - 4}`} label="DOWN" lx={mid("healthy", "suspect")} ly={Y + 17} />
-        <Edge arrow={`${id}-arrow`} d={`M${right("suspect")} ${Y + 25} H${NODE_X.open - 4}`} label={`${ordinal(state.failuresToOpen)} DOWN`} lx={mid("suspect", "open")} ly={Y + 17} />
-        <Edge arrow={`${id}-arrow`} d={`M${right("open")} ${Y + 25} H${NODE_X.recovering - 4}`} label="UP" lx={mid("open", "recovering")} ly={Y + 17} />
-        <Edge
-          arrow={`${id}-arrow`}
-          d={`M${NODE_X.suspect + 30} ${Y} C${NODE_X.suspect + 10} ${Y - 46}, ${right("healthy") - 10} ${Y - 46}, ${right("healthy") - 30} ${Y - 4}`}
-          label="UP" lx={mid("healthy", "suspect")} ly={Y - 38}
-        />
-        <Edge
-          arrow={`${id}-arrow`}
-          d={`M${NODE_X.recovering + 30} ${Y} C${NODE_X.recovering + 10} ${Y - 46}, ${right("open") - 10} ${Y - 46}, ${right("open") - 30} ${Y - 4}`}
-          label="DOWN" lx={mid("open", "recovering")} ly={Y - 38}
-        />
-        <Edge
-          arrow={`${id}-arrow`}
-          d={`M${NODE_X.recovering + WIDTH / 2} ${Y + HEIGHT} C${NODE_X.recovering + WIDTH / 2} ${Y + 122}, ${NODE_X.healthy + WIDTH / 2} ${Y + 122}, ${NODE_X.healthy + WIDTH / 2} ${Y + HEIGHT + 4}`}
-          label={`${ordinal(state.successesToResolve)} UP · resolved`}
-          lx={(NODE_X.healthy + right("recovering")) / 2}
-          ly={Y + 110}
-        />
-
-        {(Object.keys(NODE_X) as Node[]).map((node) => (
-          <g key={node} className={`machine-node ${node === current ? `current ${NODE_TONE[node]}` : ""}`}>
-            {node === current && <rect className="machine-halo" x={NODE_X[node] - 4} y={Y - 4} width={WIDTH + 8} height={HEIGHT + 8} rx="12" />}
-            <rect x={NODE_X[node]} y={Y} width={WIDTH} height={HEIGHT} rx="9" />
-            <text x={NODE_X[node] + WIDTH / 2} y={Y + 21} className="machine-title">{title[node]}</text>
-            <text x={NODE_X[node] + WIDTH / 2} y={Y + 38} className="machine-sub">{node === current ? subtitle[node] : ""}</text>
-          </g>
-        ))}
-      </svg>
+      <div role="group" aria-label="Incident state machine" aria-describedby={`${id}-desc`}>
+        <span id={`${id}-desc`} className="sr-only">Current state: {TITLE[current]}, {detail[current]}.</span>
+        <ol className="machine-cells">
+          {NODES.map((node, index) => (
+            <li key={node} className={node === current ? "current" : undefined} data-tone={NODE_TONE[node]} aria-current={node === current ? "true" : undefined}>
+              <span className="lbl">state {index + 1}</span>
+              <strong>{TITLE[node]}</strong>
+              <small>{detail[node]}</small>
+            </li>
+          ))}
+        </ol>
+        <ul className="machine-moves" aria-label="State transitions">
+          {moves.map((move) => (
+            <li key={`${move.from}-${move.to}`} className={move.from === current ? "out" : undefined}>
+              <span>{TITLE[move.from].toLowerCase()} <i aria-hidden="true">→</i> {TITLE[move.to].toLowerCase()}</span>
+              <span className="on">on {move.on}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <div className="machine-foot">
         {showTape && <div className="tape" aria-label="Recent incident evaluations, oldest first">
@@ -88,14 +74,5 @@ export function IncidentMachine({ state, now, showTape = true }: { state: Incide
         </p>
       </div>
     </div>
-  );
-}
-
-function Edge({ arrow, d, label, lx, ly }: { arrow: string; d: string; label: string; lx: number; ly: number }) {
-  return (
-    <g className="machine-edge">
-      <path d={d} markerEnd={`url(#${arrow})`} />
-      <text x={lx} y={ly} className="machine-label">{label}</text>
-    </g>
   );
 }
