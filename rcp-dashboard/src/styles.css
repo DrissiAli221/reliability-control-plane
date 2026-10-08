@@ -265,7 +265,7 @@ a { color: inherit; }
 .status-dot.info { --dot-color: var(--text-2); }
 .status-dot.muted { --dot-color: var(--text-3); }
 /* Active faults breathe gently. */
-.status-dot.pulse { animation: breathe 2.4s ease-in-out infinite; }
+.status-dot.breathing { animation: breathe 2.4s ease-in-out infinite; }
 /* A 3×3 dot-matrix block, drawn with the same round dots as the Doto readouts. */
 .led { --led: var(--green); display: inline-grid; grid-template-columns: repeat(3, 2px); gap: 1px; flex: none; }
 .led i { width: 2px; height: 2px; border-radius: 50%; background: var(--led); opacity: 0.3; animation: led-breathe 2.8s ease-in-out infinite backwards; }
@@ -1613,7 +1613,7 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
   .fanout-link { animation: none; stroke-dashoffset: 0; }
   .fanout-meter i b { animation: none; }
   .spin { animation: breathe 1.4s ease-in-out infinite; }
-  .status-dot.pulse { animation: none; }
+  .status-dot.breathing { animation: none; }
   .led i { animation: none; opacity: 0.85; }
   .led.blink { animation: none; }
   .sk::after { animation: none; display: none; }
