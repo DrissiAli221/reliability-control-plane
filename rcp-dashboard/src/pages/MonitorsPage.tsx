@@ -332,7 +332,7 @@ export function Metric({ label, value, suffix, hint, tone, explain, visual }: {
   visual?: ReactNode;
 }) {
   return (
-    <div className="metric">
+    <div className="metric" data-tone={tone}>
       <span className="metric-label"><StatusDot tone={tone} />{label}{explain}</span>
       <span className="metric-value"><RollingText value={value} />{suffix && <small>{suffix}</small>}</span>
       {visual && <div className="metric-visual">{visual}</div>}
