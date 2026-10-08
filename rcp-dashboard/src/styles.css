@@ -695,7 +695,7 @@ a { color: inherit; }
 :root[data-theme="light"] .button.secondary, :root[data-theme="light"] .icon-button.bordered { background-color: var(--surface-2); }
 :root[data-theme="light"] .button.secondary:hover:not(:disabled), :root[data-theme="light"] .icon-button.bordered:hover:not(:disabled) { background-color: var(--surface-hover); }
 :root[data-theme="light"] .timeline-span { background: color-mix(in srgb, var(--red) 85%, var(--surface)); }
-:root[data-theme="light"] .drill-meter-cells i { background: var(--gray-bar); }
+:root[data-theme="light"] .drill-meter-cells i:not(.outage) { background: var(--gray-bar); }
 :root[data-theme="light"] .led i { opacity: 0.4; }
 :root[data-theme="light"] .heatmap { --heat: #0b6b80; }
 :root[data-theme="light"] .tracker-bar i + i { box-shadow: 0 -1px 0 var(--surface); }
