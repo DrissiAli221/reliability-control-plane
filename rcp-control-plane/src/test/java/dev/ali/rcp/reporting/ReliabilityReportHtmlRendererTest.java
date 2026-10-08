@@ -38,7 +38,7 @@ class ReliabilityReportHtmlRendererTest {
                 "data-from=\"2026-10-06T00:00:00Z\"", "data-to=\"2026-10-07T00:00:00Z\"",
                 "Schema rcp-report-v1 · ", "Data up to 6 Oct 2026, 23:59 UTC", "6 Oct, 01:00:00", "6 Oct, 01:02:00",
                 "<span title=\"ae71250e-bd38-4ef3-83f7-812b4e1b9c30\">ae71250e</span>", "UP ÷ (UP + DOWN)",
-                "Denominator policy:", "3.2 of 7.2 checks left", "Conclusive checks");
+                "Counted as UP ÷ (UP + DOWN)", "3.2 of 7.2 checks left", "Conclusive checks");
         assertThat(html).doesNotContain("99.72222%", "100.00000", ">UP_PLUS_DOWN<");
         assertThat(html).doesNotContain("<script", "<link", "<iframe", "src=", "href=", "@import", "99.9%");
         // The only url() allowed is an embedded font, so the file never fetches anything.
@@ -71,13 +71,14 @@ class ReliabilityReportHtmlRendererTest {
         while (matcher.find()) {
             sizes.add(matcher.group(1));
         }
-        assertThat(sizes).containsExactlyInAnyOrder("40px", "28px", "15px", "13px", "11px",
-                "26pt", "18pt", "10.5pt", "9pt", "7.5pt");
+        assertThat(sizes).containsExactlyInAnyOrder("32px", "28px", "15px", "13px", "11px",
+                "22pt", "18pt", "10.5pt", "9pt", "7.5pt");
         assertThat(css).doesNotContain("text-transform", "font: ", "border-radius: 4", "border-radius: 6");
         assertThat(css).contains("\"Geist\"", "\"Geist Mono\"", "\"Doto\"", "#0a0a0a", "#111111", "#242424",
                 "#30a46c", "#e5484d", "#f5a524", "#ededf0", "#1a7f4b", "#d1342f", "#b86e00", "#dcdce1");
-        assertThat(html).contains("<h1 id=\"report-title\">Reliability report</h1>", "Measured availability",
+        assertThat(html).contains("<h1 id=\"report-title\">Demo API</h1>", "<div class=\"edition\">Reliability report</div>", "Measured availability",
                 "Error budget", "Observed down", "Occurred at · UTC");
+        assertThat(html).doesNotContain("section-index", "Monitor reliability", "Denominator policy");
     }
 
     @Test
@@ -97,7 +98,7 @@ class ReliabilityReportHtmlRendererTest {
 
         String html = renderer.render(malicious);
         assertThat(html).doesNotContain(input, "<script>");
-        assertThat(html).contains("<title>" + escaped, "<h2 class=\"monitor\">" + escaped,
+        assertThat(html).contains("<title>" + escaped, "<h1 id=\"report-title\">" + escaped,
                 "<p class=\"target mono\">" + escaped, "title=\"" + escaped + "\"", "<li>" + escaped,
                 "Schema " + escaped, "No source data");
     }

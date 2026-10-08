@@ -39,24 +39,22 @@ public class ReliabilityReportHtmlRenderer {
               font-size: 13px; font-weight: 400; line-height: 1.5; letter-spacing: 0;
               -webkit-font-smoothing: antialiased; font-synthesis: none; }
             h1, h2, h3, p, dl, dd { margin: 0; }
-            .report { max-width: 1120px; margin: 0 auto; padding: 40px 40px 28px; }
-            .mono, .eyebrow, dt, th, .tag, .section-index, .unit, .legend, .chart-label, .edition, footer { font-family: var(--font-mono); }
-            h1 { font-size: 40px; font-weight: 600; line-height: 1.1; letter-spacing: -.02em; }
+            .report { max-width: 880px; margin: 0 auto; padding: 48px 40px 32px; }
+            .mono, .eyebrow, dt, th, .tag, .unit, .legend, .chart-label, .edition, footer { font-family: var(--font-mono); }
+            h1 { font-size: 32px; font-weight: 600; line-height: 1.15; letter-spacing: -.02em; overflow-wrap: anywhere; }
             .figure, .empty-value { font-family: var(--font-dots); font-size: 28px; font-weight: 800; line-height: 1;
               letter-spacing: 0; color: var(--text); font-variant-numeric: tabular-nums; }
             h2, h3, .brand { font-size: 15px; font-weight: 500; line-height: 1.3; letter-spacing: -.01em; }
-            .eyebrow, dt, th, .section-index, .section-note, .unit, .legend, .chart-label, .edition, footer {
+            .eyebrow, dt, th, .section-note, .unit, .legend, .chart-label, .edition, footer {
               font-size: 11px; font-weight: 400; letter-spacing: .04em; color: var(--text-3); }
-            .eyebrow { margin: 0 0 10px; }
             .masthead { display: flex; align-items: center; justify-content: space-between; gap: 16px;
               padding-bottom: 22px; border-bottom: 1px solid var(--border); }
             .brand { display: flex; align-items: center; gap: 10px; }
             .brand svg { width: 26px; height: 26px; flex: none; }
-            .intro { margin: 28px 0 22px; }
-            h1 { margin-bottom: 20px; }
-            .monitor { overflow-wrap: anywhere; }
-            .target { color: var(--text-2); margin: 5px 0 18px; overflow-wrap: anywhere; }
-            .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+            /* The subject is the title: the monitor's name, then its URL and the window in one quiet line. */
+            .intro { margin: 40px 0 28px; }
+            .target { color: var(--text-2); margin: 6px 0 20px; overflow-wrap: anywhere; }
+            .meta { display: flex; flex-wrap: wrap; gap: 10px 40px; }
             dt { margin-bottom: 4px; } dd { overflow-wrap: anywhere; }
             .decision { display: flex; align-items: center; gap: 14px; padding: 14px 16px;
               border: 1px solid var(--border); background: var(--surface); margin-bottom: -1px; }
@@ -82,13 +80,12 @@ public class ReliabilityReportHtmlRenderer {
             .readout { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 18px; margin: 12px 0 10px; }
             .readout span.pair { display: inline-flex; align-items: baseline; gap: 7px; }
             .metric p { color: var(--text-3); }
-            .section-heading { display: flex; align-items: baseline; gap: 12px; margin: 28px 0 12px; }
-            .section-note { margin-left: auto; }
+            .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 40px 0 12px; }
             .visuals { grid-template-columns: 1fr 1fr; margin-top: 0; }
             .visual { min-width: 0; padding: 18px; background: var(--surface); }
             .visual h3 { margin-bottom: 4px; }
             .visual p { color: var(--text-2); }
-            .chart { display: block; width: 100%; height: 14px; margin: 12px 0 6px; overflow: visible; }
+            .chart { display: block; width: 100%; height: 10px; margin: 14px 0 8px; overflow: visible; }
             .track { fill: var(--track); } .fill-good { fill: var(--green); } .fill-bad { fill: var(--red); }
             .fill-warn { fill: var(--amber); } .fill-neutral { fill: var(--text-2); }
             .marker { stroke: var(--text); stroke-width: 2; vector-effect: non-scaling-stroke; }
@@ -99,7 +96,6 @@ public class ReliabilityReportHtmlRenderer {
             .facts { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: -1px 0 0; }
             .facts > div { padding: 12px 16px; background: var(--surface); }
             .facts dd { font-family: var(--font-mono); }
-            .policy { margin: 10px 0 0; color: var(--text-2); overflow-wrap: anywhere; }
             table { border-collapse: collapse; width: 100%; }
             th { text-align: left; background: var(--surface-2); }
             th, td { border-bottom: 1px solid var(--border); padding: 10px 16px; vertical-align: middle; }
@@ -116,6 +112,7 @@ public class ReliabilityReportHtmlRenderer {
               .visuals { grid-template-columns: 1fr; }
               .facts { grid-template-columns: 1fr 1fr; } .meta { grid-template-columns: 1fr; }
               .section-note { display: none; } .decision, footer { flex-wrap: wrap; } .edition { text-align: right; }
+              .meta { gap: 10px 24px; }
             }
             @page { size: A4; margin: 12mm; }
             @media print {
@@ -123,17 +120,17 @@ public class ReliabilityReportHtmlRenderer {
                 --bg: #ffffff; }
               body { font-size: 9pt; } .report { max-width: none; padding: 0; }
               .masthead { padding-bottom: 3mm; } .brand svg { width: 20px; height: 20px; }
-              .intro { margin: 4mm 0 3mm; } h1 { font-size: 26pt; margin-bottom: 3mm; }
+              .intro { margin: 6mm 0 4mm; } h1 { font-size: 22pt; }
               .figure, .empty-value { font-size: 18pt; }
               h2, h3, .brand { font-size: 10.5pt; }
-              .eyebrow, dt, th, .section-index, .section-note, .unit, .legend, .chart-label, .edition, footer { font-size: 7.5pt; }
+              .eyebrow, dt, th, .section-note, .unit, .legend, .chart-label, .edition, footer { font-size: 7.5pt; }
               .target { margin-bottom: 3mm; } .meta { gap: 3mm; }
               .decision { padding: 3mm; margin-bottom: 3mm; flex-wrap: nowrap; }
               .metric { padding: 3mm; } .readout { margin: 3mm 0 2mm; }
               .visual { padding: 3mm; }
               .chart { margin: 3mm 0 2mm; } .coverage { margin-top: 3mm; }
               .coverage .chart { margin: 2mm 0 1mm; }
-              .section-heading { margin: 3mm 0 2mm; break-after: avoid; }
+              .section-heading { margin: 6mm 0 2mm; break-after: avoid; }
               .facts > div { padding: 2mm 3mm; }
               .table-wrap { overflow: visible; }
               th, td { padding: 1.5mm; } thead { display: table-header-group; } tr { break-inside: avoid; }
@@ -155,11 +152,11 @@ public class ReliabilityReportHtmlRenderer {
                 .append("<header class=\"masthead\"><div class=\"brand\">")
                 .append("<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect x=\".5\" y=\".5\" width=\"23\" height=\"23\" fill=\"#7c6cff\"/>")
                 .append("<path d=\"M4.5 13h3.2l2-5.5 3.6 10 2.2-4.5h4\" fill=\"none\" stroke=\"#0a0a0a\" stroke-width=\"1.9\"/></svg>")
-                .append("Reliability Control Plane</div><div class=\"edition\">SLO evidence report</div></header>")
-                .append("<main><section class=\"intro\" aria-labelledby=\"report-title\"><p class=\"eyebrow\">Monitor reliability · UTC</p>")
-                .append("<h1 id=\"report-title\">Reliability report</h1><h2 class=\"monitor\">").append(escape(report.monitorName()))
-                .append("</h2><p class=\"target mono\">").append(escape(report.targetUrl())).append("</p><dl class=\"meta\">");
-        item(html, "Observation window · end exclusive", window(a.from(), a.to()),
+                .append("Reliability Control Plane</div><div class=\"edition\">Reliability report</div></header>")
+                .append("<main><section class=\"intro\" aria-labelledby=\"report-title\">")
+                .append("<h1 id=\"report-title\">").append(escape(report.monitorName()))
+                .append("</h1><p class=\"target mono\">").append(escape(report.targetUrl())).append("</p><dl class=\"meta\">");
+        item(html, "Window", window(a.from(), a.to()),
                 " data-from=\"" + a.from() + "\" data-to=\"" + a.to() + "\" title=\"" + a.from() + " → " + a.to() + "\"");
         item(html, "Generated", dateTime(report.generatedAt()), " data-value=\"" + report.generatedAt() + "\" title=\"" + report.generatedAt() + "\"");
         html.append("</dl></section><div class=\"decision lit\" data-tone=\"").append(tone).append("\"><span class=\"tag ")
@@ -199,10 +196,11 @@ public class ReliabilityReportHtmlRenderer {
         metric(html, "Incidents in timeline", incidents + (report.incidentTimelineTruncated() ? "+" : ""), "",
                 report.incidentTimelineTruncated() ? "Lower bound · timeline truncated" : "Distinct IDs in shown transitions", "", null);
         html.append("</section>");
-        section(html, "01", "Availability & error budget", "Aggregates for this window");
+        section(html, "Availability and error budget", "Aggregates for this window");
         String availabilityFill = a.sloMet() == null ? "neutral" : tone;
         html.append("<div class=\"visuals\"><div class=\"visual\"><h3>Measured availability</h3>")
-                .append("<p>").append(escape(denominator(a.denominatorPolicy()))).append(". Inconclusive checks are excluded.</p>");
+                .append("<p title=\"").append(escape(a.denominatorPolicy())).append("\">Counted as ")
+                .append(escape(denominator(a.denominatorPolicy()))).append(". Inconclusive checks are excluded.</p>");
         meter(html, "availability-chart", "Measured availability " + percent(a.measuredAvailabilityPercent())
                 + "; SLO target " + given(a.sloTargetPercent()), a.measuredAvailabilityPercent(), a.sloTargetPercent(), availabilityFill);
         html.append("<div class=\"legend\"><span>Observed ").append(percent(a.measuredAvailabilityPercent()))
@@ -226,9 +224,8 @@ public class ReliabilityReportHtmlRenderer {
         item(html, "Disagreement / no data", a.disagreementExecutions() + " / " + a.noDataExecutions());
         item(html, "Expected / pending / missing", a.expectedOpportunities() + " / " + a.pendingExecutions() + " / " + a.missingExecutions());
         item(html, "Conclusive / finalized", a.conclusiveExecutions() + " / " + a.totalFinalizedExecutions());
-        html.append("</dl><p class=\"policy\" title=\"").append(escape(a.denominatorPolicy())).append("\">Denominator policy: ")
-                .append(escape(denominator(a.denominatorPolicy()))).append("</p>");
-        section(html, "02", "Incident timeline", report.incidentTimeline().size() + " transitions · UTC");
+        html.append("</dl>");
+        section(html, "Incident timeline", report.incidentTimeline().size() + " transitions · UTC");
         if (report.incidentTimeline().isEmpty()) {
             html.append("<p class=\"empty\">No incident transitions recorded in this window. This does not rule out an incident opened earlier.</p>");
         } else {
@@ -250,7 +247,7 @@ public class ReliabilityReportHtmlRenderer {
         if (report.incidentTimelineTruncated()) {
             html.append("<p class=\"notice\">Incident timeline truncated at 100 transitions. The incident count is a lower bound.</p>");
         }
-        section(html, "03", "Scope & limitations", "Read alongside the evidence");
+        section(html, "What this report does not prove", "Read alongside the evidence");
         html.append("<ul class=\"limitations\">");
         for (String limitation : report.limitations()) {
             html.append("<li>").append(escape(limitation)).append("</li>");
@@ -281,9 +278,8 @@ public class ReliabilityReportHtmlRenderer {
         html.append("<span class=\"status-dot ").append(tone).append("\" aria-hidden=\"true\">").append("<i></i>".repeat(9)).append("</span>");
     }
 
-    private void section(StringBuilder html, String index, String title, String note) {
-        html.append("<div class=\"section-heading\"><span class=\"section-index\">").append(index)
-                .append(" /</span><h2>").append(escape(title)).append("</h2><span class=\"section-note\">")
+    private void section(StringBuilder html, String title, String note) {
+        html.append("<div class=\"section-heading\"><h2>").append(escape(title)).append("</h2><span class=\"section-note\">")
                 .append(escape(note)).append("</span></div>");
     }
 
@@ -311,12 +307,12 @@ public class ReliabilityReportHtmlRenderer {
 
     private void meter(StringBuilder html, String id, String label, BigDecimal value,
                        BigDecimal marker, String fill) {
-        html.append("<svg class=\"chart\" viewBox=\"0 0 440 14\" preserveAspectRatio=\"none\" role=\"img\" aria-labelledby=\"")
+        html.append("<svg class=\"chart\" viewBox=\"0 0 440 10\" preserveAspectRatio=\"none\" role=\"img\" aria-labelledby=\"")
                 .append(id).append("\"><title id=\"").append(id).append("\">").append(escape(label)).append("</title>")
-                .append("<rect class=\"track\" x=\"0\" y=\"2\" width=\"440\" height=\"10\"/>")
+                .append("<rect class=\"track\" x=\"0\" y=\"2\" width=\"440\" height=\"6\"/>")
                 .append("<rect class=\"fill-").append(fill).append("\" x=\"0\" y=\"2\" width=\"")
-                .append(width(value, HUNDRED)).append("\" height=\"10\"/>")
-                .append("<path class=\"marker\" d=\"M").append(width(marker, HUNDRED)).append(" 0v14\"/></svg>");
+                .append(width(value, HUNDRED)).append("\" height=\"6\"/>")
+                .append("<path class=\"marker\" d=\"M").append(width(marker, HUNDRED)).append(" 0v10\"/></svg>");
     }
 
     private void budgetChart(StringBuilder html, ReportErrorBudget budget) {
@@ -334,11 +330,11 @@ public class ReliabilityReportHtmlRenderer {
     }
 
     private void bar(StringBuilder html, String id, String label, BigDecimal value, BigDecimal scale, String fill) {
-        html.append("<svg class=\"chart\" viewBox=\"0 0 440 14\" preserveAspectRatio=\"none\" role=\"img\" aria-labelledby=\"")
+        html.append("<svg class=\"chart\" viewBox=\"0 0 440 10\" preserveAspectRatio=\"none\" role=\"img\" aria-labelledby=\"")
                 .append(id).append("\"><title id=\"").append(id).append("\">").append(escape(label)).append("</title>")
-                .append("<rect class=\"track\" x=\"0\" y=\"2\" width=\"440\" height=\"10\"/>")
+                .append("<rect class=\"track\" x=\"0\" y=\"2\" width=\"440\" height=\"6\"/>")
                 .append("<rect class=\"fill-").append(fill).append("\" x=\"0\" y=\"2\" width=\"")
-                .append(width(value, scale)).append("\" height=\"10\"/></svg>");
+                .append(width(value, scale)).append("\" height=\"6\"/></svg>");
     }
 
     private String width(BigDecimal value, BigDecimal scale) {
