@@ -23,18 +23,18 @@ export function TopBar({ pathname, updatedAt, stale }: { pathname: string; updat
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const trail = crumbs(pathname);
+  const trail = crumbs(pathname).slice(1); // the title only: the app name is already in the sidebar
   const PageIcon = PAGE_ICONS[pathname.split("/").filter(Boolean)[0] ?? ""];
   const clock = new Date(now).toISOString().slice(11, 19);
 
   return (
     <div className={`topbar${scrolled ? " scrolled" : ""}`}>
       <nav className="topbar-path" aria-label="Location">
-        <i className={`topbar-led${stale ? " stale" : ""}`} aria-hidden="true" />
         {trail.map((crumb, index) => (
           <span key={index} className="topbar-crumb">
             {index > 0 && <span className="topbar-sep" aria-hidden="true">/</span>}
-            {crumb.to ? <Link to={crumb.to}>{crumb.label}</Link> : <span aria-current={index === trail.length - 1 ? "page" : undefined}>{PageIcon && trail.length === 2 && index === 1 && <PageIcon size={14} aria-hidden="true" />}{crumb.label}</span>}
+            {index === 0 && PageIcon && <PageIcon size={14} aria-hidden="true" />}
+            {crumb.to ? <Link to={crumb.to}>{crumb.label}</Link> : <span aria-current={index === trail.length - 1 ? "page" : undefined}>{crumb.label}</span>}
           </span>
         ))}
       </nav>
