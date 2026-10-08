@@ -345,37 +345,30 @@ export function MonitorDetailPage() {
           <span className="subtle">Last 7 days</span>
         </header>
         {incidents.length > 0 ? (
-          <ol className="incident-story">
-            {incidents.slice(0, INCIDENT_LIMIT).map((item) => (
-              <li key={item.id} className={item.resolvedAt ? undefined : "ongoing"}>
-                <div className="incident-story-head">
-                  <StatusDot tone={item.resolvedAt ? "good" : "fault"} pulse={!item.resolvedAt} />
-                  <strong>{item.resolvedAt ? "Resolved" : "Ongoing"}</strong>
-                  <span className="subtle">{item.openedAt ? dayLabel(item.openedAt) : "Opened before this window"}</span>
-                  <span className="incident-story-duration mono">{item.resolvedAt ? "lasted " : "down for "}{duration(item.openedAt, item.resolvedAt, now)}</span>
-                </div>
-                <ol className="incident-story-events">
-                  {item.openedAt && (
-                    <li className="opened">
-                      <time dateTime={item.openedAt}>{clockTime(item.openedAt)}</time>
-                      <span>Opened{incident ? ` after ${incident.failuresToOpen} DOWN checks in a row` : ""}</span>
-                    </li>
-                  )}
-                  {item.resolvedAt ? (
-                    <li className="resolved">
-                      <time dateTime={item.resolvedAt}>{clockTime(item.resolvedAt)}</time>
-                      <span>Resolved{incident ? ` after ${incident.successesToResolve} UP checks in a row` : ""}</span>
-                    </li>
-                  ) : (
-                    <li className="now">
-                      <time>now</time>
-                      <span>Still open; it resolves after {incident ? `${incident.successesToResolve} UP checks in a row` : "consecutive UP checks"}</span>
-                    </li>
-                  )}
-                </ol>
-              </li>
-            ))}
-          </ol>
+          <div className="table-scroll">
+            <table className="table compact incident-table">
+              <thead>
+                <tr><th scope="col">Opened</th><th scope="col">Resolved</th><th scope="col" className="num">Duration</th></tr>
+              </thead>
+              <tbody>
+                {incidents.slice(0, INCIDENT_LIMIT).map((item) => (
+                  <tr key={item.id}>
+                    <td>
+                      {item.openedAt
+                        ? <time dateTime={item.openedAt}>{dayLabel(item.openedAt)}, <span className="mono">{clockTime(item.openedAt)}</span></time>
+                        : <span className="subtle">Before this window</span>}
+                    </td>
+                    <td>
+                      {item.resolvedAt
+                        ? <time dateTime={item.resolvedAt}>{dayLabel(item.resolvedAt)}, <span className="mono">{clockTime(item.resolvedAt)}</span></time>
+                        : <span className="incident-ongoing"><StatusDot tone="fault" pulse /> Ongoing</span>}
+                    </td>
+                    <td className="num mono">{duration(item.openedAt, item.resolvedAt, now)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : <p className="panel-body subtle">No incident transitions in the last 7 days.</p>}
         {incidents.length > INCIDENT_LIMIT && (
           <p className="panel-more subtle">{incidents.length - INCIDENT_LIMIT} earlier incidents are in the downloadable report.</p>

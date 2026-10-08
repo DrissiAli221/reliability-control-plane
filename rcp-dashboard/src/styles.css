@@ -276,6 +276,9 @@ a { color: inherit; }
 .table tbody tr:last-child td { border-bottom: 0; }
 .table .num { text-align: right; white-space: nowrap; }
 .table.compact td { padding: 9px 16px; }
+.incident-table td, .incident-table th { white-space: nowrap; }
+.incident-table time { font-variant-numeric: tabular-nums; }
+.incident-ongoing { display: inline-flex; align-items: center; gap: 6px; color: var(--red-text); font-weight: 500; }
 .table-empty { color: var(--text-2); text-align: center; padding: 32px 16px !important; }
 /* backwards fill: once the entrance ends, rows stop forming stacking contexts. */
 .row-link { cursor: pointer; transition: background 100ms; animation: rise 320ms ease-out backwards; }
@@ -1452,21 +1455,3 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 @media (max-width: 860px) { .statusbar { display: none; } .toasts { bottom: 20px; } }
 
 /* ---------- Incidents as a short story: opened → resolved on a rail ---------- */
-.incident-story { display: grid; margin: 0; padding: 0; list-style: none; }
-.incident-story > li { padding: 14px 16px; border-bottom: 1px solid var(--border); }
-.incident-story > li:last-child { border-bottom: 0; }
-.incident-story-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px; }
-.incident-story-head strong { font-weight: 600; }
-.incident-story-head .subtle { font-size: 12.5px; }
-.incident-story-duration { margin-left: auto; padding: 1px 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-pill); font-size: 11.5px; color: var(--text-2); }
-.incident-story > li.ongoing .incident-story-duration { border-color: color-mix(in srgb, var(--red) 45%, var(--border)); color: var(--red-text); }
-.incident-story-events { position: relative; display: grid; gap: 8px; margin: 10px 0 0 3px; padding: 0 0 0 18px; list-style: none; }
-/* The rail runs red from the opening to green at the resolution. */
-.incident-story-events::before { content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 2px; background: linear-gradient(var(--red), var(--green)); opacity: 0.7; }
-.incident-story > li.ongoing .incident-story-events::before { background: linear-gradient(var(--red), color-mix(in srgb, var(--red) 25%, transparent)); }
-.incident-story-events li { position: relative; display: flex; gap: 12px; font-size: 12.5px; color: var(--text-2); }
-.incident-story-events li::before { content: ""; position: absolute; left: -22px; top: 4px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--surface); background: var(--text-3); }
-.incident-story-events li.opened::before { background: var(--red); }
-.incident-story-events li.resolved::before { background: var(--green); }
-.incident-story-events li.now::before { background: var(--red); animation: breathe 2.4s ease-in-out infinite; }
-.incident-story-events time { flex: none; min-width: 64px; font-family: var(--font-mono); font-size: 11.5px; color: var(--text); font-variant-numeric: tabular-nums; }
