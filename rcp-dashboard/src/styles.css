@@ -706,6 +706,37 @@ a { color: inherit; }
 :root[data-theme="light"] .heatmap-grid i:not(.hot) { opacity: 0.7; }
 :root[data-theme="light"] .tracker-bar i + i { box-shadow: 0 -1px 0 var(--surface); }
 
+/* ---- Light depth: modules are separate white cards floating on the page, with gaps and soft layered shadows.
+   Dark keeps its touching hardware-panel grid. Cells inside a module (tiles, steps, nodes, rows) still share hairlines. ---- */
+:root[data-theme="light"] {
+  --card-border: rgba(10, 10, 11, 0.07);
+  --card-shadow: 0 1px 2px rgba(10, 10, 11, 0.04), 0 2px 8px -2px rgba(10, 10, 11, 0.06), 0 12px 24px -12px rgba(10, 10, 11, 0.08);
+  --raise-sheen: linear-gradient(180deg, #ffffff, #fafafb);
+}
+:root[data-theme="light"] body { background: linear-gradient(180deg, #f6f6f7, #f1f1f3) fixed; background-color: #f4f4f5; }
+:root[data-theme="light"] .sidebar { background: transparent; }
+:root[data-theme="light"] :is(.panel, .metric-grid, .banner) { border-color: var(--card-border); box-shadow: var(--card-shadow); }
+:root[data-theme="light"] .panel-header { background: linear-gradient(180deg, #ffffff, #fcfcfd); }
+/* The tiles' own hairlines stay (grid gap); the whole grid is one card. */
+:root[data-theme="light"] .metric-grid { border-color: var(--card-border); background: var(--border); }
+:root[data-theme="light"] .main :is(.panel, .split, .metric-grid, .banner) + :is(.panel, .split, .metric-grid, .banner) { margin-top: 12px; }
+:root[data-theme="light"] .split { gap: 12px; }
+:root[data-theme="light"] .split > .panel + .panel { margin-left: 0; margin-top: 0; }
+:root[data-theme="light"] .hero.incident { z-index: auto; }
+/* Raised inner cells: a faint top-to-bottom sheen and a hairline. Status tints (.lit, [data-tone]) keep their own background. */
+:root[data-theme="light"] :is(.fanout-node, .chip) { background: var(--raise-sheen); }
+:root[data-theme="light"] .machine-cells li.current,
+:root[data-theme="light"] .drill-steps li.now { background: linear-gradient(180deg, color-mix(in srgb, var(--hue) var(--light-fall), transparent) 0%, transparent 55%), var(--raise-sheen); }
+:root[data-theme="light"] .segmented button[aria-pressed="true"], :root[data-theme="light"] .segmented button[aria-checked="true"] { background-color: #fff; }
+:root[data-theme="light"] .nav-item.active, :root[data-theme="light"] .nav-item.active:active { background: var(--raise-sheen); box-shadow: inset 0 0 0 1px var(--border), inset 2px 0 0 var(--accent), 0 1px 2px rgba(10, 10, 11, 0.06); }
+:root[data-theme="light"] .topbar { background: color-mix(in srgb, #f6f6f7 78%, transparent); border-bottom-color: transparent; transition: box-shadow 160ms; }
+:root[data-theme="light"] .topbar::after { display: none; }
+:root[data-theme="light"] .topbar.scrolled { border-bottom-color: transparent; box-shadow: 0 1px 0 rgba(10, 10, 11, 0.06), 0 4px 12px -6px rgba(10, 10, 11, 0.08); }
+:root[data-theme="light"] .statusbar { border-top-color: transparent; box-shadow: 0 -1px 0 rgba(10, 10, 11, 0.06), 0 -4px 12px -8px rgba(10, 10, 11, 0.06); }
+@media (max-width: 1100px) {
+  :root[data-theme="light"] .split > .panel + .panel { margin-left: 0; margin-top: 0; }
+}
+
 /* ---------- Public status page (light) ---------- */
 .status-page {
   --bg: #fafafa;
