@@ -10,6 +10,7 @@ import { milliseconds } from "../format";
 import type { LatencyHeatmap } from "../types";
 
 const ENTRANCE_MS = 900;
+const MIN_BAND_PX = 12;
 
 const config = {
   p95: { label: "p95", color: "grey" },
@@ -150,7 +151,7 @@ function Chip({ series, value, on, onToggle }: { series: Series; value: number |
 
 /**
  * Incident windows, shaded behind the data. Placed by time, not by data point: an outage with no HTTP responses
- * has no latency points, so the band is interpolated between the measured columns instead of disappearing.
+ * has no latency points, so the band is interpolated between the measured points instead of disappearing.
  */
 function IncidentBands({ spans, bucketMs }: { spans: Array<{ start: number; end: number }>; bucketMs: number }) {
   const ctx = useChartPart("IncidentBands");
@@ -159,17 +160,17 @@ function IncidentBands({ spans, bucketMs }: { spans: Array<{ start: number; end:
 
   const rows = ctx.data as unknown as Row[];
   const width = ctx.plot.width;
-  const columnPx = rows.length > 1 ? (ctx.xCenter(rows.length - 1) - ctx.xCenter(0)) / (rows.length - 1) : width;
-  const clamp = (x: number) => Math.min(width, Math.max(0, x));
-
+  // Each point sits at its bucket's middle in time and at xCenter(i) on screen; interpolate between neighbours.
   const xAt = (time: number) => {
-    for (let i = 0; i < rows.length; i++) {
-      const start = rows[i].start;
-      const left = ctx.xCenter(i) - columnPx / 2;
-      if (time < start) return clamp(left); // before this column: a gap or the start of the window
-      if (time < start + bucketMs) return clamp(left + ((time - start) / bucketMs) * columnPx);
+    const mid = (i: number) => rows[i].start + bucketMs / 2;
+    if (rows.length === 1 || time <= mid(0)) return ctx.xCenter(0);
+    for (let i = 1; i < rows.length; i++) {
+      if (time <= mid(i)) {
+        const share = (time - mid(i - 1)) / (mid(i) - mid(i - 1));
+        return ctx.xCenter(i - 1) + share * (ctx.xCenter(i) - ctx.xCenter(i - 1));
+      }
     }
-    return width;
+    return ctx.xCenter(rows.length - 1);
   };
 
   return (
@@ -181,8 +182,11 @@ function IncidentBands({ spans, bucketMs }: { spans: Array<{ start: number; end:
         </pattern>
       </defs>
       {spans.map((span) => {
-        const x1 = xAt(span.start);
-        const x2 = Math.max(xAt(span.end), x1 + 3);
+        // A ten-minute outage is under 1% of a day; keep it wide enough to read as a block, not a stray line.
+        const centre = (xAt(span.start) + xAt(span.end)) / 2;
+        const half = Math.max((xAt(span.end) - xAt(span.start)) / 2, MIN_BAND_PX / 2);
+        const x1 = Math.max(0, Math.min(width - 2 * half, centre - half));
+        const x2 = Math.min(width, x1 + 2 * half);
         return (
           <g key={`${span.start}-${span.end}`}>
             <rect x={x1} y={0} width={x2 - x1} height={ctx.plot.height} fill={`url(#${pattern})`} />
