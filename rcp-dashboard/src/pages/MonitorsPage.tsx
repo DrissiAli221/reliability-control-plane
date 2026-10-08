@@ -331,10 +331,8 @@ export function Metric({ label, value, suffix, hint, tone, explain, visual }: {
   explain?: ReactNode;
   visual?: ReactNode;
 }) {
-  // Healthy and idle cards stay neutral; attention and informational readouts carry a faint hue.
-  const attention = tone === "fault" || tone === "warn" || tone === "info";
   return (
-    <div className={`metric${attention ? ` attention ${tone}` : ""}`}>
+    <div className="metric">
       <span className="metric-label"><StatusDot tone={tone} />{label}{explain}</span>
       <span className="metric-value"><RollingText value={value} />{suffix && <small>{suffix}</small>}</span>
       {visual && <div className="metric-visual">{visual}</div>}

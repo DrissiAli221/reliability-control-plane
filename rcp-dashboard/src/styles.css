@@ -54,7 +54,6 @@
   --log-outbox: #e879f9;
   --log-ingest: #2dd4bf;
   --green-muted: color-mix(in srgb, var(--green) 62%, var(--surface));
-  --wash-strength: 13%;
   --ink-dots: var(--text);
   --panel-shadow: none;
 
@@ -294,10 +293,6 @@ a { color: inherit; }
 .fleet-summary .metric-visual { height: 14px; margin-top: 0; }
 .fleet-summary .metric:not(:first-child) .metric-visual { display: none; }
 .metric-hint { font-size: 12px; color: var(--text-3); line-height: 1.5; }
-/* Attention is a hue, not a fill: only fault and warn pool colour in the corners; other tiles stay plain. */
-.metric.attention { --hue: transparent; --wash: color-mix(in srgb, var(--hue) var(--wash-strength), transparent); background: radial-gradient(circle at 0 0, var(--wash), transparent 45%), radial-gradient(circle at 100% 0, var(--wash), transparent 45%), radial-gradient(circle at 0 100%, var(--wash), transparent 45%), radial-gradient(circle at 100% 100%, var(--wash), transparent 45%), var(--surface); }
-.metric.attention.fault { --hue: var(--red); }
-.metric.attention.warn { --hue: var(--amber); }
 .metric-visual { display: flex; align-items: center; height: 22px; margin-top: 2px; }
 .metric-visual > * { flex: 1; }
 .metric-visual .tracker.compact .tracker-bars { height: 12px; gap: 3px; }
@@ -319,7 +314,7 @@ a { color: inherit; }
 .split { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 0; }
 /* ---------- One grid of touching modules ----------
    Modules share hairlines like a hardware panel: each overlaps its neighbour's border by 1px instead of leaving a gap. */
-.main :is(.panel, .split, .metric-grid) + :is(.panel, .split, .metric-grid) { margin-top: -1px; }
+.main :is(.panel, .split, .metric-grid, .banner) + :is(.panel, .split, .metric-grid, .banner) { margin-top: -1px; }
 .split > .panel + .panel { margin-left: -1px; }
 .hero.incident { z-index: 1; }
 
@@ -380,14 +375,16 @@ a { color: inherit; }
 .notice { margin-bottom: 12px; padding: 10px 12px; border-radius: var(--radius); font-size: 13px; }
 .notice.fault { background: var(--red-bg); color: var(--red-text); }
 
+/* A quiet strip: neutral surface, the status carried by a 2px edge and the icon and title. */
 .banner {
-  display: flex; gap: 12px; margin-bottom: 16px; padding: 12px 16px; border: 1px solid; border-radius: var(--radius-lg);
+  display: flex; gap: 12px; margin-bottom: 0; padding: 10px 16px; border: 1px solid var(--border); border-left: 2px solid var(--border-strong);
+  border-radius: var(--radius-lg); background: var(--surface); color: var(--text);
 }
 .banner svg { flex: none; margin-top: 2px; }
 .banner strong { font-weight: 600; }
 .banner p { margin-top: 2px; font-size: 13px; color: var(--text-2); }
-.banner.fault { border-color: rgba(229, 72, 77, 0.35); background: var(--red-bg); color: var(--red-text); }
-.banner.muted { border-color: var(--border-strong); background: var(--surface); color: var(--text); }
+.banner.fault { border-left-color: var(--red); }
+.banner.fault svg, .banner.fault strong { color: var(--red-text); }
 
 /* ---------- Scheduled outage drill ---------- */
 /* Blue, not red: the drill is information about a planned event. Real failures keep the status colours. */
@@ -654,7 +651,6 @@ a { color: inherit; }
   --shadow-pop: 0 8px 30px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--border-strong);
   /* On paper, colour needs more body and less wash, dot readouts a softer ink, and panels a hairline of depth. */
   --green-muted: color-mix(in srgb, var(--green) 78%, var(--surface));
-  --wash-strength: 7%;
   --ink-dots: #3a3a36;
   --panel-shadow: 0 1px 2px rgba(20, 20, 15, 0.04), 0 1px 1px rgba(20, 20, 15, 0.03);
   color-scheme: light;

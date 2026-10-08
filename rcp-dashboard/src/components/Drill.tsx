@@ -63,10 +63,7 @@ export function DrillPanel({ now, overview }: { now: number; overview?: MonitorO
           <span className="subtle mono">{utcClock(start)}–{utcClock(start + DRILL_OUTAGE_MS)} UTC</span>
         </div>
         <div className="drill-story">
-          <p>
-            This is a planned failure. The server removes this page on a timer so you can watch the pipeline react
-            to a real outage, then recover on its own, with nobody touching anything.
-          </p>
+          <p>A planned failure: the server removes this page on a timer so you can watch the pipeline react and recover.</p>
         </div>
       </div>
       <div className="drill-track">
