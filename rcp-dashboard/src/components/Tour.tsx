@@ -136,7 +136,7 @@ export function Tour() {
           <span className="tour-count" aria-label={`Step ${index + 1} of ${TOUR.length}`}>
             {String(index + 1).padStart(2, "0")}<small>/{TOUR.length}</small>
           </span>
-          <button type="button" className="icon-button" onClick={tour.stop} aria-label="End tour"><X size={15} /></button>
+          <button type="button" className="icon-button" onClick={tour.stop} aria-label="End tour"><X size={16} /></button>
         </header>
         <h2 id="tour-title">{current.title}</h2>
         <p>{current.body}</p>

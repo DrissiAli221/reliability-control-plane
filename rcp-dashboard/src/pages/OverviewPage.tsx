@@ -39,10 +39,10 @@ export function OverviewPage() {
         <div className="page-actions">
           <LiveIndicator updatedAt={overview.updatedAt} now={now} error={overview.error} />
           <button type="button" className="icon-button bordered" onClick={() => void refresh()} aria-label="Refresh" disabled={overview.loading}>
-            <RefreshCw size={15} className={overview.loading ? "spin" : undefined} />
+            <RefreshCw size={16} className={overview.loading ? "spin" : undefined} />
           </button>
           <button type="button" className="button primary" onClick={tour.start}>
-            <Play size={13} aria-hidden="true" /> Take the tour
+            <Play size={14} aria-hidden="true" /> Take the tour
           </button>
         </div>
       </header>
@@ -204,7 +204,7 @@ function Fleet({ monitors, now }: { monitors: MonitorOverview[]; now: number }) 
     <section className="panel">
       <header className="panel-header">
         <h2>Monitors</h2>
-        <Link className="subtle panel-link" to="/monitors">View all <ArrowUpRight size={12} aria-hidden="true" /></Link>
+        <Link className="subtle panel-link" to="/monitors">View all <ArrowUpRight size={14} aria-hidden="true" /></Link>
       </header>
       {monitors.length === 0 ? (
         <p className="panel-body subtle">No monitors yet. <Link to="/monitors">Create one</Link> to start collecting evidence.</p>

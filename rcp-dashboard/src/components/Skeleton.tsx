@@ -67,7 +67,7 @@ export function SkTiles({ count = 4, visual = false, className }: { count?: numb
     <section className={`metric-grid${className ? ` ${className}` : ""}`} aria-busy="true">
       {Array.from({ length: count }, (_, index) => (
         <div className="metric" key={index}>
-          <SkLine w={72} line={17} bar={9} />
+          <SkLine w={72} line={20} bar={9} />
           <SkLine w={92} line={30} bar={22} />
           {visual && <SkLine w="100%" line={22} bar={12} />}
           <SkLine w="70%" line={18} bar={9} />
@@ -111,7 +111,7 @@ export function OverviewSkeleton() {
         <SkPanel title="Regions"><SkRows count={2} height={96} widths={["40%"]} /></SkPanel>
       </div>
       <div className="split">
-        <SkPanel title="Fleet"><SkRows count={4} height={44} columns="minmax(0, 1fr) 90px 64px" widths={["50%", "70%", "80%"]} /></SkPanel>
+        <SkPanel title="Monitors"><SkRows count={4} height={44} columns="minmax(0, 1fr) 90px 64px" widths={["50%", "70%", "80%"]} /></SkPanel>
         <SkPanel title="Live events"><SkRows count={6} height={24} /></SkPanel>
       </div>
     </>

@@ -119,7 +119,7 @@ function DrillCountdown({ phase, now }: { phase: DrillPhase; now: number }) {
     <section className="panel drill-countdown" aria-label="Planned outage drill">
       <div className="drill-countdown-head">
         <div className="drill-countdown-title">
-          <FlaskConical size={15} aria-hidden="true" />
+          <FlaskConical size={16} aria-hidden="true" />
           <div>
             <h2>Planned outage drill</h2>
             <p>Goes down on purpose for 10 minutes every 2 hours, then recovers on its own.</p>

@@ -120,7 +120,7 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
             {theme === "dark" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
             {theme === "dark" ? "Light theme" : "Dark theme"}
           </button>
-          {readOnly && <span className="identity demo-identity"><Eye size={13} aria-hidden="true" /> Live demo · read-only</span>}
+          {readOnly && <span className="identity demo-identity"><Eye size={14} aria-hidden="true" /> Live demo · read-only</span>}
           {local && !readOnly
             ? <span className="identity">Local development identity</span>
             : <button type="button" className="nav-item" onClick={onLogout}><LogOut size={16} aria-hidden="true" /> {readOnly ? "Leave the demo" : "Sign out"}</button>}
@@ -132,9 +132,9 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
         <div className="main" key={pathname}>
           {readOnly && (
             <div className="demo-banner" role="note">
-              <Eye size={15} aria-hidden="true" />
+              <Eye size={16} aria-hidden="true" />
               <span><strong>You're exploring the live demo.</strong> Everything is real and running; changes are switched off.</span>
-              <button type="button" className="demo-banner-cta" onClick={onLogout}>Monitor your own site <ArrowRight size={13} aria-hidden="true" /></button>
+              <button type="button" className="demo-banner-cta" onClick={onLogout}>Monitor your own site <ArrowRight size={14} aria-hidden="true" /></button>
             </div>
           )}
           {children}

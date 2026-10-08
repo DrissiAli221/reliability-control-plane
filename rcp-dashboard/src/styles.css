@@ -146,10 +146,12 @@ a { color: inherit; }
 .region-light { width: 8px; height: 8px; flex: none; margin: 0 4px; background: var(--no-data); }
 .live-region .region-light { background: var(--green); box-shadow: 0 0 6px color-mix(in srgb, var(--green) 55%, transparent); }
 .live-region .region-state { color: var(--green-text); }
-.sidebar > .sidebar-footer { margin: auto 0 0; display: flex; flex-direction: column; gap: 2px; padding: 12px 8px; border-top: 1px solid var(--border); }
+.sidebar > .sidebar-footer { margin: auto 0 0; display: flex; flex-direction: column; gap: 2px; padding: 12px 8px 0; border-top: 1px solid var(--border); }
 .sidebar-footer .nav-item { height: 28px; font-size: 12px; color: var(--text-3); }
 .sidebar-footer .nav-item:hover { color: var(--text); }
 .sidebar-footer .env-note, .sidebar-footer .identity { margin: 0; padding: 0 8px; }
+/* The last row is exactly the status bar's 30px, hairline included, so its top line meets the bar's across the sidebar edge. */
+.sidebar > .sidebar-footer > :last-child { box-sizing: border-box; width: auto; height: 30px; margin: 8px -8px 0; padding: 0 16px; border-top: 1px solid var(--border); border-radius: 0; align-items: center; }
 .sidebar-footer .env-note { padding-bottom: 8px; }
 .sidebar-footer .identity { display: flex; align-items: center; gap: 8px; height: 28px; }
 .env-note { font-size: 12px; line-height: 1.45; color: var(--text-3); }
@@ -305,7 +307,7 @@ a { color: inherit; }
 .metric:is([data-tone="fault"], [data-tone="warn"], [data-tone="good"]), .lit:is(.fault, .warn, .good) {
   background: linear-gradient(180deg, color-mix(in srgb, var(--hue) var(--light-fall), transparent) 0%, transparent 55%), var(--surface);
 }
-.metric-label { display: flex; align-items: center; gap: 8px; }
+.metric-label { display: flex; align-items: center; gap: 8px; min-height: 20px; } /* the explain button is 20px: reserve it so every tile's number sits on the same line */
 .metric-label .status-dot { width: 6px; height: 6px; }
 .metric-value { color: var(--ink-dots); font-family: var(--font-dots); font-size: 30px; font-weight: 800; letter-spacing: 0; font-variant-numeric: tabular-nums; line-height: 1; }
 .metric-value small { margin-left: 6px; font-family: var(--font-sans); font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--text-3); }
@@ -342,7 +344,7 @@ a { color: inherit; }
 .split > .panel + .panel { margin-left: -1px; margin-top: 0; } /* side by side: overlap left edges only */
 .hero.incident { z-index: 1; }
 
-.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border-bottom: 1px solid var(--border); }
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
 .search {
   display: flex; align-items: center; gap: 8px; width: min(320px, 100%); height: 32px; padding: 0 10px;
   border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--bg); color: var(--text-3);
@@ -351,7 +353,7 @@ a { color: inherit; }
 .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font-size: 13.5px; }
 .search input::placeholder { color: var(--text-3); }
 .segmented { display: inline-flex; overflow: hidden; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg); }
-.segmented button { height: 28px; padding: 0 10px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--text-2); font-size: 12.5px; font-weight: 500; transition: background 120ms, color 120ms, transform 100ms ease-out; }
+.segmented button { height: 26px; padding: 0 10px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--text-2); font-size: 12.5px; font-weight: 500; transition: background 120ms, color 120ms, transform 100ms ease-out; }
 .segmented button:hover { color: var(--text); }
 .segmented button + button { border-left: 1px solid var(--border); }
 /* The selected segment keeps the button depth recipe. background-color (not the shorthand) so the sheen from the depth rule survives,
@@ -399,7 +401,7 @@ a { color: inherit; }
 .menu svg { color: var(--text-2); }
 
 .footnote { max-width: 760px; margin-top: 16px; font-size: 12.5px; color: var(--text-3); }
-.notice { margin-bottom: 12px; padding: 10px 12px; border-radius: var(--radius); font-size: 13px; }
+.notice { margin-bottom: 12px; padding: 10px 16px; border-radius: var(--radius); font-size: 13px; }
 .notice.fault { background: var(--red-bg); color: var(--red-text); }
 
 /* A quiet strip: neutral border, the status carried by the faint top-down light (.lit recipe) and the icon and title. */
@@ -428,7 +430,7 @@ a { color: inherit; }
 .drill-line.drill-active { color: var(--amber-text); }
 .drill-line.drill-active b { color: var(--amber-text); }
 
-.drill-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.drill-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; min-height: 49px; padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
 .drill-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
 .drill-eyebrow svg { color: var(--text-2); }
 .drill-body { display: grid; grid-template-columns: minmax(200px, auto) minmax(0, 1fr); gap: 28px; padding: 18px 16px; }
@@ -1092,7 +1094,7 @@ a { color: inherit; }
 .panel-link:hover { color: var(--text); }
 
 /* The hero reads like an instrument: one large dot-matrix readout on a faint dot grid, the fleet pulse below. */
-.hero { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 22px 24px 18px; --hue: transparent; }
+.hero { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 22px 16px 18px; --hue: transparent; }
 .hero::before {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   background:
@@ -1431,7 +1433,7 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 
 /* ---------- Demo session ---------- */
 .demo-banner {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: -8px 0 20px; padding: 10px 14px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: -8px 0 20px; padding: 10px 16px;
   border: 1px solid var(--accent-line); background: var(--accent-soft); color: var(--text-2); font-size: 13px;
 }
 .demo-banner svg { color: var(--accent-text); flex: none; }
@@ -1456,7 +1458,7 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 /* Series chips carry the window's value and switch their series on and off. */
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
-  display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border: 1px solid var(--border-strong);
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--border-strong);
   border-radius: var(--radius-pill); background: var(--surface); color: var(--text-2); font-size: 12px; transition: opacity 120ms, border-color 120ms, transform 100ms ease-out;
 }
 .chip b { font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--text); }

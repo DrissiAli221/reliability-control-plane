@@ -116,7 +116,7 @@ export function MonitorDetailPage() {
           </div>
           <div className="meta-row">
             <a className="mono" href={monitor.targetUrl} target="_blank" rel="noreferrer">
-              {compactUrl(monitor.targetUrl)} <ExternalLink size={12} aria-hidden="true" />
+              {compactUrl(monitor.targetUrl)} <ExternalLink size={14} aria-hidden="true" />
             </a>
             <span>Every {interval(monitor.checkIntervalSeconds)}</span>
             <span>Timeout {monitor.timeoutMs / 1000} s</span>
@@ -126,7 +126,7 @@ export function MonitorDetailPage() {
         <div className="page-actions">
           <LiveIndicator updatedAt={detail.updatedAt} now={now} error={detail.error} />
           <button type="button" className="icon-button bordered" onClick={() => void detail.refresh()} aria-label="Refresh" disabled={detail.loading}>
-            <RefreshCw size={15} className={detail.loading ? "spin" : undefined} />
+            <RefreshCw size={16} className={detail.loading ? "spin" : undefined} />
           </button>
           {!readOnly && <MonitorToggleButton enabled={monitor.enabled} onToggle={toggle} />}
           <DownloadReportButton monitorId={monitor.id} monitorName={monitor.name} />

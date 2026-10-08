@@ -125,11 +125,11 @@ export function MonitorsPage() {
         <div className="page-actions">
           <LiveIndicator updatedAt={fleet.updatedAt} now={now} error={fleet.error} />
           <button type="button" className="icon-button bordered" onClick={() => void fleet.refresh()} aria-label="Refresh" disabled={fleet.loading}>
-            <RefreshCw size={15} className={fleet.loading ? "spin" : undefined} />
+            <RefreshCw size={16} className={fleet.loading ? "spin" : undefined} />
           </button>
           {!readOnly && (
             <button type="button" className="button primary" onClick={() => setShowCreate(true)}>
-              <Plus size={15} aria-hidden="true" /> Create monitor
+              <Plus size={16} aria-hidden="true" /> Create monitor
             </button>
           )}
         </div>
@@ -370,7 +370,7 @@ function EmptyState({ onCreate }: { onCreate?: () => void }) {
       <p className="dot-glyph small" aria-hidden="true">0</p>
       <h2>No monitors yet</h2>
       <p>Add a public HTTP(S) endpoint. Each check runs in every region, and the control plane only calls it down when the regions agree.</p>
-      {onCreate && <button type="button" className="button primary" onClick={onCreate}><Plus size={15} aria-hidden="true" /> Create monitor</button>}
+      {onCreate && <button type="button" className="button primary" onClick={onCreate}><Plus size={16} aria-hidden="true" /> Create monitor</button>}
     </div>
   );
 }

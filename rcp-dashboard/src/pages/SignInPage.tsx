@@ -60,10 +60,10 @@ export function SignInPage() {
         <div className="signin-actions">
           <button type="button" className="button primary signin-demo" onClick={() => void tryDemo()} disabled={busy != null}>
             {busy === "demo" ? "Opening the demo…" : "Try the live demo"}
-            <ArrowRight size={15} className="signin-go" aria-hidden="true" />
+            <ArrowRight size={16} className="signin-go" aria-hidden="true" />
           </button>
           <button type="button" className="button secondary" onClick={() => void account()} disabled={busy != null}>
-            <LogIn size={15} aria-hidden="true" />
+            <LogIn size={16} aria-hidden="true" />
             {local ? "Continue as local developer" : busy === "account" ? "Opening sign-in…" : "Sign in or create an account"}
           </button>
           {error && <p className="form-error" role="alert">{error}</p>}

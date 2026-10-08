@@ -54,7 +54,7 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
         <h2 id="fanout-title">Latest check</h2>
         <span className="subtle">
           {relativeTime(check.scheduledAt, now)}
-          <button type="button" className="text-button" onClick={onTrace}>Trace <ArrowRight size={12} aria-hidden="true" /></button>
+          <button type="button" className="text-button" onClick={onTrace}>Trace <ArrowRight size={14} aria-hidden="true" /></button>
         </span>
       </header>
       <div className="fanout" style={{ ["--fanout-height" as string]: `${height}px` }}>

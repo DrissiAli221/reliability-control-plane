@@ -26,7 +26,7 @@ export function PipelinePage() {
         <div className="page-actions">
           <LiveIndicator updatedAt={snapshot.updatedAt} now={now} error={snapshot.error} />
           <button type="button" className="icon-button bordered" onClick={() => void snapshot.refresh()} aria-label="Refresh" disabled={snapshot.loading}>
-            <RefreshCw size={15} className={snapshot.loading ? "spin" : undefined} />
+            <RefreshCw size={16} className={snapshot.loading ? "spin" : undefined} />
           </button>
         </div>
       </header>

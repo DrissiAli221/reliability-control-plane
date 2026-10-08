@@ -37,7 +37,7 @@ export function PolicyStrip({ state, now, expanded, onToggle }: {
       <span className="mono">{streak[node]}</span>
       <span className="subtle policy-next">next: {next[node]}</span>
       <button type="button" className="button secondary policy-toggle" onClick={onToggle} aria-expanded={expanded}>
-        {expanded ? "Hide" : "State machine"} <ChevronDown size={13} aria-hidden="true" />
+        {expanded ? "Hide" : "State machine"} <ChevronDown size={14} aria-hidden="true" />
       </button>
     </div>
   );

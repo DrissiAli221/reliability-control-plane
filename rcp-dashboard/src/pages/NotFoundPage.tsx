@@ -10,7 +10,7 @@ export function NotFoundPage() {
       <p>The page may have moved, or the monitor it pointed to was removed.</p>
       <div className="lost-actions">
         <Link className="button secondary" to="/"><ArrowLeft size={14} aria-hidden="true" /> Back to Overview</Link>
-        <span className="subtle">or press <kbd>⌘</kbd><kbd>K</kbd> to search <Search size={12} aria-hidden="true" /></span>
+        <span className="subtle">or press <kbd>⌘</kbd><kbd>K</kbd> to search <Search size={14} aria-hidden="true" /></span>
       </div>
     </section>
   );
