@@ -629,74 +629,81 @@ a { color: inherit; }
 .message-card p { color: var(--text-2); }
 
 /* ---------- Console light theme ----------
-   Built as paper and ink, not as the dark theme turned inside out: warm off-white page, slightly lighter modules, near-black
-   ink, visible warm hairlines, and status colours deepened so they hold their meaning on a light ground. Every token defined
-   on :root has a deliberate value here. */
+   White modules on a cool, barely-grey page: the sidebar sits on the page, content surfaces are pure white, hairlines are
+   faint, and empty data cells are almost white so colour only appears where there is data. Neutrals are cool, text is
+   near-black, accent is for interaction only and status colours are deepened so they hold their meaning on white.
+   Every token defined on :root has a deliberate value here. */
 :root[data-theme="light"] {
-  --bg: #eeede8;
-  --bg-sidebar: #e7e6e0;
-  --surface: #f7f6f2;
-  --surface-2: #ffffff;
-  --surface-hover: #efeee9;
-  --border: #d9d7ce;
-  --border-strong: #c4c2b8;
-  --text: #111110;
-  --text-2: #45443f;
-  --text-3: #7a7870;
+  --bg: #f4f4f5;
+  --bg-sidebar: #f4f4f5;
+  --surface: #ffffff;
+  --surface-2: #fafafa;
+  --surface-hover: #f4f4f5;
+  --border: #e6e6e9;
+  --border-strong: #d4d4d8;
+  --text: #0a0a0b;
+  --text-2: #52525b;
+  --text-3: #8b8b93; /* 3.4:1 on white, 3.1:1 on the page grey */
   /* Accent: interaction and selection only. */
   --accent: #5b4be0;
   --accent-hover: #4a3bc7;
   --on-accent: #ffffff;
   --accent-text: #4a3bc7;
   --accent-strong: #372ba3;
-  --accent-soft: rgba(91, 75, 224, 0.1);
-  --accent-line: color-mix(in srgb, var(--accent) 50%, transparent);
-  /* Raised controls: a white key on paper, a dark hairline ring, a bright top edge and one tight shadow. */
-  --lift-ring: rgba(0, 0, 0, 0.12);
+  --accent-soft: rgba(91, 75, 224, 0.08);
+  --accent-line: rgba(91, 75, 224, 0.35);
+  /* Raised controls: a white key on white, a faint ring, a bright top edge and one tight shadow. */
+  --lift-ring: rgba(10, 10, 11, 0.1);
   --lift-ring-accent: color-mix(in srgb, var(--accent) 50%, transparent);
-  --lift-hi: inset 0 1px 0.4px rgba(255, 255, 255, 0.9);
+  --lift-hi: inset 0 1px 0.4px rgba(255, 255, 255, 1);
   --lift-hi-accent: inset 0 1px 0.4px rgba(255, 255, 255, 0.55);
-  --lift-lo: inset 0 -1px 0.4px rgba(17, 17, 16, 0.05);
-  --lift-outer: 0 1px 2px rgba(17, 17, 16, 0.1);
-  --lift-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.55), transparent);
-  --lift-pressed: inset 0 0 0 1px var(--lift-ring), inset 0 1px 2px rgba(17, 17, 16, 0.16);
-  --lift-pressed-accent: inset 0 0 0 1px var(--lift-ring-accent), inset 0 1px 2px rgba(17, 17, 16, 0.16);
-  /* Status: deeper and more saturated than on black. */
-  --green: #1f7a4d;
-  --green-text: #18663f;
-  --green-bg: rgba(31, 122, 77, 0.1);
-  --amber: #b8730a;
-  --amber-text: #94600a;
-  --amber-bg: rgba(184, 115, 10, 0.12);
-  --red: #c4302b;
-  --red-text: #a92621;
-  --red-bg: rgba(196, 48, 43, 0.09);
+  --lift-lo: inset 0 -1px 0.4px rgba(10, 10, 11, 0.04);
+  --lift-outer: 0 1px 2px rgba(10, 10, 11, 0.06);
+  --lift-sheen: linear-gradient(180deg, #ffffff, #fafafa);
+  --lift-pressed: inset 0 0 0 1px var(--lift-ring), inset 0 1px 2px rgba(10, 10, 11, 0.12);
+  --lift-pressed-accent: inset 0 0 0 1px var(--lift-ring-accent), inset 0 1px 2px rgba(10, 10, 11, 0.12);
+  /* Status: deeper than on black. */
+  --green: #1a7f4b;
+  --green-text: #157040;
+  --green-bg: rgba(26, 127, 75, 0.09);
+  --amber: #b86e00;
+  --amber-text: #9a5c00;
+  --amber-bg: rgba(184, 110, 0, 0.1);
+  --red: #d1342f;
+  --red-text: #b42a25;
+  --red-bg: rgba(209, 52, 47, 0.08);
   --green-muted: color-mix(in srgb, var(--green) 72%, var(--surface));
-  --gray-bar: #e2e0d8;
-  --gray-text: #6b6962;
-  --gray-bg: rgba(17, 17, 16, 0.05);
-  --no-data: #cfcdc4;
-  --hatch-a: #dedcd3;
-  --hatch-b: #ebeae4;
-  --dot: rgba(17, 17, 16, 0.12);
+  --gray-bar: #ededef;
+  --gray-text: #6b6b73;
+  --gray-bg: rgba(10, 10, 11, 0.05);
+  --no-data: #dadadd;
+  --hatch-a: #f1f1f3;
+  --hatch-b: #fafafa;
+  --dot: rgba(10, 10, 11, 0.06);
   --log-outbox: #a21caf;
   --log-ingest: #0f766e;
-  --ink-dots: #111110;
-  /* Status tints need more strength on paper to read at all. */
-  --light-fall: 10%;
-  --shadow-pop: 0 8px 28px rgba(17, 17, 16, 0.14), 0 0 0 1px var(--border-strong);
-  --sk-base: #e6e4dc;
-  --sk-sheen: rgba(255, 255, 255, 0.7);
-  --veil: rgba(17, 17, 16, 0.4);
+  --ink-dots: #0a0a0b;
+  --light-fall: 8%;
+  --shadow-pop: 0 8px 28px rgba(10, 10, 11, 0.1), 0 0 0 1px var(--border-strong);
+  --sk-base: #efeff1;
+  --sk-sheen: #f7f7f8;
+  --veil: rgba(10, 10, 11, 0.4);
   color-scheme: light;
 }
-:root[data-theme="light"] .banner.fault { --light-fall: 12%; }
-:root[data-theme="light"] .button.secondary, :root[data-theme="light"] .icon-button.bordered { background-color: var(--surface-2); }
-:root[data-theme="light"] .button.secondary:hover:not(:disabled), :root[data-theme="light"] .icon-button.bordered:hover:not(:disabled) { background-color: var(--surface-hover); }
+:root[data-theme="light"] .banner.fault { --light-fall: 10%; }
+/* The fill is an opaque white gradient, so hover and the tinted primary key need their own image. */
+:root[data-theme="light"] .button.secondary:hover:not(:disabled):not(:active), :root[data-theme="light"] .icon-button.bordered:hover:not(:disabled):not(:active) { background-image: linear-gradient(180deg, #fafafa, #f4f4f5); }
+:root[data-theme="light"] .button.primary:not(:disabled):not(:active) { background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.5), transparent); }
+/* Sidebar sits on the page grey: hover is a faint ink wash, the selected item is a raised white chip with an accent edge. */
+:root[data-theme="light"] .nav-item:hover { background: rgba(10, 10, 11, 0.045); }
+:root[data-theme="light"] .nav-item.active, :root[data-theme="light"] .nav-item.active:active { background: var(--surface); box-shadow: inset 0 0 0 1px var(--border), inset 2px 0 0 var(--accent); }
+:root[data-theme="light"] .statusbar { background: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none; }
+:root[data-theme="light"] .hero-stats div { background: var(--surface); }
 :root[data-theme="light"] .timeline-span { background: color-mix(in srgb, var(--red) 85%, var(--surface)); }
-:root[data-theme="light"] .drill-meter-cells i:not(.outage) { background: var(--gray-bar); }
+:root[data-theme="light"] .drill-meter-cells i b { background: #cfcfd4; }
 :root[data-theme="light"] .led i { opacity: 0.4; }
-:root[data-theme="light"] .heatmap { --heat: #0b6b80; }
+:root[data-theme="light"] .heatmap { --heat: #0e7490; }
+:root[data-theme="light"] .heatmap-grid i:not(.hot) { opacity: 0.7; }
 :root[data-theme="light"] .tracker-bar i + i { box-shadow: 0 -1px 0 var(--surface); }
 
 /* ---------- Public status page (light) ---------- */
