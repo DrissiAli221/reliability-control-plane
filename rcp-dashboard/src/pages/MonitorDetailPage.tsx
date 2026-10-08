@@ -10,7 +10,7 @@ import { CheckTimeline } from "../components/CheckTimeline";
 import { DownloadReportButton } from "../components/DownloadReportButton";
 import { DrillPanel, DrillTag } from "../components/Drill";
 import { EvidenceRail } from "../components/EvidenceRail";
-import { Explain } from "../components/Explain";
+import { Explain, ExplainItems } from "../components/Explain";
 import { MonitorDetailSkeleton, TraceSkeleton } from "../components/Skeleton";
 import { IncidentMachine } from "../components/IncidentMachine";
 import { ChartBoundary } from "../components/ChartBoundary";
@@ -189,9 +189,9 @@ export function MonitorDetailPage() {
               title="Latency"
               lines={[
                 { label: "Samples", value: `${count(report.latency.sampleCount)} HTTP responses, both regions` },
-                { label: "Excluded", value: "timeouts, refused connections, other failures" },
+                { label: "Excluded", value: <ExplainItems items={["timeouts", "refused connections", "other failures"]} /> },
                 { label: "Minimum", value: `${report.latency.minimumSamples} samples before showing percentiles` },
-                { label: "p50 · p95", value: `${milliseconds(report.latency.p50Ms)} · ${milliseconds(report.latency.p95Ms)}`, strong: true },
+                { label: "Result", value: `${milliseconds(report.latency.p50Ms)} · ${milliseconds(report.latency.p95Ms)}`, strong: true },
               ]}
               note="Nearest-rank percentiles (PostgreSQL percentile_disc), so every value is a latency that was actually measured."
             />
@@ -210,7 +210,7 @@ export function MonitorDetailPage() {
               lines={[
                 { label: "Allowed", value: `${count(report.availability.conclusiveExecutions)} conclusive × ${(100 - report.availability.sloTargetPercent).toFixed(1)}% = ${Number(report.errorBudget.allowedBadExecutions).toFixed(2)}` },
                 { label: "Spent", value: `${count(report.errorBudget.observedBadExecutions)} confirmed DOWN checks` },
-                { label: "Remaining", value: Number(report.errorBudget.remainingExecutions).toFixed(2), strong: true },
+                { label: "Result", value: Number(report.errorBudget.remainingExecutions).toFixed(2), strong: true },
               ]}
               note="Only DOWN counts against the budget. Disagreement and no-data checks are inconclusive, not failures."
             />
@@ -409,14 +409,20 @@ function CheckTrace({ monitorId, executionId }: { monitorId: string; executionId
 }
 
 function UptimeExplain({ report }: { report: AvailabilityReport }) {
+  // Zero-count parts are left out so the line stays short.
+  const excluded = [
+    [report.disagreementExecutions, "disagree"],
+    [report.noDataExecutions, "no data"],
+    [report.pendingExecutions, "pending"],
+  ].filter(([n]) => Number(n) > 0).map(([n, what]) => `${count(Number(n))} ${what}`);
   return (
     <Explain
       title="Uptime"
       lines={[
         { label: "Formula", value: "UP ÷ (UP + DOWN)" },
         { label: "This week", value: `${count(report.upExecutions)} ÷ (${count(report.upExecutions)} + ${count(report.downExecutions)})` },
-        { label: "Excluded", value: `${count(report.disagreementExecutions)} disagree · ${count(report.noDataExecutions)} no data · ${count(report.pendingExecutions)} pending` },
-        { label: "Uptime", value: percent(report.measuredAvailabilityPercent, 3), strong: true },
+        { label: "Excluded", value: <ExplainItems items={excluded} /> },
+        { label: "Result", value: percent(report.measuredAvailabilityPercent, 3), strong: true },
       ]}
       note="A check counts only when every region agreed. Inconclusive checks lower coverage instead of uptime."
     />
@@ -433,7 +439,7 @@ function SloExplain({ report }: { report: AvailabilityReport }) {
         { label: "Needed", value: `≥ ${report.minimumEvidenceCoveragePercent}% coverage to judge` },
         { label: "Uptime vs target", value: `${percent(report.measuredAvailabilityPercent, 3)} vs ${report.sloTargetPercent}%` },
         {
-          label: "Decision",
+          label: "Result",
           value: report.sloMet == null ? "Unproven: not enough evidence" : report.sloMet ? "Met" : "Missed",
           strong: true,
         },

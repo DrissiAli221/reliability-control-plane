@@ -70,3 +70,15 @@ export function Explain({ title, lines, note }: { title: string; lines: ExplainL
     </>
   );
 }
+
+/** A list of short facts that may wrap between items but never inside one. */
+export function ExplainItems({ items, empty = "Nothing" }: { items: string[]; empty?: string }) {
+  if (items.length === 0) return <>{empty}</>;
+  return (
+    <>
+      {items.map((item, index) => (
+        <span key={item} className="explain-item">{item}{index < items.length - 1 ? " · " : ""}</span>
+      ))}
+    </>
+  );
+}

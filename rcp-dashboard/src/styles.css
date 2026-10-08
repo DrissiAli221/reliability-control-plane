@@ -817,13 +817,14 @@ a { color: inherit; }
 }
 .explain-trigger:hover, .explain-trigger[aria-expanded="true"] { background: var(--surface-hover); color: var(--text); }
 .explain {
-  position: fixed; z-index: 70; width: 320px; padding: 14px 16px; background: var(--surface-2); border-radius: var(--radius);
+  position: fixed; z-index: 70; width: 344px; padding: 14px 16px; background: var(--surface-2); border-radius: var(--radius);
   box-shadow: var(--shadow-pop); font-size: 12.5px; animation: pop 120ms ease-out;
 }
 .explain > strong { display: block; margin-bottom: 10px; font-size: 13px; }
 .explain dl { display: grid; gap: 7px; margin: 0; }
-.explain dl div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; }
+.explain dl div { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px; }
 .explain dt { color: var(--text-3); }
+.explain-item { white-space: nowrap; }
 .explain dd { margin: 0; font-family: var(--font-mono); font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
 .explain dl div.strong { padding-top: 7px; border-top: 1px solid var(--border); }
 .explain dl div.strong dd { color: var(--text); font-weight: 500; }
