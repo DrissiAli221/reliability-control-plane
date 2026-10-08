@@ -254,13 +254,14 @@ function FleetTableRow({ row, now, index, changed, readOnly, onOpen, onToggle, o
       style={{ animationDelay: `${index * 35}ms` }}
       onClick={onOpen}
       onKeyDown={(event) => { if (event.key === "Enter") onOpen(); }}
-      aria-label={`Open ${monitor.name}`}
+      aria-label={`Open ${monitor.name}, ${state.label}`}
     >
       <td>
         <div className="monitor-cell">
           <StatusDot tone={state.tone} pulse={state.tone === "fault"} />
           <div>
             <strong>{monitor.name}{drill && <DrillTag />}</strong>
+            <span className={`status-inline ${state.tone}`}>{state.label}</span>
             <span className="mono subtle">{compactUrl(monitor.targetUrl)}</span>
             {drill && monitor.enabled && <DrillLine now={now} />}
           </div>

@@ -193,6 +193,11 @@ a { color: inherit; }
   font-size: 12px; font-weight: 500; white-space: nowrap; background: var(--gray-bg); color: var(--gray-text);
 }
 .badge .status-dot { width: 6px; height: 6px; }
+/* The status column is hidden on phones; this keeps the word next to the dot there. */
+.status-inline { display: none; font-size: 12px; font-weight: 500; color: var(--text-2); }
+.status-inline.good { color: var(--green-text); }
+.status-inline.warn { color: var(--amber-text); }
+.status-inline.fault { color: var(--red-text); }
 .badge.good { background: var(--green-bg); color: var(--green-text); }
 .badge.warn { background: var(--amber-bg); color: var(--amber-text); }
 .badge.fault { background: var(--red-bg); color: var(--red-text); }
@@ -700,6 +705,7 @@ a { color: inherit; }
   .field-pair { grid-template-columns: 1fr; }
   .status-component-meta .uptime { display: none; }
   .col-status, .col-last { display: none; }
+  .status-inline { display: block; }
   .table th, .table td { padding-left: 12px; padding-right: 12px; }
   .monitor-cell { min-width: 0; }
   .monitor-cell .mono { overflow-wrap: anywhere; }
