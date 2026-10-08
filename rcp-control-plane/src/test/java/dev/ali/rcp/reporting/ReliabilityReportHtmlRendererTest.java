@@ -24,7 +24,7 @@ class ReliabilityReportHtmlRendererTest {
     private final ReliabilityReportHtmlRenderer renderer = new ReliabilityReportHtmlRenderer();
 
     @Test
-    void rendersAnOfflineSampleWithAccessibleSvgAndPrintStyles(@TempDir Path directory) throws Exception {
+    void rendersAnOfflineSampleWithAccessibleMetersAndPrintStyles(@TempDir Path directory) throws Exception {
         String html = renderer.render(sampleReport());
         Path download = directory.resolve("reliability-report.html");
         Files.writeString(download, html, StandardCharsets.UTF_8);
@@ -35,31 +35,22 @@ class ReliabilityReportHtmlRendererTest {
                 "class=\"figure\">387</span><span class=\"unit\">p95 ms", "2480 HTTP samples", "<table>",
                 "@media print", "size: A4", "table-header-group", "break-inside: avoid",
                 "6 Oct 2026, 00:00 → 7 Oct 2026, 00:00 UTC", "7 Oct 2026, 00:05 UTC",
-                "data-from=\"2026-10-06T00:00:00Z\"", "data-to=\"2026-10-07T00:00:00Z\"",
+                "data-from=\"2026-10-06T00:00:00Z\"", "data-to=\"2026-10-07T00:00:00Z\"", "<span>1 day</span>", "Generated 7 Oct 2026, 00:05 UTC",
                 "Schema rcp-report-v1 · ", "Data up to 6 Oct 2026, 23:59 UTC", "6 Oct, 01:00:00", "6 Oct, 01:02:00",
                 "<span title=\"ae71250e-bd38-4ef3-83f7-812b4e1b9c30\">ae71250e</span>", "UP ÷ (UP + DOWN)",
-                "Counted as UP ÷ (UP + DOWN)", "3.2 of 7.2 checks left", "Conclusive checks");
+                "Counted as UP ÷ (UP + DOWN)", "3.2 of 7.2 checks left · conclusive checks");
         assertThat(html).doesNotContain("99.72222%", "100.00000", ">UP_PLUS_DOWN<");
         assertThat(html).doesNotContain("<script", "<link", "<iframe", "src=", "href=", "@import", "99.9%");
         // The only url() allowed is an embedded font, so the file never fetches anything.
         assertThat(Pattern.compile("url\\((?!data:font/woff2;base64,)").matcher(html).find()).isFalse();
 
-        // Parse every chart/readout, rather than only checking for the word "svg".
-        var parser = DocumentBuilderFactory.newInstance();
-        parser.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-        var builder = parser.newDocumentBuilder();
-        var charts = Pattern.compile("<svg\\b.*?</svg>", Pattern.DOTALL).matcher(html);
+        // Every meter is a labelled image of twenty cells with its share recorded, never an unlabelled bar.
+        var meters = Pattern.compile("<div class=\"cells fill-[a-z]+\" role=\"img\" aria-label=\"[^\"]+\" data-meter=\"[a-z-]+\" data-share=\"[0-9.]+\">((?:<i(?: class=\"full\")?>(?:<b style=\"width:[0-9.]+%\"></b>)?</i>){20})").matcher(html);
         int count = 0;
-        while (charts.find()) {
-            var svg = builder.parse(new InputSource(new StringReader(charts.group()))).getDocumentElement();
-            assertThat(svg.getTagName()).isEqualTo("svg");
-            if (!"true".equals(svg.getAttribute("aria-hidden"))) {
-                assertThat(svg.getAttribute("role")).isEqualTo("img");
-                assertThat(svg.getElementsByTagName("title").getLength()).isEqualTo(1);
-            }
+        while (meters.find()) {
             count++;
         }
-        assertThat(count).isGreaterThanOrEqualTo(3);
+        assertThat(count).isEqualTo(4);
     }
 
     @Test
@@ -126,7 +117,8 @@ class ReliabilityReportHtmlRendererTest {
         String html = renderer.render(reportWithEvidence(new BigDecimal("50.00000"), false,
                 BigDecimal.ZERO, 1, new BigDecimal("-1.00000")));
         assertThat(html).contains("MISSED", "Budget exceeded", "title=\"-1.00000 of 0\"", ">1</span>", "1 check over a budget of 0", "check over budget");
-        assertThat(html).containsPattern("budget-observed.*?class=\"fill-bad\" x=\"0\" y=\"2\" width=\"440\"");
+        assertThat(html).contains("class=\"cells fill-bad\" role=\"img\" aria-label=\"Observed bad executions 1\" data-meter=\"budget-observed\" data-share=\"1.000\">"
+                + "<i class=\"full\"></i>".repeat(20));
         assertThat(html).doesNotContain("NaN", "Infinity", "width=\"-");
     }
 

@@ -40,24 +40,32 @@ public class ReliabilityReportHtmlRenderer {
               -webkit-font-smoothing: antialiased; font-synthesis: none; }
             h1, h2, h3, p, dl, dd { margin: 0; }
             .report { max-width: 880px; margin: 0 auto; padding: 48px 40px 32px; }
-            .mono, .eyebrow, dt, th, .tag, .unit, .legend, .chart-label, .edition, footer { font-family: var(--font-mono); }
+            .mono, .eyebrow, dt, th, .tag, .chip, .unit, .readout-row, .summary, .meta-line, .edition, footer { font-family: var(--font-mono); }
             h1 { font-size: 32px; font-weight: 600; line-height: 1.15; letter-spacing: -.02em; overflow-wrap: anywhere; }
             .figure, .empty-value { font-family: var(--font-dots); font-size: 28px; font-weight: 800; line-height: 1;
               letter-spacing: 0; color: var(--text); font-variant-numeric: tabular-nums; }
             h2, h3, .brand { font-size: 15px; font-weight: 500; line-height: 1.3; letter-spacing: -.01em; }
-            .eyebrow, dt, th, .section-note, .unit, .legend, .chart-label, .edition, footer {
+            .eyebrow, dt, th, .section-note, .unit, .readout-row, .summary, .chip, .edition, footer {
               font-size: 11px; font-weight: 400; letter-spacing: .04em; color: var(--text-3); }
             .masthead { display: flex; align-items: center; justify-content: space-between; gap: 16px;
               padding-bottom: 22px; border-bottom: 1px solid var(--border); }
             .brand { display: flex; align-items: center; gap: 10px; }
             .brand svg { width: 26px; height: 26px; flex: none; }
-            /* The subject is the title: the monitor's name, then its URL and the window in one quiet line. */
-            .intro { margin: 40px 0 28px; }
-            .target { color: var(--text-2); margin: 6px 0 20px; overflow-wrap: anywhere; }
-            .meta { display: flex; flex-wrap: wrap; gap: 10px 40px; }
+            /* The subject is the title, as on the monitor page: name and verdict chip, then target and one meta line. */
+            .intro { margin: 40px 0 24px; }
+            .title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; }
+            .chip { display: inline-flex; align-items: center; gap: 7px; height: 24px; padding: 0 9px; white-space: nowrap;
+              border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+            .chip.good { color: var(--green-text); border-color: color-mix(in srgb, var(--green) 35%, var(--border)); }
+            .chip.bad { color: var(--red-text); border-color: color-mix(in srgb, var(--red) 35%, var(--border)); }
+            .chip.warn { color: var(--amber-text); border-color: color-mix(in srgb, var(--amber) 35%, var(--border)); }
+            .target { color: var(--text-2); margin: 8px 0 6px; overflow-wrap: anywhere; }
+            .meta-line { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--text-2); }
+            .meta-line .sep { color: var(--text-3); }
             dt { margin-bottom: 4px; } dd { overflow-wrap: anywhere; }
-            .decision { display: flex; align-items: center; gap: 14px; padding: 14px 16px;
-              border: 1px solid var(--border); background: var(--surface); margin-bottom: -1px; }
+            /* Every module below the intro touches the next and shares its hairline, like the dashboard's stack. */
+            .stack > * + * { margin-top: -1px; }
+            .decision { padding: 14px 16px; border: 1px solid var(--border); background: var(--surface); }
             .decision p { color: var(--text-2); }
             .tag { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; color: var(--text); }
             /* Status marker: a 3x3 dot-matrix block, the same shape as the dashboard's StatusDot (9px). */
@@ -80,19 +88,26 @@ public class ReliabilityReportHtmlRenderer {
             .readout { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 18px; margin: 12px 0 10px; }
             .readout span.pair { display: inline-flex; align-items: baseline; gap: 7px; }
             .metric p { color: var(--text-3); }
-            .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 40px 0 12px; }
-            .visuals { grid-template-columns: 1fr 1fr; margin-top: 0; }
-            .visual { min-width: 0; padding: 18px; background: var(--surface); }
+            .panel { border: 1px solid var(--border); background: var(--surface); }
+            .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 49px;
+              padding: 10px 16px; border-bottom: 1px solid var(--border); }
+            .panel .visuals, .panel .facts { border: 0; margin: 0; }
+            .visuals { grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border) !important; }
+            .visual { min-width: 0; padding: 18px 16px; background: var(--surface); }
             .visual h3 { margin-bottom: 4px; }
             .visual p { color: var(--text-2); }
-            .chart { display: block; width: 100%; height: 10px; margin: 14px 0 8px; overflow: visible; }
-            .track { fill: var(--track); } .fill-good { fill: var(--green); } .fill-bad { fill: var(--red); }
-            .fill-warn { fill: var(--amber); } .fill-neutral { fill: var(--text-2); }
-            .marker { stroke: var(--text); stroke-width: 2; vector-effect: non-scaling-stroke; }
-            .legend { display: flex; justify-content: space-between; gap: 10px; }
-            .legend b { font-weight: 400; color: var(--text); }
-            .coverage { margin: 16px 0 0; } .coverage .chart { margin: 9px 0 6px; }
-            .bar-head { margin-top: 18px; } .bar-head + .chart { margin-top: 6px; }
+            /* Readouts: quiet label, bright value, the reference on the right; then a segmented meter. */
+            .readout-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 18px; }
+            .readout-row b { font-weight: 400; color: var(--text); }
+            .cells { position: relative; display: grid; grid-template-columns: repeat(20, minmax(0, 1fr)); gap: 1px;
+              height: 12px; margin-top: 8px; }
+            .cells i { position: relative; overflow: hidden; background: var(--track); }
+            .cells i b { position: absolute; top: 0; bottom: 0; left: 0; background: var(--fill); }
+            .cells i.full { background: var(--fill); }
+            .cells.fill-good { --fill: var(--green); } .cells.fill-bad { --fill: var(--red); }
+            .cells.fill-warn { --fill: var(--amber); } .cells.fill-neutral { --fill: var(--text-2); }
+            .cells-mark { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text); }
+            .summary { margin-top: 16px; } .summary + .summary { margin-top: 4px; }
             .facts { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: -1px 0 0; }
             .facts > div { padding: 12px 16px; background: var(--surface); }
             .facts dd { font-family: var(--font-mono); }
@@ -100,19 +115,18 @@ public class ReliabilityReportHtmlRenderer {
             th { text-align: left; background: var(--surface-2); }
             th, td { border-bottom: 1px solid var(--border); padding: 10px 16px; vertical-align: middle; }
             tbody tr:last-child td { border-bottom: 0; } td.mono { overflow-wrap: anywhere; }
-            .table-wrap { overflow-x: auto; border: 1px solid var(--border); background: var(--surface); }
-            .empty { padding: 18px 16px; color: var(--text-2); border: 1px solid var(--border); background: var(--surface); }
-            .notice { color: var(--amber-text); margin-top: 10px; }
-            .limitations { color: var(--text-2); padding-left: 16px; margin: 0; }
+            .table-wrap { overflow-x: auto; }
+            .empty { padding: 18px 16px; color: var(--text-2); }
+            .notice { color: var(--amber-text); padding: 10px 16px; border-top: 1px solid var(--border); }
+            .limitations { color: var(--text-2); padding: 14px 16px 14px 32px; margin: 0; }
             .limitations li { padding-left: 3px; margin: 4px 0; }
             footer { border-top: 1px solid var(--border); margin-top: 24px; padding-top: 12px;
               display: flex; justify-content: space-between; gap: 12px; overflow-wrap: anywhere; }
             @media (max-width: 700px) {
               .report { padding: 24px 20px; } .metrics { grid-template-columns: 1fr 1fr; }
               .visuals { grid-template-columns: 1fr; }
-              .facts { grid-template-columns: 1fr 1fr; } .meta { grid-template-columns: 1fr; }
-              .section-note { display: none; } .decision, footer { flex-wrap: wrap; } .edition { text-align: right; }
-              .meta { gap: 10px 24px; }
+              .facts { grid-template-columns: 1fr 1fr; }
+              .section-note { display: none; } footer { flex-wrap: wrap; } .edition { text-align: right; }
             }
             @page { size: A4; margin: 12mm; }
             @media print {
@@ -123,18 +137,17 @@ public class ReliabilityReportHtmlRenderer {
               .intro { margin: 6mm 0 4mm; } h1 { font-size: 22pt; }
               .figure, .empty-value { font-size: 18pt; }
               h2, h3, .brand { font-size: 10.5pt; }
-              .eyebrow, dt, th, .section-note, .unit, .legend, .chart-label, .edition, footer { font-size: 7.5pt; }
-              .target { margin-bottom: 3mm; } .meta { gap: 3mm; }
-              .decision { padding: 3mm; margin-bottom: 3mm; flex-wrap: nowrap; }
+              .eyebrow, dt, th, .section-note, .unit, .readout-row, .summary, .chip, .edition, footer { font-size: 7.5pt; }
+              .target { margin: 2mm 0 1mm; }
+              .decision { padding: 3mm; } .panel-header { min-height: 0; padding: 2mm 3mm; } .stack { margin-top: 4mm; }
               .metric { padding: 3mm; } .readout { margin: 3mm 0 2mm; }
               .visual { padding: 3mm; }
-              .chart { margin: 3mm 0 2mm; } .coverage { margin-top: 3mm; }
-              .coverage .chart { margin: 2mm 0 1mm; }
-              .section-heading { margin: 6mm 0 2mm; break-after: avoid; }
+              .readout-row { margin-top: 3mm; } .cells { height: 2.5mm; margin-top: 1.5mm; } .summary { margin-top: 3mm; }
+              .panel-header { break-after: avoid; } .limitations { padding: 3mm 3mm 3mm 7mm; }
               .facts > div { padding: 2mm 3mm; }
               .table-wrap { overflow: visible; }
               th, td { padding: 1.5mm; } thead { display: table-header-group; } tr { break-inside: avoid; }
-              .masthead, .intro, .decision, .metric, .metrics, .visual, .visuals, .facts, .facts > div, .table-wrap { break-inside: avoid; }
+              .masthead, .intro, .decision, .metric, .metrics, .visual, .visuals, .facts, .facts > div, .cells { break-inside: avoid; }
               .limitations li { margin: 1mm 0; } footer { margin-top: 3mm; padding-top: 2mm; }
               p, li { orphans: 3; widows: 3; }
             }
@@ -153,16 +166,18 @@ public class ReliabilityReportHtmlRenderer {
                 .append("<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect x=\".5\" y=\".5\" width=\"23\" height=\"23\" fill=\"#7c6cff\"/>")
                 .append("<path d=\"M4.5 13h3.2l2-5.5 3.6 10 2.2-4.5h4\" fill=\"none\" stroke=\"#0a0a0a\" stroke-width=\"1.9\"/></svg>")
                 .append("Reliability Control Plane</div><div class=\"edition\">Reliability report</div></header>")
-                .append("<main><section class=\"intro\" aria-labelledby=\"report-title\">")
-                .append("<h1 id=\"report-title\">").append(escape(report.monitorName()))
-                .append("</h1><p class=\"target mono\">").append(escape(report.targetUrl())).append("</p><dl class=\"meta\">");
-        item(html, "Window", window(a.from(), a.to()),
-                " data-from=\"" + a.from() + "\" data-to=\"" + a.to() + "\" title=\"" + a.from() + " → " + a.to() + "\"");
-        item(html, "Generated", dateTime(report.generatedAt()), " data-value=\"" + report.generatedAt() + "\" title=\"" + report.generatedAt() + "\"");
-        html.append("</dl></section><div class=\"decision lit\" data-tone=\"").append(tone).append("\"><span class=\"tag ")
+                // Like the monitor page: name and verdict chip on one row, then the target and one quiet meta line.
+                .append("<main><section class=\"intro\" aria-labelledby=\"report-title\"><div class=\"title-row\">")
+                .append("<h1 id=\"report-title\">").append(escape(report.monitorName())).append("</h1><span class=\"chip ")
                 .append(tone).append("\">");
         dot(html, tone);
-        html.append(decision).append("</span><p>");
+        html.append(decision).append("</span></div><p class=\"target mono\">").append(escape(report.targetUrl()))
+                .append("</p><p class=\"meta-line\"><span data-from=\"").append(a.from()).append("\" data-to=\"").append(a.to())
+                .append("\" title=\"").append(a.from()).append(" → ").append(a.to()).append("\">").append(window(a.from(), a.to()))
+                .append("</span><span class=\"sep\">·</span><span>").append(span(a.from(), a.to()))
+                .append("</span><span class=\"sep\">·</span><span data-value=\"").append(report.generatedAt()).append("\" title=\"")
+                .append(report.generatedAt()).append("\">Generated ").append(dateTime(report.generatedAt())).append("</span></p></section>")
+                .append("<div class=\"stack\"><div class=\"decision lit\" data-tone=\"").append(tone).append("\"><p>");
         if (a.sloMet() == null) {
             html.append("Insufficient evidence to judge this SLO. Observed availability is not an SLO pass.");
         } else {
@@ -182,7 +197,7 @@ public class ReliabilityReportHtmlRenderer {
                         : "of " + oneDecimal(budget.allowedBadExecutions()) + " checks left",
                 overspent ? "Budget exceeded · " + oneDecimal(budget.allowedBadExecutions()) + " allowed"
                         : "Observed checks · fractional allowance",
-                a.sloMet() == null ? "warn" : budget.remainingExecutions().signum() < 0 ? "bad" : "good",
+                a.sloMet() == null ? "warn" : overspent ? "bad" : "good",
                 budget.remainingExecutions().toPlainString() + " of " + budget.allowedBadExecutions().toPlainString());
         html.append("<div class=\"metric latency\"><div class=\"eyebrow\">HTTP response latency</div><div class=\"readout\">");
         pair(html, report.latency().p50Ms() == null ? null : report.latency().p50Ms().toString(), "p50 ms", null);
@@ -196,36 +211,36 @@ public class ReliabilityReportHtmlRenderer {
         metric(html, "Incidents in timeline", incidents + (report.incidentTimelineTruncated() ? "+" : ""), "",
                 report.incidentTimelineTruncated() ? "Lower bound · timeline truncated" : "Distinct IDs in shown transitions", "", null);
         html.append("</section>");
-        section(html, "Availability and error budget", "Aggregates for this window");
+
+        panel(html, "Availability and error budget", "Aggregates for this window");
         String availabilityFill = a.sloMet() == null ? "neutral" : tone;
         html.append("<div class=\"visuals\"><div class=\"visual\"><h3>Measured availability</h3>")
                 .append("<p title=\"").append(escape(a.denominatorPolicy())).append("\">Counted as ")
                 .append(escape(denominator(a.denominatorPolicy()))).append(". Inconclusive checks are excluded.</p>");
-        meter(html, "availability-chart", "Measured availability " + percent(a.measuredAvailabilityPercent())
-                + "; SLO target " + given(a.sloTargetPercent()), a.measuredAvailabilityPercent(), a.sloTargetPercent(), availabilityFill);
-        html.append("<div class=\"legend\"><span>Observed ").append(percent(a.measuredAvailabilityPercent()))
-                .append("</span><span>Target ").append(given(a.sloTargetPercent())).append("</span></div>")
-                .append("<div class=\"coverage\"><h3>Evidence coverage</h3>");
-        meter(html, "coverage-chart", "Evidence coverage " + percent(a.evidenceCoveragePercent())
-                + "; minimum " + given(a.minimumEvidenceCoveragePercent()), a.evidenceCoveragePercent(),
-                a.minimumEvidenceCoveragePercent(), a.sloMet() == null ? "warn" : "neutral");
-        html.append("<div class=\"legend\"><span>").append(percent(a.evidenceCoveragePercent()))
-                .append(" coverage</span><span>").append(given(a.minimumEvidenceCoveragePercent()))
-                .append(" required</span></div></div></div><div class=\"visual\"><h3>Observed error budget</h3>")
+        readout(html, "Observed", percent(a.measuredAvailabilityPercent()), "Target", given(a.sloTargetPercent()));
+        cells(html, "availability", "Measured availability " + percent(a.measuredAvailabilityPercent())
+                + "; SLO target " + given(a.sloTargetPercent()), a.measuredAvailabilityPercent(), HUNDRED, availabilityFill,
+                a.sloTargetPercent());
+        readout(html, "Coverage", percent(a.evidenceCoveragePercent()), "Required", given(a.minimumEvidenceCoveragePercent()));
+        cells(html, "coverage", "Evidence coverage " + percent(a.evidenceCoveragePercent())
+                + "; minimum " + given(a.minimumEvidenceCoveragePercent()), a.evidenceCoveragePercent(), HUNDRED,
+                a.sloMet() == null ? "warn" : "neutral", a.minimumEvidenceCoveragePercent());
+        html.append("</div><div class=\"visual\"><h3>Observed error budget</h3>")
                 .append("<p>Allowance is based on conclusive executions, not elapsed downtime.</p>");
-        budgetChart(html, budget);
-        html.append("<div class=\"legend\"><span title=\"").append(budget.remainingExecutions().toPlainString())
-                .append("\">").append(budgetSentence(budget)).append("</span><span>Conclusive checks</span></div>");
+        budgetMeters(html, budget);
+        html.append("<p class=\"summary\" title=\"").append(budget.remainingExecutions().toPlainString())
+                .append("\">").append(budgetSentence(budget)).append(" · conclusive checks</p>");
         if (budget.allowedBadExecutions().signum() == 0) {
-            html.append("<p class=\"coverage\">No failed executions allowed in the observed budget.</p>");
+            html.append("<p class=\"summary\">No failed executions allowed in the observed budget.</p>");
         }
         html.append("</div></div><dl class=\"facts\">");
         item(html, "UP / DOWN", a.upExecutions() + " / " + a.downExecutions());
         item(html, "Disagreement / no data", a.disagreementExecutions() + " / " + a.noDataExecutions());
         item(html, "Expected / pending / missing", a.expectedOpportunities() + " / " + a.pendingExecutions() + " / " + a.missingExecutions());
         item(html, "Conclusive / finalized", a.conclusiveExecutions() + " / " + a.totalFinalizedExecutions());
-        html.append("</dl>");
-        section(html, "Incident timeline", report.incidentTimeline().size() + " transitions · UTC");
+        html.append("</dl></section>");
+
+        panel(html, "Incident timeline", report.incidentTimeline().size() + " transitions · UTC");
         if (report.incidentTimeline().isEmpty()) {
             html.append("<p class=\"empty\">No incident transitions recorded in this window. This does not rule out an incident opened earlier.</p>");
         } else {
@@ -247,12 +262,14 @@ public class ReliabilityReportHtmlRenderer {
         if (report.incidentTimelineTruncated()) {
             html.append("<p class=\"notice\">Incident timeline truncated at 100 transitions. The incident count is a lower bound.</p>");
         }
-        section(html, "What this report does not prove", "Read alongside the evidence");
+        html.append("</section>");
+
+        panel(html, "What this report does not prove", "Read alongside the evidence");
         html.append("<ul class=\"limitations\">");
         for (String limitation : report.limitations()) {
             html.append("<li>").append(escape(limitation)).append("</li>");
         }
-        html.append("</ul></main><footer><span>Schema ").append(escape(report.schemaVersion())).append(" · ")
+        html.append("</ul></section></div></main><footer><span>Schema ").append(escape(report.schemaVersion())).append(" · ")
                 .append(report.sourceDataWatermark() == null ? "No source data"
                         : "<time datetime=\"" + report.sourceDataWatermark() + "\" title=\"" + report.sourceDataWatermark()
                                 + "\">Data up to " + dateTime(report.sourceDataWatermark()) + "</time>")
@@ -278,9 +295,16 @@ public class ReliabilityReportHtmlRenderer {
         html.append("<span class=\"status-dot ").append(tone).append("\" aria-hidden=\"true\">").append("<i></i>".repeat(9)).append("</span>");
     }
 
-    private void section(StringBuilder html, String title, String note) {
-        html.append("<div class=\"section-heading\"><h2>").append(escape(title)).append("</h2><span class=\"section-note\">")
-                .append(escape(note)).append("</span></div>");
+    /** A module with a header row, like the dashboard's panels; the caller closes the section. */
+    private void panel(StringBuilder html, String title, String note) {
+        html.append("<section class=\"panel\"><header class=\"panel-header\"><h2>").append(escape(title))
+                .append("</h2><span class=\"section-note\">").append(escape(note)).append("</span></header>");
+    }
+
+    /** A label and value on the left, and a reference label and value on the right, above a meter. */
+    private void readout(StringBuilder html, String label, String value, String refLabel, String refValue) {
+        html.append("<div class=\"readout-row\"><span>").append(escape(label)).append(" <b>").append(escape(value))
+                .append("</b></span><span>").append(escape(refLabel)).append(" <b>").append(escape(refValue)).append("</b></span></div>");
     }
 
     private void metric(StringBuilder html, String label, String value, String unit, String note, String tone, String raw) {
@@ -305,44 +329,56 @@ public class ReliabilityReportHtmlRenderer {
         html.append("</span>");
     }
 
-    private void meter(StringBuilder html, String id, String label, BigDecimal value,
-                       BigDecimal marker, String fill) {
-        html.append("<svg class=\"chart\" viewBox=\"0 0 440 10\" preserveAspectRatio=\"none\" role=\"img\" aria-labelledby=\"")
-                .append(id).append("\"><title id=\"").append(id).append("\">").append(escape(label)).append("</title>")
-                .append("<rect class=\"track\" x=\"0\" y=\"2\" width=\"440\" height=\"6\"/>")
-                .append("<rect class=\"fill-").append(fill).append("\" x=\"0\" y=\"2\" width=\"")
-                .append(width(value, HUNDRED)).append("\" height=\"6\"/>")
-                .append("<path class=\"marker\" d=\"M").append(width(marker, HUNDRED)).append(" 0v10\"/></svg>");
+    private static final int CELLS = 20;
+
+    /**
+     * A segmented meter: twenty touching cells filled to the value's share of the scale, the last one partly,
+     * with an optional marker line, the same instrument as the dashboard's drill track and latency meter.
+     */
+    private void cells(StringBuilder html, String id, String label, BigDecimal value, BigDecimal scale, String fill,
+                       BigDecimal markerPercent) {
+        BigDecimal share = share(value, scale);
+        html.append("<div class=\"cells fill-").append(fill).append("\" role=\"img\" aria-label=\"").append(escape(label))
+                .append("\" data-meter=\"").append(id).append("\" data-share=\"").append(share.toPlainString()).append("\">");
+        BigDecimal filled = share.multiply(BigDecimal.valueOf(CELLS));
+        for (int i = 0; i < CELLS; i++) {
+            BigDecimal cell = filled.subtract(BigDecimal.valueOf(i)).max(BigDecimal.ZERO).min(BigDecimal.ONE);
+            if (cell.signum() == 0) {
+                html.append("<i></i>");
+            } else if (cell.compareTo(BigDecimal.ONE) == 0) {
+                html.append("<i class=\"full\"></i>");
+            } else {
+                html.append("<i><b style=\"width:").append(cell.multiply(HUNDRED).setScale(1, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString())
+                        .append("%\"></b></i>");
+            }
+        }
+        if (markerPercent != null) {
+            html.append("<span class=\"cells-mark\" style=\"left:").append(share(markerPercent, HUNDRED).multiply(HUNDRED)
+                    .setScale(1, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()).append("%\"></span>");
+        }
+        html.append("</div>");
     }
 
-    private void budgetChart(StringBuilder html, ReportErrorBudget budget) {
+    private void budgetMeters(StringBuilder html, ReportErrorBudget budget) {
         BigDecimal observed = BigDecimal.valueOf(budget.observedBadExecutions());
         BigDecimal allowed = budget.allowedBadExecutions();
         BigDecimal scale = allowed.max(observed);
         boolean exceeded = budget.remainingExecutions().signum() < 0;
         boolean nearly = !exceeded && allowed.signum() > 0 && observed.multiply(BigDecimal.valueOf(4)).compareTo(allowed.multiply(BigDecimal.valueOf(3))) >= 0;
-        html.append("<div class=\"legend bar-head\"><span>Allowed</span><b title=\"").append(allowed.toPlainString()).append("\">")
+        html.append("<div class=\"readout-row\"><span>Allowed</span><b title=\"").append(allowed.toPlainString()).append("\">")
                 .append(oneDecimal(allowed)).append("</b></div>");
-        bar(html, "budget-allowed", "Allowed bad executions " + oneDecimal(allowed), allowed, scale, "neutral");
-        html.append("<div class=\"legend bar-head\"><span>Observed down</span><b>").append(budget.observedBadExecutions()).append("</b></div>");
-        bar(html, "budget-observed", "Observed bad executions " + budget.observedBadExecutions(), observed, scale,
-                exceeded ? "bad" : nearly ? "warn" : "neutral");
+        cells(html, "budget-allowed", "Allowed bad executions " + oneDecimal(allowed), allowed, scale, "neutral", null);
+        html.append("<div class=\"readout-row\"><span>Observed down</span><b>").append(budget.observedBadExecutions()).append("</b></div>");
+        cells(html, "budget-observed", "Observed bad executions " + budget.observedBadExecutions(), observed, scale,
+                exceeded ? "bad" : nearly ? "warn" : "neutral", null);
     }
 
-    private void bar(StringBuilder html, String id, String label, BigDecimal value, BigDecimal scale, String fill) {
-        html.append("<svg class=\"chart\" viewBox=\"0 0 440 10\" preserveAspectRatio=\"none\" role=\"img\" aria-labelledby=\"")
-                .append(id).append("\"><title id=\"").append(id).append("\">").append(escape(label)).append("</title>")
-                .append("<rect class=\"track\" x=\"0\" y=\"2\" width=\"440\" height=\"6\"/>")
-                .append("<rect class=\"fill-").append(fill).append("\" x=\"0\" y=\"2\" width=\"")
-                .append(width(value, scale)).append("\" height=\"6\"/></svg>");
-    }
-
-    private String width(BigDecimal value, BigDecimal scale) {
-        if (value == null || scale.signum() <= 0) {
-            return "0";
+    /** The value's share of the scale, clamped to 0..1 with three decimals; 0 when either is missing. */
+    private BigDecimal share(BigDecimal value, BigDecimal scale) {
+        if (value == null || scale == null || scale.signum() <= 0) {
+            return BigDecimal.ZERO;
         }
-        return value.max(BigDecimal.ZERO).min(scale).multiply(BigDecimal.valueOf(440))
-                .divide(scale, 3, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
+        return value.max(BigDecimal.ZERO).min(scale).divide(scale, 3, RoundingMode.HALF_UP);
     }
 
     private void item(StringBuilder html, String label, String value) {
@@ -397,6 +433,16 @@ public class ReliabilityReportHtmlRenderer {
 
     String window(Instant from, Instant to) {
         return DATE_TIME.format(from) + " → " + dateTime(to);
+    }
+
+    /** The window's length in plain words: "7 days", "1 day", or hours for shorter windows. */
+    String span(Instant from, Instant to) {
+        long hours = java.time.Duration.between(from, to).toHours();
+        if (hours >= 24 && hours % 24 == 0) {
+            long days = hours / 24;
+            return days + (days == 1 ? " day" : " days");
+        }
+        return hours + (hours == 1 ? " hour" : " hours");
     }
 
     String timelineTime(Instant instant) {
