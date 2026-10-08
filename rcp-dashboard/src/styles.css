@@ -198,7 +198,7 @@ a { color: inherit; }
 .button {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 12px;
   border: 1px solid transparent; border-radius: var(--radius-md); font-size: 13.5px; font-weight: 500; white-space: nowrap;
-  transition: background 120ms, border-color 120ms, color 120ms;
+  transition: background 120ms, border-color 120ms, color 120ms, transform 100ms ease-out;
 }
 .button.primary { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-text); }
 .button.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent-strong); }
@@ -206,7 +206,7 @@ a { color: inherit; }
 .button.secondary:hover:not(:disabled) { background: var(--surface-hover); }
 .icon-button {
   display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid transparent;
-  border-radius: var(--radius-md); background: none; color: var(--text-2);
+  border-radius: var(--radius-md); background: none; color: var(--text-2); transition: background 120ms, color 120ms, transform 100ms ease-out;
 }
 .icon-button:hover:not(:disabled) { background: var(--surface-hover); color: var(--text); }
 .icon-button.bordered { border-color: var(--border-strong); background: var(--surface); }
@@ -312,7 +312,7 @@ a { color: inherit; }
 .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font-size: 13.5px; }
 .search input::placeholder { color: var(--text-3); }
 .segmented { display: inline-flex; padding: 2px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg); }
-.segmented button { height: 26px; padding: 0 10px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--text-2); font-size: 12.5px; font-weight: 500; }
+.segmented button { height: 26px; padding: 0 10px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--text-2); font-size: 12.5px; font-weight: 500; transition: background 120ms, color 120ms, transform 100ms ease-out; }
 .segmented button:hover { color: var(--text); }
 .segmented button[aria-pressed="true"] { background: var(--surface-2); color: var(--accent-text); box-shadow: inset 0 0 0 1px var(--border-strong); }
 
@@ -724,9 +724,6 @@ a { color: inherit; }
 @keyframes pop { from { transform: scale(0.97); opacity: 0; } }
 @keyframes fade { from { opacity: 0; } }
 @keyframes scan { from { -webkit-mask-position: 100% 0; mask-position: 100% 0; } to { -webkit-mask-position: 0 0; mask-position: 0 0; } }
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition: none !important; }
-}
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1100px) {
@@ -1420,7 +1417,7 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
   display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border: 1px solid var(--border-strong);
-  border-radius: var(--radius-pill); background: var(--surface); color: var(--text-2); font-size: 12px; transition: opacity 120ms, border-color 120ms;
+  border-radius: var(--radius-pill); background: var(--surface); color: var(--text-2); font-size: 12px; transition: opacity 120ms, border-color 120ms, transform 100ms ease-out;
 }
 .chip b { font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--text); }
 .chip:hover:not(.static) { border-color: var(--text-3); }
@@ -1505,3 +1502,32 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 @media (max-width: 860px) { .statusbar { display: none; } .toasts { bottom: 20px; } }
 
 /* ---------- Incidents as a short story: opened → resolved on a rail ---------- */
+
+/* ---------- Press feedback ----------
+   Controls answer the finger immediately: a small scale on press, transform only. Nav rows change background instead. */
+.button:active:not(:disabled), .icon-button:active:not(:disabled), .segmented button:active, .chip:active:not(.static) { transform: scale(0.97); }
+.nav-item:active { background: var(--surface-2); color: var(--text); }
+.nav-item.active:active { background: var(--surface-hover); }
+
+/* ---------- Reduced motion ----------
+   Not "no feedback": entrances become short cross-fades, loops stop, and colour/opacity changes stay. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes rise { from { opacity: 0; } }
+  @keyframes grow { from { opacity: 0; } }
+  @keyframes pop { from { opacity: 0; } }
+  @keyframes sweep { from { opacity: 0; } }
+  @keyframes page-in { from { opacity: 0; } }
+  @keyframes toast-in { from { opacity: 0; } }
+  .main { animation: fade 160ms ease-out; }
+  .row-link, .decision-times button, .machine-body, .trace { animation-duration: 160ms; }
+  .fanout-link { animation: none; stroke-dashoffset: 0; }
+  .spin { animation: breathe 1.4s ease-in-out infinite; }
+  .status-dot.pulse, .drill-steps li.now .drill-step-index { animation: none; }
+  .led i { animation: none; opacity: 0.85; }
+  .led.blink { animation: none; }
+  .skeleton::after { animation: none; opacity: 0.25; }
+  .machine-halo, .flow-lines path.flow { animation: none; }
+  .pipeline-link::before { animation: none; }
+  .rolling-strip, .signin-go, .drill-cursor, .drill-progress-now { transition: none; }
+  .button:active:not(:disabled), .icon-button:active:not(:disabled), .segmented button:active, .chip:active:not(.static) { transform: none; filter: brightness(1.2); }
+}
