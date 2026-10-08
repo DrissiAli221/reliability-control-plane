@@ -73,7 +73,7 @@ describe("OverviewPage", () => {
     }]));
     renderPage();
 
-    expect(await screen.findByText("Incident · SpectraTV")).toBeInTheDocument();
+    expect(await screen.findByText("incident · SpectraTV")).toBeInTheDocument();
     expect(screen.getByRole("timer")).toHaveTextContent(/^01:0\d$/);
     expect(screen.getByRole("button", { name: /Open SpectraTV/ })).toBeInTheDocument();
   });

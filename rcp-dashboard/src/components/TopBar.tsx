@@ -40,7 +40,7 @@ export function TopBar({ pathname, updatedAt, stale }: { pathname: string; updat
       </nav>
       <span className={`topbar-clock${stale ? " stale" : ""}`} role="timer" aria-label={stale ? "Data is stale" : "Live"}>
         <LiveLed updatedAt={stale ? null : updatedAt} tone={stale ? "warn" : "good"} />
-        {stale ? "stale" : "live"} · <time dateTime={new Date(now).toISOString()}>{clock}</time> utc
+        {stale ? "stale" : "live"} · <time dateTime={new Date(now).toISOString()}>{clock}</time> UTC
       </span>
     </div>
   );

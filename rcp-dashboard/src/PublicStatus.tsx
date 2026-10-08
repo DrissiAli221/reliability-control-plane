@@ -136,7 +136,7 @@ export function PublicStatus() {
               {item.history && item.history.length > 0 && (
                 <>
                   <Tracker days={item.history} label={`${item.name}, last ${item.history.length} days`} />
-                  <div className="tracker-axis"><span>{item.history.length} days ago</span><span>Today</span></div>
+                  <div className="tracker-axis"><span>{item.history.length} days ago</span><span>today</span></div>
                 </>
               )}
             </article>

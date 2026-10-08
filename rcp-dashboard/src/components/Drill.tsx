@@ -58,7 +58,7 @@ export function DrillPanel({ now, overview }: { now: number; overview?: MonitorO
       </div>
       <div className="drill-body">
         <div className="drill-count">
-          <span className="drill-label">{phase.active ? "Page restored in" : "Next outage in"}</span>
+          <span className="drill-label">{phase.active ? "page restored in" : "next outage in"}</span>
           <span className="drill-clock">{countdown((phase.active ? phase.outageEnd : phase.nextStart) - now)}</span>
           <span className="subtle mono">{utcClock(start)}–{utcClock(start + DRILL_OUTAGE_MS)} UTC</span>
         </div>
@@ -127,7 +127,7 @@ function DrillCountdown({ phase, now }: { phase: DrillPhase; now: number }) {
         <div className="drill-countdown-next">
           <span className="lbl">next outage in</span>
           <strong>{countdown(phase.nextStart - now)}</strong>
-          <span className="lbl">{utcClock(phase.nextStart)}–{utcClock(phase.nextStart + DRILL_OUTAGE_MS)} utc</span>
+          <span className="lbl">{utcClock(phase.nextStart)}–{utcClock(phase.nextStart + DRILL_OUTAGE_MS)} UTC</span>
         </div>
       </div>
       <div className="drill-meter" role="img" aria-label={`${Math.round(track.position * 100)}% of the way to the next outage`}>

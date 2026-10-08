@@ -127,10 +127,10 @@ function Hero({ overview, monitors, regions, now, updatedAt }: {
 
   const stats = (
     <dl className="hero-stats">
-      <div><dt>Monitors</dt><dd><RollingText value={`${enabled}`} /><small>/ {monitors.length}</small></dd></div>
-      <div><dt>Regions</dt><dd>{regions || "—"}</dd></div>
-      <div><dt>Checks · 24 h</dt><dd><RollingText value={count(conclusive + totals.inconclusive)} /></dd></div>
-      <div><dt>{lead ? "Uptime · 24 h" : "Open incidents"}</dt><dd>{lead ? uptime : <RollingText value={`${open.length}`} />}</dd></div>
+      <div><dt>monitors</dt><dd><RollingText value={`${enabled}`} /><small>/ {monitors.length}</small></dd></div>
+      <div><dt>regions</dt><dd>{regions || "—"}</dd></div>
+      <div><dt>checks · 24 h</dt><dd><RollingText value={count(conclusive + totals.inconclusive)} /></dd></div>
+      <div><dt>{lead ? "uptime · 24 h" : "open incidents"}</dt><dd>{lead ? uptime : <RollingText value={`${open.length}`} />}</dd></div>
     </dl>
   );
 
@@ -139,7 +139,7 @@ function Hero({ overview, monitors, regions, now, updatedAt }: {
       <div className="hero-main">
         {lead ? (
           <div className="hero-readout">
-            <span className="hero-label"><LiveLed updatedAt={null} tone="fault" /> Incident · {lead.monitorName}{open.length > 1 && ` +${open.length - 1} more`}</span>
+            <span className="hero-label"><LiveLed updatedAt={null} tone="fault" /> incident · {lead.monitorName}{open.length > 1 && ` +${open.length - 1} more`}</span>
             <span className="hero-value" role="timer">{elapsed(now - new Date(lead.openedAt).getTime())}</span>
             <span className="hero-caption">
               Every region agreed the target is down. Opened {relativeTime(lead.openedAt, now)}; it resolves after two UP checks in a row.
@@ -150,7 +150,7 @@ function Hero({ overview, monitors, regions, now, updatedAt }: {
           </div>
         ) : (
           <div className="hero-readout">
-            <span className="hero-label"><LiveLed updatedAt={updatedAt} /> Fleet uptime · 24 h</span>
+            <span className="hero-label"><LiveLed updatedAt={updatedAt} /> fleet uptime · 24 h</span>
             <span className="hero-value"><RollingText value={uptime} /></span>
             <span className="hero-caption">
               {conclusive

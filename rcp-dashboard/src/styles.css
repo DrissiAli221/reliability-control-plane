@@ -100,14 +100,12 @@ a { color: inherit; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--radius-sm); }
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 0.93em; }
 .subtle { color: var(--text-2); }
-/* The label style: lowercase mono, quiet. Used for section, metric, tile and column labels. */
+/* The label style: mono, quiet. Labels are written lowercase in the source so abbreviations (UTC, SLO, HTTP) keep their capitals. Used for section, metric, tile and column labels. */
 .lbl, .nav-label, .metric-label, .hero-label, .hero-stats dt, .drill-label, .fanout-label, .region-head, .table th,
 .panel-header .subtle, .tracker-axis, .pulse-readout, .coverage {
   font-family: var(--font-mono); font-size: 11px; font-weight: 400; letter-spacing: var(--track-label);
-  text-transform: lowercase; color: var(--text-3);
+  color: var(--text-3);
 }
-/* These carry sentences and status words (DOWN, UP), so they keep their case. */
-.panel-header .subtle, .pulse-readout, .coverage { text-transform: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ---------- Shell ---------- */
@@ -468,7 +466,7 @@ a { color: inherit; }
 .drill-meter-cells i b { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--text-3) 45%, transparent); }
 .drill-meter-cells i.outage { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--red) 75%, transparent) 0 3px, transparent 3px 6px), var(--red-bg); }
 .drill-meter-now { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; background: var(--text); transition: left 1s linear; }
-.drill-meter-ticks { position: relative; height: 14px; margin-top: 8px; font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--track-label); text-transform: lowercase; color: var(--text-3); }
+.drill-meter-ticks { position: relative; height: 14px; margin-top: 8px; font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--track-label); color: var(--text-3); }
 .drill-meter-ticks span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
 .drill-meter-ticks span:first-child { transform: none; }
 .drill-meter-ticks span:last-child { transform: translateX(-100%); }

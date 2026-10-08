@@ -172,7 +172,7 @@ export function MonitorDetailPage() {
 
       <section className="metric-grid" aria-label="Seven-day summary" data-tour="metrics">
         <Metric
-          label="Uptime · 7d"
+          label="uptime · 7d"
           explain={evidence && <UptimeExplain report={evidence} />}
           visual={history && <Tracker days={history.days.slice(-7)} size="compact" label="Uptime by day, last 7 days" />}
           value={percent(evidence?.measuredAvailabilityPercent, 3)}
@@ -181,7 +181,7 @@ export function MonitorDetailPage() {
         />
         <SloMetric report={evidence} />
         <Metric
-          label="Latency · 7d"
+          label="latency · 7d"
           visual={report?.latency.p50Ms != null && report.latency.p95Ms != null && <LatencyRange p50={report.latency.p50Ms} p95={report.latency.p95Ms} />}
           explain={report && (
             <Explain
@@ -201,7 +201,7 @@ export function MonitorDetailPage() {
           tone="info"
         />
         <Metric
-          label="Error budget · 7d"
+          label="error budget · 7d"
           visual={report && <BudgetMeter spent={report.errorBudget.observedBadExecutions} allowed={Number(report.errorBudget.allowedBadExecutions)} />}
           explain={report && (
             <Explain
@@ -230,7 +230,7 @@ export function MonitorDetailPage() {
           {history ? (
             <>
               <Tracker days={history.days} label={`${monitor.name}, last ${HISTORY_DAYS} days`} />
-              <div className="tracker-axis"><span>{HISTORY_DAYS} days ago</span><span>Today</span></div>
+              <div className="tracker-axis"><span>{HISTORY_DAYS} days ago</span><span>today</span></div>
               <ul className="tracker-legend">
                 <li><i className="operational" />Operational</li>
                 <li><i className="degraded" />Regions disagreed</li>
@@ -298,7 +298,7 @@ export function MonitorDetailPage() {
           {history && history.regions.length > 0 ? (
             <table className="table compact">
               <thead>
-                <tr><th scope="col">Region</th><th scope="col">Last result</th><th scope="col" className="num">p50</th><th scope="col" className="num">p95</th><th scope="col" className="num">Samples</th></tr>
+                <tr><th scope="col">region</th><th scope="col">last result</th><th scope="col" className="num">p50</th><th scope="col" className="num">p95</th><th scope="col" className="num">samples</th></tr>
               </thead>
               <tbody>
                 {history.regions.map((region) => (
@@ -348,7 +348,7 @@ export function MonitorDetailPage() {
           <div className="table-scroll">
             <table className="table compact incident-table">
               <thead>
-                <tr><th scope="col">Opened</th><th scope="col">Resolved</th><th scope="col" className="num">Duration</th></tr>
+                <tr><th scope="col">opened</th><th scope="col">resolved</th><th scope="col" className="num">duration</th></tr>
               </thead>
               <tbody>
                 {incidents.slice(0, INCIDENT_LIMIT).map((item) => (

@@ -147,7 +147,7 @@ export function TraceView({ trace }: { trace: ExecutionTrace }) {
         <div className="table-scroll">
           <table className="table compact event-history">
             <thead>
-              <tr><th scope="col">#</th><th scope="col">Δ</th><th scope="col">Time</th><th scope="col">Event</th><th scope="col">Details</th></tr>
+              <tr><th scope="col">#</th><th scope="col">Δ</th><th scope="col">time</th><th scope="col">event</th><th scope="col">details</th></tr>
             </thead>
             <tbody>
               {events.map((event) => (
