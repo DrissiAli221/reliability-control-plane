@@ -98,7 +98,7 @@ a { color: inherit; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--radius-sm); }
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 0.93em; }
 .subtle { color: var(--text-2); }
-/* The label style: mono, quiet. Labels are written lowercase in the source so abbreviations (UTC, SLO, HTTP) keep their capitals. Used for section, metric, tile and column labels. */
+/* The label style: mono, quiet. Labels are written in sentence case in the source; abbreviations (UTC, SLO, HTTP) keep their capitals. Used for section, metric, tile and column labels. */
 .lbl, .nav-label, .metric-label, .hero-label, .hero-stats dt, .drill-label, .fanout-label, .region-head, .table th,
 .panel-header .subtle, .tracker-axis, .pulse-readout, .coverage {
   font-family: var(--font-mono); font-size: 11px; font-weight: 400; letter-spacing: var(--track-label);

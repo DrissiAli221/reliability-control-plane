@@ -34,12 +34,12 @@ export function StatusBar({ snapshot }: { snapshot: LiveData<PipelineSnapshot> }
             <b>{region.region}</b> {region.resultsReceived}<span className="statusbar-detail"> results · p50 {milliseconds(region.p50LatencyMs)}</span>
           </span>
         ))}
-        <span className="statusbar-window">last {minutes} min</span>
+        <span className="statusbar-window">Last {minutes} min</span>
       </span>
       <span className="statusbar-queues">
-        <span className={data.failedOutbox > 0 ? "fault" : undefined}>outbox <b>{data.pendingOutbox}</b>{data.failedOutbox > 0 && <> · failed <b>{data.failedOutbox}</b></>}</span>
-        <span>deciding <b>{data.awaitingIncidentEvaluation}</b></span>
-        <span className={data.openIncidents > 0 ? "fault" : undefined}>incidents <b>{data.openIncidents}</b></span>
+        <span className={data.failedOutbox > 0 ? "fault" : undefined}>Outbox <b>{data.pendingOutbox}</b>{data.failedOutbox > 0 && <> · Failed <b>{data.failedOutbox}</b></>}</span>
+        <span>Deciding <b>{data.awaitingIncidentEvaluation}</b></span>
+        <span className={data.openIncidents > 0 ? "fault" : undefined}>Incidents <b>{data.openIncidents}</b></span>
         <span className="statusbar-updated">{relativeTime(new Date(snapshot.updatedAt ?? now).toISOString(), now)}</span>
       </span>
     </footer>

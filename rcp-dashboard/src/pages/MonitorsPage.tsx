@@ -136,13 +136,13 @@ export function MonitorsPage() {
       </header>
 
       <section className="metric-grid fleet-summary" aria-label="Fleet summary">
-        <Metric label="operational" loading={!fleet.data} value={`${summary.operational}`} suffix={`/ ${summary.total - summary.paused}`} tone="good"
+        <Metric label="Operational" loading={!fleet.data} value={`${summary.operational}`} suffix={`/ ${summary.total - summary.paused}`} tone="good"
           visual={<FleetCells rows={rows} lit={(monitor) => monitor.enabled && monitor.incidentStatus !== "OPEN" && monitor.latestVerdict === "UP"} tone="good" />} />
-        <Metric label="open incidents" loading={!fleet.data} value={`${summary.incidents}`} hint="Active outages" tone={summary.incidents ? "fault" : "muted"}
+        <Metric label="Open incidents" loading={!fleet.data} value={`${summary.incidents}`} hint="Active outages" tone={summary.incidents ? "fault" : "muted"}
           visual={<FleetCells rows={rows} lit={(monitor) => monitor.incidentStatus === "OPEN"} tone="fault" />} />
-        <Metric label="needs attention" loading={!fleet.data} value={`${summary.attention}`} hint="Down, disagreement or no data" tone={summary.attention ? "warn" : "muted"}
+        <Metric label="Needs attention" loading={!fleet.data} value={`${summary.attention}`} hint="Down, disagreement or no data" tone={summary.attention ? "warn" : "muted"}
           visual={<FleetCells rows={rows} lit={(monitor) => monitor.enabled && monitor.incidentStatus !== "OPEN" && monitor.latestVerdict !== "UP" && monitor.latestVerdict !== null} tone="warn" />} />
-        <Metric label="paused" loading={!fleet.data} value={`${summary.paused}`} hint="Not being checked" tone="muted"
+        <Metric label="Paused" loading={!fleet.data} value={`${summary.paused}`} hint="Not being checked" tone="muted"
           visual={<FleetCells rows={rows} lit={(monitor) => !monitor.enabled} tone="muted" />} />
       </section>
 
@@ -169,12 +169,12 @@ export function MonitorsPage() {
             <table className="table fleet">
               <thead>
                 <tr>
-                  <th scope="col">monitor</th>
-                  <th scope="col" className="col-status">status</th>
-                  <th scope="col" className="col-tracker">last {TRACKER_DAYS} days</th>
-                  <th scope="col" className="num">uptime 7d</th>
+                  <th scope="col">Monitor</th>
+                  <th scope="col" className="col-status">Status</th>
+                  <th scope="col" className="col-tracker">Last {TRACKER_DAYS} days</th>
+                  <th scope="col" className="num">Uptime 7d</th>
                   <th scope="col" className="num col-latency">p50 · p95</th>
-                  <th scope="col" className="num col-last">last check</th>
+                  <th scope="col" className="num col-last">Last check</th>
                   <th scope="col"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>

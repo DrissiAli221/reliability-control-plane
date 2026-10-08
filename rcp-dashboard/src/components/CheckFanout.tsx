@@ -59,7 +59,7 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
       </header>
       <div className="fanout" style={{ ["--fanout-height" as string]: `${height}px` }}>
         <div className="fanout-node fanout-source">
-          <span className="fanout-label">control plane</span>
+          <span className="fanout-label">Control plane</span>
           <strong className="fanout-time mono">{scheduledClock}</strong>
           <span className="fanout-meta mono">{check.executionId.slice(0, 8)} · every {intervalLabel}</span>
         </div>
@@ -112,7 +112,7 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
         </svg>
 
         <div className={`fanout-node fanout-verdict lit ${tone}`}>
-          <span className="fanout-label">verdict</span>
+          <span className="fanout-label">Verdict</span>
           <strong className="fanout-verdict-word">{VERDICT_WORD[check.verdict]}</strong>
           <span className="fanout-sentence">{verdictSentence(check.verdict, results.length)}</span>
         </div>

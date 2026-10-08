@@ -38,7 +38,7 @@ export function IncidentMachine({ state, now, showTape = true }: { state: Incide
         <ol className="machine-cells">
           {NODES.map((node, index) => (
             <li key={node} className={node === current ? "current" : undefined} data-tone={NODE_TONE[node]} aria-current={node === current ? "true" : undefined}>
-              <span className="lbl">state {index + 1}</span>
+              <span className="lbl">State {index + 1}</span>
               <strong>{TITLE[node]}</strong>
               <small>{detail[node]}</small>
             </li>
