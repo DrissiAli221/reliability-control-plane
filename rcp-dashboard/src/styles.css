@@ -96,6 +96,8 @@ a { color: inherit; }
   font-family: var(--font-mono); font-size: 11px; font-weight: 400; letter-spacing: var(--track-label);
   text-transform: lowercase; color: var(--text-3);
 }
+/* These carry sentences and status words (DOWN, UP), so they keep their case. */
+.panel-header .subtle, .pulse-readout, .coverage { text-transform: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ---------- Shell ---------- */
