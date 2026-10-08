@@ -13,7 +13,7 @@ const ENTRANCE_MS = 900;
 
 const config = {
   p95: { label: "p95", color: "grey" },
-  p50: { label: "p50", color: "blue" },
+  p50: { label: "p50", color: "grey" },
 } as const;
 
 type Series = keyof typeof config;

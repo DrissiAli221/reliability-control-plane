@@ -214,11 +214,10 @@ a { color: inherit; }
 .metric-value { color: var(--ink-dots); font-family: var(--font-dots); font-size: 30px; font-weight: 800; letter-spacing: 0.01em; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .metric-value small { margin-left: 6px; font-family: var(--font-sans); font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--text-3); }
 .metric-hint { font-size: 12px; color: var(--text-3); }
-/* Attention is a hue, not a fill: the status colour pools in the corners and the border stays neutral. */
-.metric.attention { --hue: var(--text-3); --wash: color-mix(in srgb, var(--hue) var(--wash-strength), transparent); background: radial-gradient(circle at 0 0, var(--wash), transparent 45%), radial-gradient(circle at 100% 0, var(--wash), transparent 45%), radial-gradient(circle at 0 100%, var(--wash), transparent 45%), radial-gradient(circle at 100% 100%, var(--wash), transparent 45%), var(--surface); }
+/* Attention is a hue, not a fill: only fault and warn pool colour in the corners; other tiles stay plain. */
+.metric.attention { --hue: transparent; --wash: color-mix(in srgb, var(--hue) var(--wash-strength), transparent); background: radial-gradient(circle at 0 0, var(--wash), transparent 45%), radial-gradient(circle at 100% 0, var(--wash), transparent 45%), radial-gradient(circle at 0 100%, var(--wash), transparent 45%), radial-gradient(circle at 100% 100%, var(--wash), transparent 45%), var(--surface); }
 .metric.attention.fault { --hue: var(--red); }
 .metric.attention.warn { --hue: var(--amber); }
-.metric.attention.info { --hue: var(--blue); }
 .metric-visual { display: flex; align-items: center; height: 22px; margin-top: 2px; }
 .metric-visual > * { flex: 1; }
 .metric-visual .tracker.compact .tracker-bars { height: 12px; gap: 3px; }
@@ -228,8 +227,8 @@ a { color: inherit; }
 .meter-fill.fault { background: var(--red); }
 .meter-mark { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text-2); }
 .latency-range { background: var(--gray-bar); }
-.range-span { position: absolute; top: 0; bottom: 0; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--blue) 45%, transparent); }
-.range-dot { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--blue); box-shadow: 0 0 0 2px var(--surface); }
+.range-span { position: absolute; top: 0; bottom: 0; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--text-3) 55%, transparent); }
+.range-dot { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--text-2); box-shadow: 0 0 0 2px var(--surface); }
 .range-tick { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--blue-text); }
 
 /* ---------- Panels & tables ---------- */
@@ -316,7 +315,7 @@ a { color: inherit; }
 .drill-line.drill-active { color: var(--amber-text); }
 .drill-line.drill-active b { color: var(--amber-text); }
 
-.drill { --drill-hue: var(--blue); border-color: color-mix(in srgb, var(--drill-hue) 30%, var(--border)); background: radial-gradient(ellipse at 0 0, color-mix(in srgb, var(--drill-hue) 9%, transparent), transparent 55%), var(--surface); }
+.drill { --drill-hue: var(--blue); }
 .drill.drill-active { --drill-hue: var(--amber); }
 .drill-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
 .drill-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
@@ -954,8 +953,7 @@ a { color: inherit; }
 @keyframes status-flash { 0%, 20% { background: color-mix(in srgb, var(--flash) 22%, transparent); box-shadow: inset 2px 0 0 var(--flash); } }
 
 /* ---------- Quiet details ---------- */
-/* A faint accent light at the top of every console page. */
-.main { background: radial-gradient(ellipse 70% 260px at 35% -80px, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%) no-repeat; }
+.main { background: none; }
 .fleet-cells { display: flex; flex-wrap: wrap; gap: 3px; }
 .fleet-cells i { width: 10px; height: 10px; background: var(--gray-bar); }
 .fleet-cells i.good { background: var(--green); }
@@ -980,7 +978,7 @@ a { color: inherit; }
 .panel-link:hover { color: var(--text); }
 
 /* The hero reads like an instrument: one large dot-matrix readout on a faint dot grid, the fleet pulse below. */
-.hero { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 22px 24px 18px; --hue: var(--accent); }
+.hero { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 22px 24px 18px; --hue: transparent; }
 .hero::before {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   background:
@@ -1223,7 +1221,7 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 }
 .policy-strip.warn { --hue: var(--amber); }
 .policy-strip.fault { --hue: var(--red); }
-.policy-strip.info { --hue: var(--blue); }
+.policy-strip.info { --hue: var(--text-3); }
 .policy-strip strong { font-weight: 600; }
 .policy-strip .mono { color: var(--text-2); font-size: 12.5px; }
 .policy-next { font-size: 12.5px; }
@@ -1305,13 +1303,8 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 :root[data-theme="light"] .hero:not(.incident) .hero-value { color: #4a4a45; }
 
 /* ---------- Sign-in ---------- */
-/* Sign-in: one calm centred column, like a product's own login, with a faint accent glow from the top. */
+/* Sign-in: one calm centred column, like a product's own login, . */
 .signin { position: relative; display: grid; grid-template-rows: 1fr auto; min-height: 100vh; padding: 24px; background: var(--bg); isolation: isolate; }
-.signin::after {
-  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background: radial-gradient(ellipse 45% 35% at 50% -5%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%);
-}
-:root[data-theme="light"] .signin::after { display: none; }
 .signin-panel { display: grid; justify-items: center; align-self: center; justify-self: center; width: min(360px, 100%); gap: 0; text-align: center; animation: rise 320ms ease-out backwards; }
 .signin-panel .brand-mark { width: 40px; height: 40px; margin-bottom: 24px; }
 .signin-panel h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.25; }
@@ -1363,8 +1356,8 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .chip[aria-pressed="false"] { opacity: 0.45; }
 .chip.static { cursor: default; color: var(--red-text); border-color: color-mix(in srgb, var(--red) 35%, var(--border)); }
 .chip i { width: 8px; height: 8px; flex: none; }
-.chip i.p50 { background: rgb(53 143 243); }
-.chip i.p95 { background: radial-gradient(circle, rgb(140 140 150) 0.9px, transparent 1.2px) 0 0 / 3px 3px; box-shadow: inset 0 0 0 1px rgb(140 140 150 / 0.4); }
+.chip i.p50 { background: rgb(140 140 150); }
+.chip i.p95 { background: radial-gradient(circle, rgb(140 140 150 / 0.6) 0.9px, transparent 1.2px) 0 0 / 3px 3px; box-shadow: inset 0 0 0 1px rgb(140 140 150 / 0.3); }
 .chip i.incident { background: repeating-linear-gradient(135deg, var(--red) 0 1.5px, transparent 1.5px 3.5px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 50%, transparent); }
 /* Incident windows behind the latency data: hatched, with a solid edge where the incident opened. */
 .incident-band-fill { fill: color-mix(in srgb, var(--red) 8%, transparent); }
