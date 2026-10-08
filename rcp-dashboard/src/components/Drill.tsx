@@ -1,5 +1,5 @@
 import { FlaskConical } from "lucide-react";
-import { countdown, DRILL_CYCLE_MS, DRILL_OUTAGE_MS, drillPhase, utcClock, type DrillPhase } from "../drill";
+import { countdown, DRILL_CYCLE_MS, DRILL_OUTAGE_MS, drillPhase, drillTrack, utcClock, type DrillPhase } from "../drill";
 import type { MonitorOverview } from "../types";
 
 const CELL_MS = 5 * 60 * 1000;
@@ -107,14 +107,13 @@ function DrillCycle({ phase, now }: { phase: DrillPhase; now: number }) {
 }
 
 /**
- * The card between drills. Its track runs from the end of the last outage to the end of the next one, so it fills
- * toward the hatched window the countdown refers to (the cycle bar would show the outage that already happened).
+ * The card between drills. Its track runs from the end of the last outage to the end of the next one, in twelve
+ * ten-minute cells, so it fills toward the hatched final cell the countdown refers to.
  */
 function DrillCountdown({ phase, now }: { phase: DrillPhase; now: number }) {
-  const trackStart = phase.outageEnd;
-  const span = phase.nextStart + DRILL_OUTAGE_MS - trackStart;
-  const progress = Math.min(1, Math.max(0, (now - trackStart) / span));
-  const outageShare = DRILL_OUTAGE_MS / span;
+  const track = drillTrack(phase, now);
+  const last = track.fills.length - 1;
+  const ticks = [0, 30, 60, 90, 120].map((minutes) => track.start + minutes * 60_000);
   return (
     <section className="panel drill-countdown" aria-label="Planned outage drill">
       <div className="drill-countdown-head">
@@ -122,23 +121,30 @@ function DrillCountdown({ phase, now }: { phase: DrillPhase; now: number }) {
           <FlaskConical size={15} aria-hidden="true" />
           <div>
             <h2>Planned outage drill</h2>
-            <p>This page goes down on purpose for 10 minutes every 2 hours, so you can watch an incident open and resolve on its own.</p>
+            <p>Goes down on purpose for 10 minutes every 2 hours, then recovers on its own.</p>
           </div>
         </div>
         <div className="drill-countdown-next">
-          <span>Next outage in</span>
+          <span className="lbl">next outage in</span>
           <strong>{countdown(phase.nextStart - now)}</strong>
-          <span className="mono">{utcClock(phase.nextStart)}–{utcClock(phase.nextStart + DRILL_OUTAGE_MS)} UTC</span>
+          <span className="lbl">{utcClock(phase.nextStart)}–{utcClock(phase.nextStart + DRILL_OUTAGE_MS)} utc</span>
         </div>
       </div>
-      <div className="drill-progress" role="img" aria-label={`${Math.round(progress * 100)}% of the way to the next outage`}>
-        <span className="drill-progress-fill" style={{ width: `${progress * 100}%` }} />
-        <span className="drill-progress-outage" style={{ width: `${outageShare * 100}%` }} />
-        <span className="drill-progress-now" style={{ left: `${progress * 100}%` }} />
-      </div>
-      <div className="drill-progress-ticks mono" aria-hidden="true">
-        <span>{utcClock(trackStart)}</span>
-        <span style={{ left: `${(1 - outageShare) * 100}%` }}>{utcClock(phase.nextStart)}</span>
+      <div className="drill-meter" role="img" aria-label={`${Math.round(track.position * 100)}% of the way to the next outage`}>
+        <span className="drill-meter-tag lbl" aria-hidden="true">outage</span>
+        <div className="drill-meter-cells">
+          {track.fills.map((fill, index) => (
+            <i key={index} className={index === last ? "outage" : undefined}>
+              {index !== last && fill > 0 && <b style={{ width: `${fill * 100}%` }} />}
+            </i>
+          ))}
+          <span className="drill-meter-now" style={{ left: `${track.position * 100}%` }} />
+        </div>
+        <div className="drill-meter-ticks" aria-hidden="true">
+          {ticks.map((tick, index) => (
+            <span key={tick} className={index % 2 === 1 ? "minor" : undefined} style={{ left: `${index * 25}%` }}>{utcClock(tick)} utc</span>
+          ))}
+        </div>
       </div>
     </section>
   );

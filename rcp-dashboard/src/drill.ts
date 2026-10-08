@@ -41,6 +41,31 @@ export function drillPhase(now: number): DrillPhase {
   };
 }
 
+export const DRILL_TRACK_CELL_MS = DRILL_OUTAGE_MS;
+export const DRILL_TRACK_CELLS = (DRILL_CYCLE_MS) / DRILL_TRACK_CELL_MS;
+
+export type DrillTrack = {
+  /** Where the track starts: the end of the last outage window. */
+  start: number;
+  /** Where it ends: the end of the next outage window. */
+  end: number;
+  /** Fill of each 10-minute cell, 0 to 1. The last cell is the upcoming outage window. */
+  fills: number[];
+  /** Current position along the whole track, 0 to 1. */
+  position: number;
+};
+
+/** The between-drills track: 12 ten-minute cells from the last outage's end to the next outage's end. */
+export function drillTrack(phase: DrillPhase, now: number): DrillTrack {
+  const start = phase.outageEnd;
+  const end = phase.nextStart + DRILL_OUTAGE_MS;
+  const fills = Array.from({ length: DRILL_TRACK_CELLS }, (_, index) => {
+    const cellStart = start + index * DRILL_TRACK_CELL_MS;
+    return Math.min(1, Math.max(0, (now - cellStart) / DRILL_TRACK_CELL_MS));
+  });
+  return { start, end, fills, position: Math.min(1, Math.max(0, (now - start) / (end - start))) };
+}
+
 /** "1:07:42" or "6:05": a countdown that reads like a clock. */
 export function countdown(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000));

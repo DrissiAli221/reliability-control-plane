@@ -452,28 +452,30 @@ a { color: inherit; }
 .drill-steps li.done .drill-step-index { border-color: transparent; background: color-mix(in srgb, var(--drill-hue) 30%, var(--surface-2)); color: var(--text); }
 .drill-steps li.now { box-shadow: inset 0 2px 0 var(--drill-hue); background: color-mix(in srgb, var(--drill-hue) 12%, var(--surface-2)); color: var(--text); }
 .drill-steps li.now .drill-step-index { border-color: var(--drill-hue); background: var(--drill-hue); color: var(--bg); animation: breathe 2.4s ease-in-out infinite; }
-/* Between drills: an ordinary panel (no tint), titled like the others, with a thin track filling toward the outage. */
-.drill-countdown { display: grid; gap: 12px; padding: 16px; }
+/* Between drills: an instrument readout. Twelve touching 10-minute cells fill toward the hatched outage cell. */
+.drill-countdown { display: grid; gap: 16px; padding: 16px; }
 .drill-countdown-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 32px; }
 .drill-countdown-title { display: flex; flex: 1 1 320px; align-items: flex-start; gap: 12px; min-width: 0; }
-.drill-countdown-title > svg { flex: none; margin-top: 2px; color: var(--blue-text); }
+.drill-countdown-title > svg { flex: none; margin-top: 2px; color: var(--text-2); }
 .drill-countdown-title h2 { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
-.drill-countdown-title p { max-width: 520px; margin-top: 2px; font-size: 12.5px; line-height: 1.5; color: var(--text-3); }
-.drill-countdown-next { display: grid; justify-items: end; gap: 1px; text-align: right; }
-.drill-countdown-next > span:first-child { font-size: 12px; color: var(--text-3); }
-.drill-countdown-next strong { font-family: var(--font-mono); font-size: 20px; font-weight: 500; line-height: 1.2; font-variant-numeric: tabular-nums; color: var(--text); }
-.drill-countdown-next .mono { font-size: 11.5px; color: var(--text-3); }
-.drill-progress { position: relative; height: 6px; margin-top: 4px; background: var(--gray-bar); }
-.drill-progress-fill { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--blue) 45%, var(--gray-bar)); }
-.drill-progress-outage { position: absolute; inset: 0 0 0 auto; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--red) 75%, transparent) 0 3px, transparent 3px 6px), var(--red-bg); }
-.drill-progress-now { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text); transition: left 1s linear; }
-.drill-progress-ticks { position: relative; height: 14px; font-size: 11px; color: var(--text-3); }
-.drill-progress-ticks span { position: absolute; top: 0; left: 0; }
-.drill-progress-ticks span + span { transform: translateX(-50%); }
-@media (max-width: 600px) {
+.drill-countdown-title p { max-width: 520px; margin-top: 2px; font-size: 13px; line-height: 1.5; color: var(--text-2); }
+.drill-countdown-next { display: grid; justify-items: end; gap: 4px; text-align: right; }
+.drill-countdown-next strong { font-family: var(--font-dots); font-size: 32px; font-weight: 800; line-height: 1; letter-spacing: 0; font-variant-numeric: tabular-nums; color: var(--text); }
+.drill-meter { position: relative; padding-top: 16px; }
+.drill-meter-tag { position: absolute; top: 0; right: 0; line-height: 12px; }
+.drill-meter-cells { position: relative; display: flex; gap: 1px; height: 14px; border: 1px solid var(--border); background: var(--border); }
+.drill-meter-cells i { position: relative; flex: 1 1 0; min-width: 0; background: var(--surface-2); }
+.drill-meter-cells i b { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--text-3) 45%, transparent); }
+.drill-meter-cells i.outage { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--red) 75%, transparent) 0 3px, transparent 3px 6px), var(--red-bg); }
+.drill-meter-now { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; background: var(--text); transition: left 1s linear; }
+.drill-meter-ticks { position: relative; height: 14px; margin-top: 8px; font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--track-label); text-transform: lowercase; color: var(--text-3); }
+.drill-meter-ticks span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.drill-meter-ticks span:first-child { transform: none; }
+.drill-meter-ticks span:last-child { transform: translateX(-100%); }
+@media (max-width: 560px) {
   .drill-countdown-next { justify-items: start; text-align: left; }
+  .drill-meter-ticks span.minor { display: none; }
 }
-
 .drill-cycle { padding: 12px 16px 14px; border-top: 1px solid var(--border); }
 .drill-cells { position: relative; display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 1px; height: 14px; border: 1px solid var(--border); background: var(--border); }
 .drill-cells i { background: var(--gray-bar); }
@@ -1582,6 +1584,6 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
   .skeleton::after { animation: none; opacity: 0.25; }
   .machine-halo, .flow-lines path.flow { animation: none; }
   .pipeline-link::before { animation: none; }
-  .rolling-strip, .signin-go, .drill-cursor, .drill-progress-now { transition: none; }
+  .rolling-strip, .signin-go, .drill-cursor, .drill-meter-now { transition: none; }
   .button:active:not(:disabled), .icon-button:active:not(:disabled), .segmented button:active, .chip:active:not(.static) { transform: none; filter: brightness(1.2); }
 }
