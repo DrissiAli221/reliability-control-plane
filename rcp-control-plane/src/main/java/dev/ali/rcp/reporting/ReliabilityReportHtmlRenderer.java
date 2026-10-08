@@ -5,6 +5,11 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
+import java.util.UUID;
 
 @Component
 public class ReliabilityReportHtmlRenderer {
@@ -82,7 +87,6 @@ public class ReliabilityReportHtmlRenderer {
             .bar-head { margin-top: 18px; } .bar-head + .chart { margin-top: 6px; }
             .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
               padding: 18px 0; border-bottom: 1px solid var(--border); margin: 0; }
-            code { font-family: var(--font-mono); color: var(--text); }
             .policy { margin: 10px 0 0; color: var(--text-2); overflow-wrap: anywhere; }
             table { border-collapse: collapse; width: 100%; }
             th { text-align: left; background: var(--surface-2); }
@@ -144,8 +148,9 @@ public class ReliabilityReportHtmlRenderer {
                 .append("<main><section class=\"intro\" aria-labelledby=\"report-title\"><p class=\"eyebrow\">Monitor reliability · UTC</p>")
                 .append("<h1 id=\"report-title\">Reliability report</h1><h2 class=\"monitor\">").append(escape(report.monitorName()))
                 .append("</h2><p class=\"target mono\">").append(escape(report.targetUrl())).append("</p><dl class=\"meta\">");
-        item(html, "Observation window · end exclusive", a.from() + " → " + a.to());
-        item(html, "Generated", report.generatedAt().toString());
+        item(html, "Observation window · end exclusive", window(a.from(), a.to()),
+                " data-from=\"" + a.from() + "\" data-to=\"" + a.to() + "\" title=\"" + a.from() + " → " + a.to() + "\"");
+        item(html, "Generated", dateTime(report.generatedAt()), " data-value=\"" + report.generatedAt() + "\" title=\"" + report.generatedAt() + "\"");
         html.append("</dl></section><div class=\"decision\"><span class=\"tag ").append(tone).append("\">")
                 .append(decision).append("</span><p>");
         if (a.sloMet() == null) {
@@ -154,16 +159,19 @@ public class ReliabilityReportHtmlRenderer {
             html.append(a.sloMet() ? "The observed SLO target was met." : "The observed SLO target was missed.");
         }
         html.append(" Coverage: ").append(percent(a.evidenceCoveragePercent())).append("; minimum: ")
-                .append(percent(a.minimumEvidenceCoveragePercent())).append(".</p></div><section class=\"metrics\" aria-label=\"Headline metrics\">");
-        metric(html, "Measured availability", number(a.measuredAvailabilityPercent()), "%",
-                "Target " + percent(a.sloTargetPercent()) + " · conclusive checks only", tone);
+                .append(given(a.minimumEvidenceCoveragePercent())).append(".</p></div><section class=\"metrics\" aria-label=\"Headline metrics\">");
+        metric(html, "Measured availability", fixed(a.measuredAvailabilityPercent(), 2), "%",
+                "Target " + given(a.sloTargetPercent()) + " · conclusive checks only", tone,
+                a.measuredAvailabilityPercent() == null ? null : a.measuredAvailabilityPercent().toPlainString());
         ReportErrorBudget budget = report.errorBudget();
-        metric(html, "Error budget remaining", number(budget.remainingExecutions()), "executions",
+        metric(html, "Error budget remaining", oneDecimal(budget.remainingExecutions()),
+                "of " + oneDecimal(budget.allowedBadExecutions()) + " checks left",
                 budget.remainingExecutions().signum() < 0 ? "Budget exceeded · observed checks" : "Observed checks · fractional allowance",
-                a.sloMet() == null ? "warn" : budget.remainingExecutions().signum() < 0 ? "bad" : "good");
+                a.sloMet() == null ? "warn" : budget.remainingExecutions().signum() < 0 ? "bad" : "good",
+                budget.remainingExecutions().toPlainString() + " of " + budget.allowedBadExecutions().toPlainString());
         html.append("<div class=\"metric latency\"><div class=\"eyebrow\">HTTP response latency</div><div class=\"readout\">");
-        pair(html, report.latency().p50Ms() == null ? null : report.latency().p50Ms().toString(), "p50 ms");
-        pair(html, report.latency().p95Ms() == null ? null : report.latency().p95Ms().toString(), "p95 ms");
+        pair(html, report.latency().p50Ms() == null ? null : report.latency().p50Ms().toString(), "p50 ms", null);
+        pair(html, report.latency().p95Ms() == null ? null : report.latency().p95Ms().toString(), "p95 ms", null);
         html.append("</div><p>").append(report.latency().sampleCount()).append(" HTTP samples");
         if (report.latency().p50Ms() == null) {
             html.append(" · INSUFFICIENT_SAMPLES (minimum ").append(report.latency().minimumSamples()).append(")");
@@ -171,27 +179,27 @@ public class ReliabilityReportHtmlRenderer {
         html.append("</p></div>");
         long incidents = report.incidentTimeline().stream().map(ReportIncidentEvent::incidentId).distinct().count();
         metric(html, "Incidents in timeline", incidents + (report.incidentTimelineTruncated() ? "+" : ""), "",
-                report.incidentTimelineTruncated() ? "Lower bound · timeline truncated" : "Distinct IDs in shown transitions", "");
+                report.incidentTimelineTruncated() ? "Lower bound · timeline truncated" : "Distinct IDs in shown transitions", "", null);
         html.append("</section>");
         section(html, "01", "Availability & error budget", "Aggregates for this window");
         String availabilityFill = a.sloMet() == null ? "neutral" : tone;
         html.append("<div class=\"visuals\"><div class=\"visual\"><h3>Measured availability</h3>")
-                .append("<p>UP ÷ (UP + DOWN). Inconclusive checks are excluded.</p>");
+                .append("<p>").append(escape(denominator(a.denominatorPolicy()))).append(". Inconclusive checks are excluded.</p>");
         meter(html, "availability-chart", "Measured availability " + percent(a.measuredAvailabilityPercent())
-                + "; SLO target " + percent(a.sloTargetPercent()), a.measuredAvailabilityPercent(), a.sloTargetPercent(), availabilityFill);
+                + "; SLO target " + given(a.sloTargetPercent()), a.measuredAvailabilityPercent(), a.sloTargetPercent(), availabilityFill);
         html.append("<div class=\"legend\"><span>Observed ").append(percent(a.measuredAvailabilityPercent()))
-                .append("</span><span>Target ").append(percent(a.sloTargetPercent())).append("</span></div>")
+                .append("</span><span>Target ").append(given(a.sloTargetPercent())).append("</span></div>")
                 .append("<div class=\"coverage\"><h3>Evidence coverage</h3>");
         meter(html, "coverage-chart", "Evidence coverage " + percent(a.evidenceCoveragePercent())
-                + "; minimum " + percent(a.minimumEvidenceCoveragePercent()), a.evidenceCoveragePercent(),
+                + "; minimum " + given(a.minimumEvidenceCoveragePercent()), a.evidenceCoveragePercent(),
                 a.minimumEvidenceCoveragePercent(), a.sloMet() == null ? "warn" : "neutral");
         html.append("<div class=\"legend\"><span>").append(percent(a.evidenceCoveragePercent()))
-                .append(" coverage</span><span>").append(percent(a.minimumEvidenceCoveragePercent()))
+                .append(" coverage</span><span>").append(given(a.minimumEvidenceCoveragePercent()))
                 .append(" required</span></div></div></div><div class=\"visual\"><h3>Observed error budget</h3>")
                 .append("<p>Allowance is based on conclusive executions, not elapsed downtime.</p>");
         budgetChart(html, budget);
-        html.append("<div class=\"legend\"><span>Remaining ").append(budget.remainingExecutions().toPlainString())
-                .append("</span><span>executions</span></div>");
+        html.append("<div class=\"legend\"><span title=\"").append(budget.remainingExecutions().toPlainString())
+                .append("\">").append(budgetSentence(budget)).append("</span><span>Conclusive checks</span></div>");
         if (budget.allowedBadExecutions().signum() == 0) {
             html.append("<p class=\"coverage\">No failed executions allowed in the observed budget.</p>");
         }
@@ -200,7 +208,8 @@ public class ReliabilityReportHtmlRenderer {
         item(html, "Disagreement / no data", a.disagreementExecutions() + " / " + a.noDataExecutions());
         item(html, "Expected / pending / missing", a.expectedOpportunities() + " / " + a.pendingExecutions() + " / " + a.missingExecutions());
         item(html, "Conclusive / finalized", a.conclusiveExecutions() + " / " + a.totalFinalizedExecutions());
-        html.append("</dl><p class=\"policy\">Denominator policy: <code>").append(escape(a.denominatorPolicy())).append("</code></p>");
+        html.append("</dl><p class=\"policy\" title=\"").append(escape(a.denominatorPolicy())).append("\">Denominator policy: ")
+                .append(escape(denominator(a.denominatorPolicy()))).append("</p>");
         section(html, "02", "Incident timeline", report.incidentTimeline().size() + " transitions · UTC");
         if (report.incidentTimeline().isEmpty()) {
             html.append("<p class=\"empty\">No incident transitions recorded in this window. This does not rule out an incident opened earlier.</p>");
@@ -209,9 +218,12 @@ public class ReliabilityReportHtmlRenderer {
                     .append("<th scope=\"col\">Transition</th><th scope=\"col\">Incident ID</th></tr></thead><tbody>");
             for (ReportIncidentEvent event : report.incidentTimeline()) {
                 String eventTone = "OPENED".equals(event.eventType()) ? "bad" : "RESOLVED".equals(event.eventType()) ? "good" : "";
-                html.append("<tr><td class=\"mono\">").append(escape(event.occurredAt().toString()))
+                html.append("<tr><td class=\"mono\"><time datetime=\"").append(event.occurredAt()).append("\" title=\"")
+                        .append(event.occurredAt()).append("\">").append(timelineTime(event.occurredAt()))
+                        .append("</time>")
                         .append("</td><td><span class=\"tag ").append(eventTone).append("\">").append(escape(event.eventType()))
-                        .append("</span></td><td class=\"mono\">").append(escape(event.incidentId().toString())).append("</td></tr>");
+                        .append("</span></td><td class=\"mono\"><span title=\"").append(event.incidentId()).append("\">")
+                        .append(shortId(event.incidentId())).append("</span></td></tr>");
             }
             html.append("</tbody></table></div>");
         }
@@ -223,9 +235,10 @@ public class ReliabilityReportHtmlRenderer {
         for (String limitation : report.limitations()) {
             html.append("<li>").append(escape(limitation)).append("</li>");
         }
-        html.append("</ul></main><footer><span class=\"mono\">Schema: ").append(escape(report.schemaVersion()))
-                .append("</span><span>Source watermark: ").append(report.sourceDataWatermark() == null
-                        ? "NO_SOURCE_DATA" : escape(report.sourceDataWatermark().toString()))
+        html.append("</ul></main><footer><span>Schema ").append(escape(report.schemaVersion())).append(" · ")
+                .append(report.sourceDataWatermark() == null ? "No source data"
+                        : "<time datetime=\"" + report.sourceDataWatermark() + "\" title=\"" + report.sourceDataWatermark()
+                                + "\">Data up to " + dateTime(report.sourceDataWatermark()) + "</time>")
                 .append("</span></footer></div></body></html>");
         return html.toString();
     }
@@ -249,19 +262,20 @@ public class ReliabilityReportHtmlRenderer {
                 .append(escape(note)).append("</span></div>");
     }
 
-    private void metric(StringBuilder html, String label, String value, String unit, String note, String tone) {
+    private void metric(StringBuilder html, String label, String value, String unit, String note, String tone, String raw) {
         html.append("<div class=\"metric\"><div class=\"eyebrow\">").append(escape(label)).append("</div><div class=\"readout\">");
-        pair(html, value, unit);
+        pair(html, value, unit, raw);
         html.append("</div><p>").append(escape(note)).append("</p></div>");
     }
 
     /** One headline figure in the dot font, with its unit beside it in small mono. */
-    private void pair(StringBuilder html, String value, String unit) {
+    private void pair(StringBuilder html, String value, String unit, String raw) {
         html.append("<span class=\"pair\">");
         if (value == null) {
             html.append("<span class=\"empty-value\">—</span>");
         } else {
-            html.append("<span class=\"figure\">").append(escape(value)).append("</span>");
+            html.append("<span class=\"figure\"").append(raw == null ? "" : " title=\"" + escape(raw) + "\" data-value=\"" + escape(raw) + "\"")
+                    .append(">").append(escape(value)).append("</span>");
         }
         if (!unit.isEmpty()) {
             html.append("<span class=\"unit\">").append(escape(unit)).append("</span>");
@@ -285,8 +299,9 @@ public class ReliabilityReportHtmlRenderer {
         BigDecimal scale = allowed.max(observed);
         boolean exceeded = budget.remainingExecutions().signum() < 0;
         boolean nearly = !exceeded && allowed.signum() > 0 && observed.multiply(BigDecimal.valueOf(4)).compareTo(allowed.multiply(BigDecimal.valueOf(3))) >= 0;
-        html.append("<div class=\"legend bar-head\"><span>Allowed</span><b>").append(allowed.toPlainString()).append("</b></div>");
-        bar(html, "budget-allowed", "Allowed bad executions " + allowed.toPlainString(), allowed, scale, "neutral");
+        html.append("<div class=\"legend bar-head\"><span>Allowed</span><b title=\"").append(allowed.toPlainString()).append("\">")
+                .append(oneDecimal(allowed)).append("</b></div>");
+        bar(html, "budget-allowed", "Allowed bad executions " + oneDecimal(allowed), allowed, scale, "neutral");
         html.append("<div class=\"legend bar-head\"><span>Observed down</span><b>").append(budget.observedBadExecutions()).append("</b></div>");
         bar(html, "budget-observed", "Observed bad executions " + budget.observedBadExecutions(), observed, scale,
                 exceeded ? "bad" : nearly ? "warn" : "neutral");
@@ -309,16 +324,65 @@ public class ReliabilityReportHtmlRenderer {
     }
 
     private void item(StringBuilder html, String label, String value) {
-        html.append("<div><dt>").append(escape(label)).append("</dt><dd>")
+        item(html, label, value, "");
+    }
+
+    private void item(StringBuilder html, String label, String value, String attributes) {
+        html.append("<div><dt>").append(escape(label)).append("</dt><dd").append(attributes).append(">")
                 .append(escape(value)).append("</dd></div>");
     }
 
-    private String number(BigDecimal value) {
-        return value == null ? null : value.stripTrailingZeros().toPlainString();
+    private static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", Locale.ENGLISH)
+            .withZone(ZoneOffset.UTC);
+    private static final DateTimeFormatter TIMELINE = DateTimeFormatter.ofPattern("d MMM, HH:mm:ss", Locale.ENGLISH)
+            .withZone(ZoneOffset.UTC);
+
+    /** A fixed number of decimals, or null when there is no value. */
+    String fixed(BigDecimal value, int scale) {
+        return value == null ? null : value.setScale(scale, RoundingMode.HALF_UP).toPlainString();
     }
 
-    private String percent(BigDecimal value) {
-        return value == null ? "UNDEFINED" : value.toPlainString() + "%";
+    /** At most one decimal, without a trailing ".0". */
+    String oneDecimal(BigDecimal value) {
+        return value.setScale(1, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
+    }
+
+    /** A measured percentage, always two decimals (99.72%). */
+    String percent(BigDecimal value) {
+        return value == null ? "UNDEFINED" : fixed(value, 2) + "%";
+    }
+
+    /** A configured target or threshold, shown as given (99.5%, 95%). */
+    String given(BigDecimal value) {
+        return value == null ? "UNDEFINED" : value.stripTrailingZeros().toPlainString() + "%";
+    }
+
+    String budgetSentence(ReportErrorBudget budget) {
+        return oneDecimal(budget.remainingExecutions()) + " of " + oneDecimal(budget.allowedBadExecutions()) + " checks left";
+    }
+
+    String dateTime(Instant instant) {
+        return DATE_TIME.format(instant) + " UTC";
+    }
+
+    String window(Instant from, Instant to) {
+        return DATE_TIME.format(from) + " → " + dateTime(to);
+    }
+
+    String timelineTime(Instant instant) {
+        return TIMELINE.format(instant);
+    }
+
+    String shortId(UUID id) {
+        return id.toString().substring(0, 8);
+    }
+
+    String denominator(String policy) {
+        if ("UP_PLUS_DOWN".equals(policy)) {
+            return "UP ÷ (UP + DOWN)";
+        }
+        String words = policy.replace('_', ' ').toLowerCase(Locale.ROOT);
+        return words.isEmpty() ? words : Character.toUpperCase(words.charAt(0)) + words.substring(1);
     }
 
     private String escape(String input) {

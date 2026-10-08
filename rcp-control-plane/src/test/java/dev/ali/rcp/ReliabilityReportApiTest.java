@@ -71,7 +71,7 @@ class ReliabilityReportApiTest {
                 .andExpect(header().string("Content-Security-Policy",
                         "sandbox; default-src 'none'; style-src 'unsafe-inline'"))
                 .andReturn().getResponse().getContentAsString();
-        assertThat(html).contains("50.00000%", "OPENED", "RESOLVED", "&lt;script&gt;");
+        assertThat(html).contains("50.00%", "OPENED", "RESOLVED", "&lt;script&gt;");
         assertThat(html).doesNotContain("<script>");
     }
 
