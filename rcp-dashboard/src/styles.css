@@ -24,12 +24,17 @@
   --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
   --accent-line: color-mix(in srgb, var(--accent) 45%, transparent);
   --focus: var(--accent);
-  /* Raised controls: a lit top edge, a faint sheen and a small drop shadow, so buttons read as physical keys. */
-  --lift-edge: rgba(255, 255, 255, 0.1);
-  --lift-edge-accent: rgba(255, 255, 255, 0.2);
-  --lift-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent);
-  --lift-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.2);
-  --lift-pressed: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+  /* Raised controls: no CSS border. The edge is a 1px inset ring, one blurred top highlight, a soft bottom shade and a dark outer
+     separation, all layered box-shadows so the light blends into the surface instead of reading as a hard line. */
+  --lift-ring: rgba(255, 255, 255, 0.08);
+  --lift-ring-accent: color-mix(in srgb, var(--accent) 45%, transparent);
+  --lift-hi: inset 0 1px 0.4px rgba(255, 255, 255, 0.1);
+  --lift-hi-accent: inset 0 1px 0.4px rgba(255, 255, 255, 0.16);
+  --lift-lo: inset 0 -1px 0.4px rgba(0, 0, 0, 0.25);
+  --lift-outer: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 1px 2px rgba(0, 0, 0, 0.45);
+  --lift-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
+  --lift-pressed: inset 0 0 0 1px var(--lift-ring), inset 0 1px 2px rgba(0, 0, 0, 0.35);
+  --lift-pressed-accent: inset 0 0 0 1px var(--lift-ring-accent), inset 0 1px 2px rgba(0, 0, 0, 0.35);
 
   --green: #30a46c;
   --green-text: #4cc38a;
@@ -211,24 +216,29 @@ a { color: inherit; }
   border: 1px solid transparent; border-radius: var(--radius-md); font-size: 13.5px; font-weight: 500; white-space: nowrap;
   transition: background 120ms, border-color 120ms, color 120ms, transform 100ms ease-out;
 }
-.button.primary { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-text); }
+.button.primary { background: var(--accent-soft); color: var(--accent-text); }
 .button.primary:hover:not(:disabled) { background-color: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent-strong); }
-.button.secondary { background: var(--surface); border-color: var(--border-strong); color: var(--text); }
+.button.secondary { background: var(--surface); color: var(--text); }
 .button.secondary:hover:not(:disabled) { background-color: var(--surface-hover); }
 .icon-button {
   display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid transparent;
   border-radius: var(--radius-md); background: none; color: var(--text-2); transition: background 120ms, color 120ms, transform 100ms ease-out;
 }
 .icon-button:hover:not(:disabled) { background: var(--surface-hover); color: var(--text); }
-.icon-button.bordered { border-color: var(--border-strong); background: var(--surface); }
+.icon-button.bordered { background: var(--surface); }
 .icon-button.bordered:hover:not(:disabled) { background-color: var(--surface-hover); }
-/* Depth: buttons and the selected segment catch light on the top edge and sit a pixel above the surface. Pressing flattens them. */
+/* Depth: no border, the edge is the inset ring in the shadow stack (the 1px transparent border stays so sizes never shift).
+   Hover only lightens the fill; pressing drops the highlight and outer shadow and sinks the key. */
 .button:not(:disabled), .icon-button.bordered:not(:disabled), .segmented button[aria-pressed="true"], .segmented button[aria-checked="true"] {
-  background-image: var(--lift-sheen); box-shadow: inset 0 1px 0 var(--lift-edge), var(--lift-shadow);
+  background-image: var(--lift-sheen);
+  box-shadow: inset 0 0 0 1px var(--lift-ring), var(--lift-hi), var(--lift-lo), var(--lift-outer);
 }
-.button.primary:not(:disabled) { box-shadow: inset 0 1px 0 var(--lift-edge-accent), var(--lift-shadow); }
+.button.primary:not(:disabled) { box-shadow: inset 0 0 0 1px var(--lift-ring-accent), var(--lift-hi-accent), var(--lift-lo), var(--lift-outer); }
+.button:disabled, .icon-button.bordered:disabled { box-shadow: inset 0 0 0 1px var(--lift-ring); }
+.button.primary:disabled { box-shadow: inset 0 0 0 1px var(--lift-ring-accent); }
 .segmented button[aria-pressed="true"], .segmented button[aria-checked="true"] { position: relative; }
 .button:active:not(:disabled), .icon-button.bordered:active:not(:disabled), .segmented button:active { background-image: none; box-shadow: var(--lift-pressed); }
+.button.primary:active:not(:disabled) { box-shadow: var(--lift-pressed-accent); }
 .spin { animation: spin 0.9s linear infinite; }
 .inline-action { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .inline-error { max-width: 260px; font-size: 12px; color: var(--red-text); text-align: right; }
@@ -607,11 +617,15 @@ a { color: inherit; }
 /* ---------- Console light theme ----------
    The same square instrument language on paper: neutrals invert, status colours deepen for contrast on white. */
 :root[data-theme="light"] {
-  --lift-edge: rgba(255, 255, 255, 0.6);
-  --lift-edge-accent: rgba(255, 255, 255, 0.5);
+  --lift-ring: rgba(0, 0, 0, 0.1);
+  --lift-ring-accent: color-mix(in srgb, var(--accent) 45%, transparent);
+  --lift-hi: inset 0 1px 0.4px rgba(255, 255, 255, 0.9);
+  --lift-hi-accent: inset 0 1px 0.4px rgba(255, 255, 255, 0.5);
+  --lift-lo: inset 0 -1px 0.4px rgba(0, 0, 0, 0.06);
+  --lift-outer: 0 1px 2px rgba(0, 0, 0, 0.08);
   --lift-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.5), transparent);
-  --lift-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-  --lift-pressed: inset 0 1px 2px rgba(0, 0, 0, 0.12);
+  --lift-pressed: inset 0 0 0 1px var(--lift-ring), inset 0 1px 2px rgba(0, 0, 0, 0.12);
+  --lift-pressed-accent: inset 0 0 0 1px var(--lift-ring-accent), inset 0 1px 2px rgba(0, 0, 0, 0.12);
   --bg: #f7f7f6;
   --bg-sidebar: #f0f0ee;
   --surface: #ffffff;
