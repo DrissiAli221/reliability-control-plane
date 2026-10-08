@@ -11,7 +11,7 @@ const LINK_WIDTH = 56;
 const METER_CELLS = 10;
 
 const VERDICT_TONE: Record<Verdict, Tone> = { UP: "good", DOWN: "fault", DISAGREEMENT: "warn", NO_DATA: "muted" };
-const VERDICT_WORD: Record<Verdict, string> = { UP: "Up", DOWN: "Down", DISAGREEMENT: "Disagreed", NO_DATA: "No data" };
+const VERDICT_WORD: Record<Verdict, string> = { UP: "UP", DOWN: "DOWN", DISAGREEMENT: "DISAGREED", NO_DATA: "NO DATA" };
 
 /**
  * Explains a verdict the backend already reached; it never re-derives one. A verdict of UP or DOWN means every

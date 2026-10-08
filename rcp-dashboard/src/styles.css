@@ -62,7 +62,6 @@
   --ink-dots: var(--text);
   --panel-shadow: none;
   --light-fall: 7%;
-  --light-glint: 35%;
 
   /* Corner scale: every rounded corner reads one of these, so the whole system changes in one place.
      The operator console is square, like an instrument panel; status dots stay round. */
@@ -304,14 +303,13 @@ a { color: inherit; }
   display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 14px 16px;
   background: var(--surface);
 }
-/* A faint status light falling from the top edge, like the button highlight: a soft gradient plus a 1px glint. Neutral tiles get none. */
+/* A faint status light falling from the top edge, like the button highlight. Neutral tiles get none. */
 .metric[data-tone="fault"], .lit.fault { --hue: var(--red); }
 .metric[data-tone="warn"], .lit.warn { --hue: var(--amber); }
 .metric[data-tone="info"], .lit.info { --hue: var(--blue); }
 .metric[data-tone="good"], .lit.good { --hue: var(--green); }
 .metric:is([data-tone="fault"], [data-tone="warn"], [data-tone="info"], [data-tone="good"]), .lit:is(.fault, .warn, .info, .good) {
   background: linear-gradient(180deg, color-mix(in srgb, var(--hue) var(--light-fall), transparent) 0%, transparent 55%), var(--surface);
-  box-shadow: inset 0 1px 0.4px color-mix(in srgb, var(--hue) var(--light-glint), transparent);
 }
 .metric-label { display: flex; align-items: center; gap: 8px; }
 .metric-label .status-dot { width: 6px; height: 6px; }
@@ -696,7 +694,7 @@ a { color: inherit; }
   --panel-shadow: 0 1px 2px rgba(20, 20, 15, 0.04), 0 1px 1px rgba(20, 20, 15, 0.03);
   color-scheme: light;
 }
-:root[data-theme="light"] { --light-fall: 5%; --light-glint: 30%; }
+:root[data-theme="light"] { --light-fall: 5%; }
 :root[data-theme="light"] .metric:not([data-tone="fault"], [data-tone="warn"], [data-tone="info"], [data-tone="good"]) { box-shadow: var(--panel-shadow); }
 :root[data-theme="light"] .timeline-span { background: color-mix(in srgb, var(--red) 85%, var(--surface)); }
 :root[data-theme="light"] .chaos-inline, :root[data-theme="light"] .trace-panel, :root[data-theme="light"] .table th { background: #fafaf8; }
@@ -1536,7 +1534,7 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .fanout-link.good { stroke: color-mix(in srgb, var(--green) 55%, var(--border-strong)); }
 .fanout-link.fault { stroke: color-mix(in srgb, var(--red) 70%, var(--border-strong)); }
 @keyframes fanout-draw { to { stroke-dashoffset: 0; } }
-.fanout-verdict { --hue: var(--text-3); gap: 4px; padding: 12px 14px; border-left: 2px solid var(--hue); }
+.fanout-verdict { --hue: var(--text-3); gap: 4px; padding: 12px 14px; }
 .fanout-verdict-word { font-family: var(--font-dots); font-size: 30px; font-weight: 800; line-height: var(--lead-display); letter-spacing: 0; color: var(--hue); }
 .fanout-sentence { font-size: 13px; line-height: 1.45; color: var(--text-2); }
 .text-button { display: inline-flex; align-items: center; gap: 4px; margin-left: 12px; padding: 0; border: 0; background: none; font-size: 12.5px; color: var(--accent-text); }

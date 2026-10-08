@@ -32,7 +32,7 @@ function SidebarRegions({ snapshot }: { snapshot: LiveData<PipelineSnapshot> }) 
   if (!regions || regions.length === 0) return null;
   return (
     <section className="sidebar-regions" aria-label="Probe regions">
-      <p className="nav-label">regions</p>
+      <p className="nav-label">Regions</p>
       <ul>
         {regions.map((region) => {
           const live = region.resultsReceived > 0 && !snapshot.error;
@@ -86,7 +86,7 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
         <PaletteButton />
 
         <nav className="nav" aria-label="Primary">
-          <p className="nav-label">monitoring</p>
+          <p className="nav-label">Monitoring</p>
           <NavLink to="/" end className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
             <Gauge size={16} aria-hidden="true" /> Overview
           </NavLink>
@@ -101,7 +101,7 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
               <Activity size={16} aria-hidden="true" /> Telemetry <ExternalLink size={12} className="nav-external" aria-hidden="true" />
             </a>
           )}
-          <p className="nav-label">reference</p>
+          <p className="nav-label">Reference</p>
           <a className="nav-item nav-optional" href="https://github.com/DrissiAli221/reliability-control-plane" target="_blank" rel="noreferrer">
             <BookOpen size={16} aria-hidden="true" /> Source <ExternalLink size={12} className="nav-external" aria-hidden="true" />
           </a>
