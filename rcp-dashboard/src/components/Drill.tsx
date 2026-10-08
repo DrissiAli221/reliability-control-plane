@@ -102,7 +102,7 @@ function DrillTrack({ track, label }: { track: Track; label: string }) {
       </div>
       <div className="drill-meter-ticks" aria-hidden="true">
         {ticks.map((tick, index) => (
-          <span key={tick} className={index % 2 === 1 ? "minor" : undefined} style={{ left: `${index * 25}%` }}>{utcClock(tick)} utc</span>
+          <span key={tick} className={index % 2 === 1 ? "minor" : undefined} style={{ left: `${index * 25}%` }}>{utcClock(tick)} UTC</span>
         ))}
       </div>
     </div>

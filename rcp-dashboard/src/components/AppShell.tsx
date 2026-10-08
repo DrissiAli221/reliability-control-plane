@@ -52,6 +52,8 @@ function SidebarRegions({ snapshot }: { snapshot: LiveData<PipelineSnapshot> }) 
 export function AppShell({ children, onLogout }: { children: ReactNode; onLogout: () => void }) {
   const local = isLocalAuth();
   const { pathname } = useLocation();
+  // A new page starts at its top; the browser would otherwise keep the previous page's scroll offset.
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
   const { changes, dismiss } = useFleetWatch(pathname);
   const theme = useTheme();
   const session = useSession();
