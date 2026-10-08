@@ -308,14 +308,14 @@ a { color: inherit; }
 
 /* ---------- Panels & tables ---------- */
 .panel { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--panel-shadow); }
-.panel-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 49px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
 .panel-header h2 { font-size: 13px; font-weight: 500; letter-spacing: var(--track-heading); color: var(--text); }
 .panel-body { padding: 16px; }
 .split { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 0; }
 /* ---------- One grid of touching modules ----------
    Modules share hairlines like a hardware panel: each overlaps its neighbour's border by 1px instead of leaving a gap. */
 .main :is(.panel, .split, .metric-grid, .banner) + :is(.panel, .split, .metric-grid, .banner) { margin-top: -1px; }
-.split > .panel + .panel { margin-left: -1px; }
+.split > .panel + .panel { margin-left: -1px; margin-top: 0; } /* side by side: overlap left edges only */
 .hero.incident { z-index: 1; }
 
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border-bottom: 1px solid var(--border); }
