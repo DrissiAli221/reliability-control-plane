@@ -177,9 +177,14 @@ public class ReliabilityReportHtmlRenderer {
                 "Target " + given(a.sloTargetPercent()) + " · conclusive checks only", tone,
                 a.measuredAvailabilityPercent() == null ? null : a.measuredAvailabilityPercent().toPlainString());
         ReportErrorBudget budget = report.errorBudget();
-        metric(html, "Error budget remaining", oneDecimal(budget.remainingExecutions()),
-                "of " + oneDecimal(budget.allowedBadExecutions()) + " checks left",
-                budget.remainingExecutions().signum() < 0 ? "Budget exceeded · observed checks" : "Observed checks · fractional allowance",
+        boolean overspent = budget.remainingExecutions().signum() < 0;
+        // An overspent budget reads as how far over it is, never as a negative count of checks left.
+        metric(html, "Error budget remaining",
+                oneDecimal(overspent ? budget.remainingExecutions().negate() : budget.remainingExecutions()),
+                overspent ? checks(budget.remainingExecutions().negate()) + " over budget"
+                        : "of " + oneDecimal(budget.allowedBadExecutions()) + " checks left",
+                overspent ? "Budget exceeded · " + oneDecimal(budget.allowedBadExecutions()) + " allowed"
+                        : "Observed checks · fractional allowance",
                 a.sloMet() == null ? "warn" : budget.remainingExecutions().signum() < 0 ? "bad" : "good",
                 budget.remainingExecutions().toPlainString() + " of " + budget.allowedBadExecutions().toPlainString());
         html.append("<div class=\"metric latency\"><div class=\"eyebrow\">HTTP response latency</div><div class=\"readout\">");
@@ -187,7 +192,7 @@ public class ReliabilityReportHtmlRenderer {
         pair(html, report.latency().p95Ms() == null ? null : report.latency().p95Ms().toString(), "p95 ms", null);
         html.append("</div><p>").append(report.latency().sampleCount()).append(" HTTP samples");
         if (report.latency().p50Ms() == null) {
-            html.append(" · INSUFFICIENT_SAMPLES (minimum ").append(report.latency().minimumSamples()).append(")");
+            html.append(" · not enough to compute (minimum ").append(report.latency().minimumSamples()).append(")");
         }
         html.append("</p></div>");
         long incidents = report.incidentTimeline().stream().map(ReportIncidentEvent::incidentId).distinct().count();
@@ -370,16 +375,24 @@ public class ReliabilityReportHtmlRenderer {
 
     /** A measured percentage, always two decimals (99.72%). */
     String percent(BigDecimal value) {
-        return value == null ? "UNDEFINED" : fixed(value, 2) + "%";
+        return value == null ? "not available" : fixed(value, 2) + "%";
     }
 
     /** A configured target or threshold, shown as given (99.5%, 95%). */
     String given(BigDecimal value) {
-        return value == null ? "UNDEFINED" : value.stripTrailingZeros().toPlainString() + "%";
+        return value == null ? "not set" : value.stripTrailingZeros().toPlainString() + "%";
     }
 
     String budgetSentence(ReportErrorBudget budget) {
+        if (budget.remainingExecutions().signum() < 0) {
+            BigDecimal over = budget.remainingExecutions().negate();
+            return oneDecimal(over) + " " + checks(over) + " over a budget of " + oneDecimal(budget.allowedBadExecutions());
+        }
         return oneDecimal(budget.remainingExecutions()) + " of " + oneDecimal(budget.allowedBadExecutions()) + " checks left";
+    }
+
+    private String checks(BigDecimal count) {
+        return count.compareTo(BigDecimal.ONE) == 0 ? "check" : "checks";
     }
 
     String dateTime(Instant instant) {

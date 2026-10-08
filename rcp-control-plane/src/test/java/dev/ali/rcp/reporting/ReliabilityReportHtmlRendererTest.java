@@ -108,23 +108,23 @@ class ReliabilityReportHtmlRendererTest {
                 new BigDecimal("0.00500"), 0, new BigDecimal("0.00500"));
         String html = renderer.render(report);
         assertThat(html).contains("INSUFFICIENT_DATA", "Insufficient evidence to judge this SLO",
-                "Observed availability is not an SLO pass", "INSUFFICIENT_SAMPLES (minimum 20)");
+                "Observed availability is not an SLO pass", "not enough to compute (minimum 20)");
         assertThat(html).doesNotContain("The observed SLO target was met.");
     }
 
     @Test
     void noEvidenceAndZeroAllowanceRenderWithoutInventingAvailability() {
         String html = renderer.render(reportWithEvidence(null, null, BigDecimal.ZERO, 0, BigDecimal.ZERO));
-        assertThat(html).contains("UNDEFINED", "No source data", "No failed executions allowed",
+        assertThat(html).contains("not available", "No source data", "No failed executions allowed",
                 "No incident transitions recorded", "does not rule out an incident opened earlier");
         assertThat(html).doesNotContain("NaN", "Infinity", "width=\"-");
     }
 
     @Test
-    void overspentBudgetsKeepTheirNegativeValueAndBoundTheChart() {
+    void overspentBudgetsReadAsChecksOverAndBoundTheChart() {
         String html = renderer.render(reportWithEvidence(new BigDecimal("50.00000"), false,
                 BigDecimal.ZERO, 1, new BigDecimal("-1.00000")));
-        assertThat(html).contains("MISSED", "Budget exceeded", "title=\"-1.00000 of 0\"", ">-1</span>", "-1 of 0 checks left");
+        assertThat(html).contains("MISSED", "Budget exceeded", "title=\"-1.00000 of 0\"", ">1</span>", "1 check over a budget of 0", "check over budget");
         assertThat(html).containsPattern("budget-observed.*?class=\"fill-bad\" x=\"0\" y=\"2\" width=\"440\"");
         assertThat(html).doesNotContain("NaN", "Infinity", "width=\"-");
     }
@@ -166,7 +166,7 @@ class ReliabilityReportHtmlRendererTest {
         assertThat(renderer.percent(new BigDecimal("99.72222"))).isEqualTo("99.72%");
         assertThat(renderer.percent(new BigDecimal("99.995"))).isEqualTo("100.00%");
         assertThat(renderer.percent(new BigDecimal("100.00000"))).isEqualTo("100.00%");
-        assertThat(renderer.percent(null)).isEqualTo("UNDEFINED");
+        assertThat(renderer.percent(null)).isEqualTo("not available");
         assertThat(renderer.given(new BigDecimal("99.50000"))).isEqualTo("99.5%");
         assertThat(renderer.given(new BigDecimal("100"))).isEqualTo("100%");
         assertThat(renderer.oneDecimal(new BigDecimal("3.20000"))).isEqualTo("3.2");
