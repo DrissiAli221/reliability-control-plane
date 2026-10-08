@@ -1,3 +1,4 @@
+import { LoadingNote, SkLine } from "./components/Skeleton";
 import { AlertTriangle, CheckCircle2, CircleHelp, CircleX } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -94,7 +95,7 @@ export function PublicStatus() {
     );
   }
   if (!page) {
-    return <StatusFrame><div className="status-banner loading"><div><p>Loading current status…</p></div></div></StatusFrame>;
+    return <StatusFrame><div className="status-banner loading" aria-busy="true"><div><LoadingNote label="current status" /><SkLine w={180} line={24} bar={14} /><SkLine w={300} line={20} bar={10} /></div></div></StatusFrame>;
   }
 
   // A failed refresh keeps the last confirmed data for context, but never presents it as current: the headline

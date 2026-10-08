@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { pipelineEvents } from "../api";
 import { milliseconds, outcomeLabel, outcomeTone, type Tone } from "../format";
 import type { PipelineEvent } from "../types";
+import { SkRows } from "./Skeleton";
 import { useLiveData } from "../useLiveData";
 import { LiveLed } from "./StatusBadge";
 
@@ -55,7 +56,9 @@ export function EventStream({ limit }: { limit?: number } = {}) {
         <h2>Live events</h2>
         <span className="subtle live-tail"><LiveLed updatedAt={events.updatedAt} /> tail · your checks, last 15 min</span>
       </header>
-      {lines.length === 0 ? (
+      {!events.data && !events.error ? (
+        <SkRows count={6} height={24} />
+      ) : lines.length === 0 ? (
         <p className="panel-body subtle">{events.error ?? "Waiting for the next check…"}</p>
       ) : (
         <ol className="event-log" ref={log} aria-live="off">

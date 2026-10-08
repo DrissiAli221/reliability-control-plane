@@ -11,6 +11,7 @@ import { DownloadReportButton } from "../components/DownloadReportButton";
 import { DrillPanel, DrillTag } from "../components/Drill";
 import { EvidenceRail } from "../components/EvidenceRail";
 import { Explain } from "../components/Explain";
+import { MonitorDetailSkeleton, TraceSkeleton } from "../components/Skeleton";
 import { IncidentMachine } from "../components/IncidentMachine";
 import { ChartBoundary } from "../components/ChartBoundary";
 import { CheckFanout } from "../components/CheckFanout";
@@ -80,7 +81,7 @@ export function MonitorDetailPage() {
     return (
       <>
         <Breadcrumb name="Loading…" />
-        {detail.error ? <ErrorState message={detail.error} retry={detail.refresh} /> : <div className="skeletons"><div className="skeleton tall" /><div className="skeleton" /></div>}
+        {detail.error ? <ErrorState message={detail.error} retry={detail.refresh} /> : <MonitorDetailSkeleton />}
       </>
     );
   }
@@ -402,7 +403,7 @@ function CheckTrace({ monitorId, executionId }: { monitorId: string; executionId
     <div className="trace-panel">
       {trace.data && trace.data.executionId === executionId
         ? <TraceView trace={trace.data} />
-        : trace.error ? <p className="inline-error" role="alert">{trace.error}</p> : <div className="skeleton" />}
+        : trace.error ? <p className="inline-error" role="alert">{trace.error}</p> : <TraceSkeleton />}
     </div>
   );
 }

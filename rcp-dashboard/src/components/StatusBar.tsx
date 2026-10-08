@@ -1,6 +1,7 @@
 import type { PipelineSnapshot } from "../types";
 import { milliseconds, relativeTime } from "../format";
 import { useNow, type LiveData } from "../useLiveData";
+import { Sk } from "./Skeleton";
 import { LiveLed } from "./StatusBadge";
 
 /**
@@ -10,7 +11,15 @@ import { LiveLed } from "./StatusBadge";
 export function StatusBar({ snapshot }: { snapshot: LiveData<PipelineSnapshot> }) {
   const now = useNow();
   const data = snapshot.data;
-  if (!data) return null;
+  if (!data) {
+    // Rendered from the first paint, so the strip never pops in and shifts the page's bottom edge.
+    return (
+      <footer className="statusbar" aria-label="System status" aria-busy={snapshot.error ? undefined : true}>
+        <span className="statusbar-live">{snapshot.error ? "Unavailable" : "Connecting"}</span>
+        {!snapshot.error && <Sk w={160} h={8} />}
+      </footer>
+    );
+  }
   const minutes = Math.round(data.windowSeconds / 60);
 
   return (

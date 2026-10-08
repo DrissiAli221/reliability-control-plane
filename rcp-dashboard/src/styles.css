@@ -573,21 +573,17 @@ a { color: inherit; }
 .empty h2 { font-size: 16px; font-weight: 600; }
 .empty p { max-width: 440px; color: var(--text-2); }
 .empty .button { margin-top: 8px; }
-.skeletons { display: grid; gap: 8px; padding: 12px; }
-/* Loading is a dot-matrix panel with a lit band sweeping across it, like a display scanning, instead of a grey shimmer. */
-.skeleton {
-  position: relative; height: 52px; overflow: hidden; border-radius: var(--radius);
-  background: radial-gradient(circle, var(--dot) 1px, transparent 1.3px) 0 0 / 8px 8px, var(--surface);
+/* Loading: neutral blocks shaped like the content, with one slow shimmer. Static under reduced motion. */
+.sk { position: relative; display: block; max-width: 100%; overflow: hidden; background: var(--surface-2); }
+.sk::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%); animation: sk-sweep 2.6s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--text) 6%, transparent) 50%, transparent 100%);
 }
-.skeleton::after {
-  content: ""; position: absolute; inset: 0;
-  background: radial-gradient(circle, var(--accent-text) 1.1px, transparent 1.4px) 0 0 / 8px 8px;
-  -webkit-mask-image: linear-gradient(90deg, transparent 35%, #000 50%, transparent 65%);
-  mask-image: linear-gradient(90deg, transparent 35%, #000 50%, transparent 65%);
-  -webkit-mask-size: 300% 100%; mask-size: 300% 100%;
-  opacity: 0.55; animation: scan 1.8s linear infinite;
-}
-.skeleton.tall { height: 120px; }
+@keyframes sk-sweep { to { transform: translateX(100%); } }
+.sk-line { display: flex; align-items: center; max-width: 100%; }
+.sk-rows { display: grid; }
+.sk-row { display: grid; align-items: center; gap: 12px; padding: 4px 16px; border-bottom: 1px solid var(--border); }
+.sk-row:last-child { border-bottom: 0; }
 
 /* ---------- Dialog ---------- */
 .dialog-backdrop {
@@ -770,7 +766,6 @@ a { color: inherit; }
 @keyframes rise { from { transform: translateY(4px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes pop { from { transform: scale(0.97); opacity: 0; } }
 @keyframes fade { from { opacity: 0; } }
-@keyframes scan { from { -webkit-mask-position: 100% 0; mask-position: 100% 0; } to { -webkit-mask-position: 0 0; mask-position: 0 0; } }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1100px) {
@@ -839,7 +834,6 @@ a { color: inherit; }
 
 /* ---------- Check trace (event-history style) ---------- */
 .trace-panel { border-top: 1px solid var(--border); background: var(--bg-sidebar); }
-.trace-panel > .skeleton { margin: 16px; }
 .trace-panel > .inline-error { display: block; padding: 16px; text-align: left; max-width: none; }
 .trace { padding: 16px; animation: rise 260ms ease-out backwards; }
 .trace-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -1578,7 +1572,7 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
   .status-dot.pulse { animation: none; }
   .led i { animation: none; opacity: 0.85; }
   .led.blink { animation: none; }
-  .skeleton::after { animation: none; opacity: 0.25; }
+  .sk::after { animation: none; display: none; }
   .flow-lines path.flow { animation: none; }
   .pipeline-link::before { animation: none; }
   .rolling-strip, .signin-go, .drill-meter-now { transition: none; }

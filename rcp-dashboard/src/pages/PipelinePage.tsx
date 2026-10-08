@@ -4,6 +4,7 @@ import { isLocalAuth } from "../auth";
 import { ChaosPanel } from "../components/ChaosPanel";
 import { DecisionTimes } from "../components/DecisionTimes";
 import { EventStream } from "../components/EventStream";
+import { PipelineSkeleton } from "../components/Skeleton";
 import { PipelineMap } from "../components/PipelineMap";
 import { useReadOnly } from "../session";
 import { useLiveData, useNow } from "../useLiveData";
@@ -31,7 +32,7 @@ export function PipelinePage() {
       </header>
 
       {snapshot.error && !snapshot.data && <ErrorState message={snapshot.error} retry={snapshot.refresh} />}
-      {!snapshot.data && !snapshot.error && <div className="skeletons"><div className="skeleton tall" /></div>}
+      {!snapshot.data && !snapshot.error && <PipelineSkeleton />}
 
       {snapshot.data && (
         <>

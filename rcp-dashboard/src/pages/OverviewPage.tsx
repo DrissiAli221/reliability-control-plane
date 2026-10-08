@@ -1,3 +1,4 @@
+import { OverviewSkeleton } from "../components/Skeleton";
 import { ArrowUpRight, Play, RefreshCw } from "lucide-react";
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -47,7 +48,7 @@ export function OverviewPage() {
       </header>
 
       {error && !loaded && <ErrorState message={error} retry={refresh} />}
-      {!loaded && !error && <div className="skeletons"><div className="skeleton tall" /><div className="skeleton tall" /></div>}
+      {!loaded && !error && <OverviewSkeleton />}
 
       {overview.data && monitors.data && (
         <>

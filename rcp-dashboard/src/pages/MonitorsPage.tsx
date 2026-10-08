@@ -2,6 +2,7 @@ import { ArrowUpRight, Download, Pause, Play, Plus, RefreshCw, Search } from "lu
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { availability, createMonitor, listMonitors, monitorHistory, setMonitorEnabled } from "../api";
+import { LoadingNote, SkLine, SkRows } from "../components/Skeleton";
 import { ActionMenu } from "../components/ActionMenu";
 import { RollingText } from "../components/RollingText";
 import { RowPreview } from "../components/RowPreview";
@@ -135,13 +136,13 @@ export function MonitorsPage() {
       </header>
 
       <section className="metric-grid fleet-summary" aria-label="Fleet summary">
-        <Metric label="operational" value={`${summary.operational}`} suffix={`/ ${summary.total - summary.paused}`} tone="good"
+        <Metric label="operational" loading={!fleet.data} value={`${summary.operational}`} suffix={`/ ${summary.total - summary.paused}`} tone="good"
           visual={<FleetCells rows={rows} lit={(monitor) => monitor.enabled && monitor.incidentStatus !== "OPEN" && monitor.latestVerdict === "UP"} tone="good" />} />
-        <Metric label="open incidents" value={`${summary.incidents}`} hint="Active outages" tone={summary.incidents ? "fault" : "muted"}
+        <Metric label="open incidents" loading={!fleet.data} value={`${summary.incidents}`} hint="Active outages" tone={summary.incidents ? "fault" : "muted"}
           visual={<FleetCells rows={rows} lit={(monitor) => monitor.incidentStatus === "OPEN"} tone="fault" />} />
-        <Metric label="needs attention" value={`${summary.attention}`} hint="Down, disagreement or no data" tone={summary.attention ? "warn" : "muted"}
+        <Metric label="needs attention" loading={!fleet.data} value={`${summary.attention}`} hint="Down, disagreement or no data" tone={summary.attention ? "warn" : "muted"}
           visual={<FleetCells rows={rows} lit={(monitor) => monitor.enabled && monitor.incidentStatus !== "OPEN" && monitor.latestVerdict !== "UP" && monitor.latestVerdict !== null} tone="warn" />} />
-        <Metric label="paused" value={`${summary.paused}`} hint="Not being checked" tone="muted"
+        <Metric label="paused" loading={!fleet.data} value={`${summary.paused}`} hint="Not being checked" tone="muted"
           visual={<FleetCells rows={rows} lit={(monitor) => !monitor.enabled} tone="muted" />} />
       </section>
 
@@ -322,7 +323,7 @@ function aggregateLatency(history?: MonitorHistory): string {
   return `${milliseconds(p50)} · ${milliseconds(p95)}`;
 }
 
-export function Metric({ label, value, suffix, hint, tone, explain, visual }: {
+export function Metric({ label, value, suffix, hint, tone, explain, visual, loading = false }: {
   label: string;
   value: string;
   suffix?: string;
@@ -330,11 +331,15 @@ export function Metric({ label, value, suffix, hint, tone, explain, visual }: {
   tone: Tone;
   explain?: ReactNode;
   visual?: ReactNode;
+  /** Shows a placeholder in place of the number until the first data arrives. */
+  loading?: boolean;
 }) {
   return (
-    <div className="metric" data-tone={tone}>
-      <span className="metric-label"><StatusDot tone={tone} />{label}{explain}</span>
-      <span className="metric-value"><RollingText value={value} />{suffix && <small>{suffix}</small>}</span>
+    <div className="metric" data-tone={loading ? "muted" : tone} aria-busy={loading || undefined}>
+      <span className="metric-label"><StatusDot tone={loading ? "muted" : tone} />{label}{explain}</span>
+      <span className="metric-value">
+        {loading ? <SkLine w="1.6em" line="1em" bar="0.7em" /> : <><RollingText value={value} />{suffix && <small>{suffix}</small>}</>}
+      </span>
       {visual && <div className="metric-visual">{visual}</div>}
       {hint && <span className="metric-hint">{hint}</span>}
     </div>
@@ -349,8 +354,14 @@ export function LiveIndicator({ updatedAt, now, error }: { updatedAt: number | n
   return <span className="live fresh"><LiveLed updatedAt={updatedAt} /><span>Live · updated <span className="live-age">{relativeTime(new Date(updatedAt).toISOString(), now)}</span></span></span>;
 }
 
+/** Rows shaped like the fleet table (name and URL, status, trend, uptime), at the table's row height. */
 function SkeletonRows() {
-  return <div className="skeletons" aria-label="Loading monitors">{[0, 1, 2].map((key) => <div className="skeleton" key={key} />)}</div>;
+  return (
+    <>
+      <LoadingNote label="monitors" />
+      <SkRows count={3} height={62} columns="minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.6fr) 72px" widths={["60%", 72, "80%", 48]} />
+    </>
+  );
 }
 
 function EmptyState({ onCreate }: { onCreate?: () => void }) {
