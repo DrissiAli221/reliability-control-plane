@@ -49,21 +49,30 @@ export type DrillTrack = {
   start: number;
   /** Where it ends: the end of the next outage window. */
   end: number;
-  /** Fill of each 10-minute cell, 0 to 1. The last cell is the upcoming outage window. */
+  /** Fill of each 10-minute cell, 0 to 1. */
   fills: number[];
+  /** Which cell is the outage window: the last one between drills, the first one during a drill. */
+  outageIndex: number;
   /** Current position along the whole track, 0 to 1. */
   position: number;
 };
 
 /** The between-drills track: 12 ten-minute cells from the last outage's end to the next outage's end. */
 export function drillTrack(phase: DrillPhase, now: number): DrillTrack {
-  const start = phase.outageEnd;
-  const end = phase.nextStart + DRILL_OUTAGE_MS;
+  return laidOutTrack(phase.outageEnd, phase.nextStart + DRILL_OUTAGE_MS, DRILL_TRACK_CELLS - 1, now);
+}
+
+/** The same 12 cells for a running drill: the whole cycle from its outage start, with the outage as the first cell. */
+export function drillCycleTrack(phase: DrillPhase, now: number): DrillTrack {
+  return laidOutTrack(phase.cycleStart, phase.nextStart, 0, now);
+}
+
+function laidOutTrack(start: number, end: number, outageIndex: number, now: number): DrillTrack {
   const fills = Array.from({ length: DRILL_TRACK_CELLS }, (_, index) => {
     const cellStart = start + index * DRILL_TRACK_CELL_MS;
     return Math.min(1, Math.max(0, (now - cellStart) / DRILL_TRACK_CELL_MS));
   });
-  return { start, end, fills, position: Math.min(1, Math.max(0, (now - start) / (end - start))) };
+  return { start, end, fills, outageIndex, position: Math.min(1, Math.max(0, (now - start) / (end - start))) };
 }
 
 /** "1:07:42" or "6:05": a countdown that reads like a clock. */

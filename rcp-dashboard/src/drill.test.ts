@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countdown, drillPhase, drillTrack, isDrillMonitor } from "./drill";
+import { countdown, drillCycleTrack, drillPhase, drillTrack, isDrillMonitor } from "./drill";
 
 const at = (iso: string) => Date.parse(iso);
 
@@ -63,5 +63,18 @@ describe("drill schedule", () => {
     expect(track.fills[10]).toBeGreaterThan(0.99);
     expect(track.fills[11]).toBe(0);
     expect(track.position).toBeCloseTo(109.98 / 120, 2);
+  });
+
+  it("lays a running drill out on the same 12 cells with the outage first", () => {
+    const now = at("2026-10-06T14:04:30Z");
+    const track = drillCycleTrack(drillPhase(now), now);
+    expect(track.fills).toHaveLength(12);
+    expect(track.outageIndex).toBe(0);
+    expect(track.start).toBe(at("2026-10-06T14:00:00Z"));
+    expect(track.end).toBe(at("2026-10-06T16:00:00Z"));
+    expect(track.fills[0]).toBeCloseTo(0.45);
+    expect(track.fills.slice(1).every((fill) => fill === 0)).toBe(true);
+    expect(track.position).toBeCloseTo(4.5 / 120);
+    expect(drillTrack(drillPhase(now), now).outageIndex).toBe(11);
   });
 });

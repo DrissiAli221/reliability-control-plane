@@ -1,10 +1,6 @@
 import { Check, FlaskConical } from "lucide-react";
-import { countdown, DRILL_CYCLE_MS, DRILL_OUTAGE_MS, drillPhase, drillTrack, utcClock, type DrillPhase } from "../drill";
+import { countdown, DRILL_OUTAGE_MS, drillCycleTrack, drillPhase, drillTrack, utcClock, type DrillPhase, type DrillTrack as Track } from "../drill";
 import type { MonitorOverview } from "../types";
-
-const CELL_MS = 5 * 60 * 1000;
-const CELLS = DRILL_CYCLE_MS / CELL_MS;
-const OUTAGE_CELLS = DRILL_OUTAGE_MS / CELL_MS;
 
 /** Marks the drill monitor in lists, so a red row reads as planned rather than broken. */
 export function DrillTag() {
@@ -81,30 +77,33 @@ export function DrillPanel({ now, overview }: { now: number; overview?: MonitorO
           ))}
         </ol>
       </div>
-      <DrillCycle phase={phase} now={now} />
+      <DrillTrack track={drillCycleTrack(phase, now)} label={`Two-hour drill cycle, ${Math.round(phase.progress * 100)}% through`} />
     </section>
   );
 }
 
-/** The two-hour cycle as 5-minute cells: the hatched outage window, the time already passed, and now. */
-function DrillCycle({ phase, now }: { phase: DrillPhase; now: number }) {
-  const ticks = [0, 30, 60, 90, 120].map((minutes) => phase.cycleStart + minutes * 60_000);
+/**
+ * One track for both states: twelve touching 10-minute cells across the two-hour cycle. Elapsed cells fill neutral,
+ * the current one partly, the outage cell is hatched red and turns solid red as the outage runs. A 2px cursor marks now.
+ */
+function DrillTrack({ track, label }: { track: Track; label: string }) {
+  const ticks = [0, 30, 60, 90, 120].map((minutes) => track.start + minutes * 60_000);
+  const tagAtStart = track.outageIndex === 0;
   return (
-    <div className="drill-cycle" role="img" aria-label={`Two-hour drill cycle, ${Math.round(phase.progress * 100)}% through`}>
-      <div className="drill-cells">
-        {Array.from({ length: CELLS }, (_, index) => {
-          const cellStart = phase.cycleStart + index * CELL_MS;
-          const classes = [
-            index < OUTAGE_CELLS ? "outage" : "",
-            cellStart + CELL_MS <= now ? "past" : "",
-            cellStart <= now && now < cellStart + CELL_MS ? "current" : "",
-          ].filter(Boolean).join(" ");
-          return <i key={index} className={classes || undefined} />;
-        })}
-        <span className="drill-cursor" style={{ left: `${phase.progress * 100}%` }} />
+    <div className="drill-meter" role="img" aria-label={label}>
+      <span className={`drill-meter-tag lbl${tagAtStart ? " start" : ""}`} aria-hidden="true">outage</span>
+      <div className="drill-meter-cells">
+        {track.fills.map((fill, index) => (
+          <i key={index} className={index === track.outageIndex ? "outage" : undefined}>
+            {fill > 0 && <b style={{ width: `${fill * 100}%` }} />}
+          </i>
+        ))}
+        <span className="drill-meter-now" style={{ left: `${track.position * 100}%` }} />
       </div>
-      <div className="drill-ticks mono">
-        {ticks.map((tick) => <span key={tick}>{utcClock(tick)}</span>)}
+      <div className="drill-meter-ticks" aria-hidden="true">
+        {ticks.map((tick, index) => (
+          <span key={tick} className={index % 2 === 1 ? "minor" : undefined} style={{ left: `${index * 25}%` }}>{utcClock(tick)} utc</span>
+        ))}
       </div>
     </div>
   );
@@ -116,8 +115,6 @@ function DrillCycle({ phase, now }: { phase: DrillPhase; now: number }) {
  */
 function DrillCountdown({ phase, now }: { phase: DrillPhase; now: number }) {
   const track = drillTrack(phase, now);
-  const last = track.fills.length - 1;
-  const ticks = [0, 30, 60, 90, 120].map((minutes) => track.start + minutes * 60_000);
   return (
     <section className="panel drill-countdown" aria-label="Planned outage drill">
       <div className="drill-countdown-head">
@@ -134,22 +131,7 @@ function DrillCountdown({ phase, now }: { phase: DrillPhase; now: number }) {
           <span className="lbl">{utcClock(phase.nextStart)}–{utcClock(phase.nextStart + DRILL_OUTAGE_MS)} UTC</span>
         </div>
       </div>
-      <div className="drill-meter" role="img" aria-label={`${Math.round(track.position * 100)}% of the way to the next outage`}>
-        <span className="drill-meter-tag lbl" aria-hidden="true">outage</span>
-        <div className="drill-meter-cells">
-          {track.fills.map((fill, index) => (
-            <i key={index} className={index === last ? "outage" : undefined}>
-              {index !== last && fill > 0 && <b style={{ width: `${fill * 100}%` }} />}
-            </i>
-          ))}
-          <span className="drill-meter-now" style={{ left: `${track.position * 100}%` }} />
-        </div>
-        <div className="drill-meter-ticks" aria-hidden="true">
-          {ticks.map((tick, index) => (
-            <span key={tick} className={index % 2 === 1 ? "minor" : undefined} style={{ left: `${index * 25}%` }}>{utcClock(tick)} utc</span>
-          ))}
-        </div>
-      </div>
+      <DrillTrack track={track} label={`${Math.round(track.position * 100)}% of the way to the next outage`} />
     </section>
   );
 }
