@@ -1,5 +1,5 @@
-import { Activity, ArrowRight, BookOpen, Eye, ExternalLink, Gauge, LayoutList, LogOut, Moon, Sun, Workflow } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import { Activity, ArrowRight, BookOpen, Eye, ExternalLink, Gauge, LayoutList, LogOut, MoreHorizontal, Moon, Sun, Workflow } from "lucide-react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { onboard, pipelineSnapshot } from "../api";
 import { isLocalAuth } from "../auth";
@@ -50,6 +50,94 @@ function SidebarRegions({ snapshot }: { snapshot: LiveData<PipelineSnapshot> }) 
   );
 }
 
+/**
+ * The sidebar footer folded into a menu for the narrow top header, where there is no room for it in line.
+ * Hidden by CSS on desktop, where the footer itself is shown instead.
+ */
+export function MobileMenu({ local, readOnly, theme, onLogout }: { local: boolean; readOnly: boolean; theme: string; onLogout: () => void }) {
+  const [open, setOpen] = useState(false);
+  const button = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const menuId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    panel.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    function onPointer(event: MouseEvent | TouchEvent) {
+      const target = event.target as Node;
+      if (!panel.current?.contains(target) && !button.current?.contains(target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("touchstart", onPointer);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("touchstart", onPointer);
+    };
+  }, [open]);
+
+  function closeAndRestore() {
+    setOpen(false);
+    button.current?.focus();
+  }
+
+  function onKeyDown(event: React.KeyboardEvent) {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      closeAndRestore();
+    } else if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Home" || event.key === "End") {
+      const items = [...(panel.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+      if (items.length === 0) return;
+      event.preventDefault();
+      const at = items.indexOf(document.activeElement as HTMLElement);
+      const next = event.key === "Home" ? 0 : event.key === "End" ? items.length - 1
+        : event.key === "ArrowDown" ? (at + 1) % items.length : (at - 1 + items.length) % items.length;
+      items[next].focus();
+    } else if (event.key === "Tab") {
+      setOpen(false);
+    }
+  }
+
+  const choose = (action: () => void) => () => {
+    setOpen(false);
+    action();
+  };
+
+  return (
+    <div className="mobile-menu" onKeyDown={open ? onKeyDown : undefined}>
+      <button
+        ref={button}
+        type="button"
+        className="icon-button mobile-menu-button"
+        aria-label="More"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <MoreHorizontal size={18} aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="mobile-menu-panel" ref={panel}>
+          {local && <p className="env-note"><span className="env-pill">Local</span>Regions are simulated in one JVM; labels are not geographic evidence.</p>}
+          {readOnly && <p className="identity demo-identity"><Eye size={14} aria-hidden="true" /> Live demo · read-only</p>}
+          {local && !readOnly && <p className="identity">Local development identity</p>}
+          <div role="menu" id={menuId} aria-label="More">
+            <button type="button" role="menuitem" className="nav-item" onClick={choose(toggleTheme)}>
+              {theme === "dark" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
+              {theme === "dark" ? "Light theme" : "Dark theme"}
+            </button>
+            {!(local && !readOnly) && (
+              <button type="button" role="menuitem" className="nav-item" onClick={choose(onLogout)}>
+                <LogOut size={16} aria-hidden="true" /> {readOnly ? "Leave the demo" : "Sign out"}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AppShell({ children, onLogout }: { children: ReactNode; onLogout: () => void }) {
   const local = isLocalAuth();
   const { pathname } = useLocation();
@@ -91,22 +179,22 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
         <nav className="nav" aria-label="Primary">
           <p className="nav-label">Monitoring</p>
           <NavLink to="/" end className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
-            <Gauge size={16} aria-hidden="true" /> Overview
+            <Gauge size={16} aria-hidden="true" /> <span className="nav-text">Overview</span>
           </NavLink>
           <NavLink to="/monitors" className={() => `nav-item${pathname.startsWith("/monitors") ? " active" : ""}`}>
-            <LayoutList size={16} aria-hidden="true" /> Monitors
+            <LayoutList size={16} aria-hidden="true" /> <span className="nav-text">Monitors</span>
           </NavLink>
           <NavLink to="/pipeline" className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
-            <Workflow size={16} aria-hidden="true" /> Pipeline
+            <Workflow size={16} aria-hidden="true" /> <span className="nav-text">Pipeline</span>
           </NavLink>
           {telemetryUrl && (
             <a className="nav-item" href={telemetryUrl} target="_blank" rel="noreferrer">
-              <Activity size={16} aria-hidden="true" /> Telemetry <ExternalLink size={12} className="nav-external" aria-hidden="true" />
+              <Activity size={16} aria-hidden="true" /> <span className="nav-text">Telemetry</span> <ExternalLink size={12} className="nav-external" aria-hidden="true" />
             </a>
           )}
           <p className="nav-label">Reference</p>
           <a className="nav-item nav-optional" href="https://github.com/DrissiAli221/reliability-control-plane" target="_blank" rel="noreferrer">
-            <BookOpen size={16} aria-hidden="true" /> Source <ExternalLink size={12} className="nav-external" aria-hidden="true" />
+            <BookOpen size={16} aria-hidden="true" /> <span className="nav-text">Source</span> <ExternalLink size={12} className="nav-external" aria-hidden="true" />
           </a>
         </nav>
 
@@ -128,6 +216,7 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
             ? <span className="identity">Local development identity</span>
             : <button type="button" className="nav-item" onClick={onLogout}><LogOut size={16} aria-hidden="true" /> {readOnly ? "Leave the demo" : "Sign out"}</button>}
         </div>
+        <MobileMenu local={local} readOnly={readOnly} theme={theme} onLogout={onLogout} />
       </aside>
       <div className="column">
         <TopBar pathname={pathname} updatedAt={snapshot.updatedAt} stale={snapshot.error !== null} />

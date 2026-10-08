@@ -128,6 +128,13 @@ a { color: inherit; }
 .brand-mark path { fill: none; stroke: var(--bg); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 
 .nav { display: flex; flex-direction: column; gap: 2px; }
+.mobile-menu { display: none; }
+.mobile-menu-panel {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 60; width: min(280px, calc(100vw - 32px)); padding: 8px;
+  background: var(--surface-2); border-radius: var(--radius); box-shadow: var(--shadow-pop);
+}
+.mobile-menu-panel .env-note, .mobile-menu-panel .identity { margin: 0 0 8px; padding: 0 8px; }
+.mobile-menu-panel .nav-item { height: 36px; }
 .nav-label { margin: 20px 8px 6px; }
 .nav-label:first-child { margin-top: 0; }
 .nav-item {
@@ -826,9 +833,17 @@ a { color: inherit; }
   .sidebar { position: static; height: auto; flex-direction: row; align-items: center; gap: 12px; padding: 10px 16px; border-right: 0; border-bottom: 1px solid var(--border); }
   .workspace { height: auto; padding: 0; border-bottom: 0; }
   .sidebar > :not(.workspace), .workspace + * { margin: 0; }
-  .workspace span, .nav-label, .sidebar-footer, .sidebar-regions { display: none; }
-  .nav { flex-direction: row; margin-left: auto; }
+  .workspace span, .nav-label, .sidebar-regions { display: none; }
+  /* Same specificity as the desktop `.sidebar > .sidebar-footer` rule, which would otherwise keep the footer in the row. */
+  .sidebar > .sidebar-footer { display: none; }
+  .sidebar { min-width: 0; }
+  .workspace { flex: none; }
+  /* The nav takes the remaining width and scrolls inside itself rather than widening the page. */
+  .nav { flex: 1 1 0; flex-direction: row; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav .nav-item { flex: none; width: auto; white-space: nowrap; }
   .nav-optional, .nav-external { display: none; }
+  .mobile-menu { display: block; position: relative; flex: none; }
   .main { padding: 24px 16px 48px; }
   .topbar { display: none; }
   .live.fresh { display: inline-flex; }
@@ -842,6 +857,8 @@ a { color: inherit; }
   .metric-grid { grid-template-columns: minmax(0, 1fr); }
   .fleet-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .workspace strong { display: none; }
+  .nav .nav-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .nav .nav-item { padding: 0 10px; }
   .evidence-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .field-pair { grid-template-columns: 1fr; }
   .status-component-meta .uptime { display: none; }
