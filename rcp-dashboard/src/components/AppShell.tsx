@@ -1,14 +1,16 @@
 import { Activity, ArrowRight, BookOpen, Eye, ExternalLink, Gauge, LayoutList, LogOut, Moon, Sun, Workflow } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { onboard } from "../api";
+import { onboard, pipelineSnapshot } from "../api";
 import { isLocalAuth } from "../auth";
 import { useSession } from "../session";
+import { useLiveData } from "../useLiveData";
 import { useFleetWatch } from "../tabSignal";
 import { toggleTheme, useTheme } from "../theme";
 import { CommandPalette, PaletteButton } from "./CommandPalette";
 import { IncidentToasts } from "./IncidentToasts";
 import { StatusBar } from "./StatusBar";
+import { TopBar } from "./TopBar";
 import { Tour } from "./Tour";
 
 const telemetryUrl = import.meta.env.VITE_GRAFANA_URL
@@ -30,6 +32,8 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
   const theme = useTheme();
   const session = useSession();
   const readOnly = session?.readOnly ?? false;
+  // One poll feeds the top bar, the status strip and (below) the region lights.
+  const snapshot = useLiveData(pipelineSnapshot, 15_000);
 
   // A brand-new account gets its example monitor once; the server makes repeat calls harmless, this just avoids them.
   useEffect(() => {
@@ -96,18 +100,21 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
             : <button type="button" className="nav-item" onClick={onLogout}><LogOut size={16} aria-hidden="true" /> {readOnly ? "Leave the demo" : "Sign out"}</button>}
         </div>
       </aside>
-      {/* Keyed by path so each page enters with the same short settle, including monitor-to-monitor moves. */}
-      <div className="main" key={pathname}>
-        {readOnly && (
-          <div className="demo-banner" role="note">
-            <Eye size={15} aria-hidden="true" />
-            <span><strong>You're exploring the live demo.</strong> Everything is real and running; changes are switched off.</span>
-            <button type="button" className="demo-banner-cta" onClick={onLogout}>Monitor your own site <ArrowRight size={13} aria-hidden="true" /></button>
-          </div>
-        )}
-        {children}
+      <div className="column">
+        <TopBar pathname={pathname} updatedAt={snapshot.updatedAt} stale={snapshot.error !== null} />
+        {/* Keyed by path so each page enters with the same short settle, including monitor-to-monitor moves. */}
+        <div className="main" key={pathname}>
+          {readOnly && (
+            <div className="demo-banner" role="note">
+              <Eye size={15} aria-hidden="true" />
+              <span><strong>You're exploring the live demo.</strong> Everything is real and running; changes are switched off.</span>
+              <button type="button" className="demo-banner-cta" onClick={onLogout}>Monitor your own site <ArrowRight size={13} aria-hidden="true" /></button>
+            </div>
+          )}
+          {children}
+        </div>
       </div>
-      <StatusBar />
+      <StatusBar snapshot={snapshot} />
       <CommandPalette />
       <IncidentToasts changes={changes} dismiss={dismiss} />
       <Tour />

@@ -1,14 +1,13 @@
-import { pipelineSnapshot } from "../api";
+import type { PipelineSnapshot } from "../types";
 import { milliseconds, relativeTime } from "../format";
-import { useLiveData, useNow } from "../useLiveData";
+import { useNow, type LiveData } from "../useLiveData";
 import { LiveLed } from "./StatusBadge";
 
 /**
  * An instrument strip along the bottom of the console: whether data is live, what each region delivered in the
  * pipeline's window, and the queues behind the decisions. It lives in the shell, so it survives navigation.
  */
-export function StatusBar() {
-  const snapshot = useLiveData(pipelineSnapshot, 15_000);
+export function StatusBar({ snapshot }: { snapshot: LiveData<PipelineSnapshot> }) {
   const now = useNow();
   const data = snapshot.data;
   if (!data) return null;
