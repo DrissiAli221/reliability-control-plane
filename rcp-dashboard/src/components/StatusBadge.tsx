@@ -1,7 +1,14 @@
 import type { Tone } from "../format";
 
+const CELLS = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+
+/** A static 3×3 dot-matrix block in the status tone, the same shape as LiveLed; `pulse` makes it breathe. */
 export function StatusDot({ tone, pulse = false }: { tone: Tone; pulse?: boolean }) {
-  return <span className={`status-dot ${tone}${pulse ? " pulse" : ""}`} aria-hidden="true" />;
+  return (
+    <span className={`status-dot ${tone}${pulse ? " pulse" : ""}`} aria-hidden="true">
+      {CELLS.map((cell) => <i key={cell} />)}
+    </span>
+  );
 }
 
 export function StatusBadge({ label, tone }: { label: string; tone: Tone }) {

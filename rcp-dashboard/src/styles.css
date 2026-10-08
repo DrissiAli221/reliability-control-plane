@@ -201,7 +201,7 @@ a { color: inherit; }
 .page-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .detail-header { align-items: flex-start; }
 .title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.title-row .status-dot { width: 10px; height: 10px; }
+.title-row .status-dot { --dot-size: 3px; --dot-gap: 1px; }
 .meta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin-top: 8px; color: var(--text-2); font-size: 13px; }
 .meta-row a { display: inline-flex; align-items: center; gap: 4px; color: var(--text); text-decoration: none; }
 .meta-row a:hover { text-decoration: underline; text-underline-offset: 3px; }
@@ -255,13 +255,15 @@ a { color: inherit; }
 .inline-error { max-width: 260px; font-size: 12px; color: var(--red-text); text-align: right; }
 
 /* ---------- Status primitives ---------- */
-.status-dot { position: relative; display: inline-block; width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--text-3); }
-.status-dot.good { background: var(--green); }
-.status-dot.warn { background: var(--amber); }
-.status-dot.fault { background: var(--red); }
-.status-dot.info { background: var(--text-2); }
-.status-dot.muted { background: var(--text-3); }
-/* Active faults breathe gently instead of radiating rings. */
+/* Inline status marker: the same 3×3 dot-matrix block as the live LED, static, ~9px (11px beside titles). */
+.status-dot { --dot-size: 2px; --dot-gap: 1.5px; --dot-color: var(--text-3); display: inline-grid; grid-template-columns: repeat(3, var(--dot-size)); gap: var(--dot-gap); flex: none; vertical-align: middle; }
+.status-dot i { width: var(--dot-size); height: var(--dot-size); border-radius: 50%; background: var(--dot-color); }
+.status-dot.good { --dot-color: var(--green); }
+.status-dot.warn { --dot-color: var(--amber); }
+.status-dot.fault { --dot-color: var(--red); }
+.status-dot.info { --dot-color: var(--text-2); }
+.status-dot.muted { --dot-color: var(--text-3); }
+/* Active faults breathe gently. */
 .status-dot.pulse { animation: breathe 2.4s ease-in-out infinite; }
 /* A 3×3 dot-matrix block, drawn with the same round dots as the Doto readouts. */
 .led { --led: var(--green); display: inline-grid; grid-template-columns: repeat(3, 2px); gap: 1px; flex: none; }
@@ -278,7 +280,6 @@ a { color: inherit; }
   display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: var(--radius-pill);
   font-size: 12px; font-weight: 500; white-space: nowrap; background: var(--gray-bg); color: var(--gray-text);
 }
-.badge .status-dot { width: 6px; height: 6px; }
 /* The status column is hidden on phones; this keeps the word next to the dot there. */
 .status-inline { display: none; font-size: 12px; font-weight: 500; color: var(--text-2); }
 .status-inline.good { color: var(--green-text); }
@@ -308,7 +309,6 @@ a { color: inherit; }
   background: linear-gradient(180deg, color-mix(in srgb, var(--hue) var(--light-fall), transparent) 0%, transparent 55%), var(--surface);
 }
 .metric-label { display: flex; align-items: center; gap: 8px; min-height: 20px; } /* the explain button is 20px: reserve it so every tile's number sits on the same line */
-.metric-label .status-dot { width: 6px; height: 6px; }
 .metric-value { color: var(--ink-dots); font-family: var(--font-dots); font-size: 30px; font-weight: 800; letter-spacing: 0; font-variant-numeric: tabular-nums; line-height: 1; }
 .metric-value small { margin-left: 6px; font-family: var(--font-sans); font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--text-3); }
 /* Four equal tiles: label, one 32px readout on one baseline, then a fixed 18px caption row (cells or hint) in the same place. */
