@@ -1,5 +1,5 @@
 import { ArrowUpRight, Bell, Command, CornerDownLeft, Gauge, Keyboard, LayoutList, Play, Plus, Search, SunMoon, Workflow } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { listMonitors } from "../api";
@@ -8,6 +8,7 @@ import { fuzzyScore, SHORTCUTS } from "../commands";
 import { useReadOnly } from "../session";
 import { toggleTheme } from "../theme";
 import { tour } from "../tour";
+import { useFocusTrap } from "../useFocusTrap";
 import type { MonitorOverview } from "../types";
 import { StatusDot } from "./StatusBadge";
 
@@ -28,6 +29,12 @@ function typing(target: EventTarget | null): boolean {
 
 export function Keys({ keys }: { keys: string[] }) {
   return <span className="keys">{keys.map((key) => <kbd key={key}>{key}</kbd>)}</span>;
+}
+
+/** The dialog surface: traps Tab inside and gives focus back to whatever opened the palette once it unmounts. */
+function Dialog(props: ComponentProps<"section">) {
+  const ref = useFocusTrap<HTMLElement>();
+  return <section ref={ref} {...props} />;
 }
 
 /**
@@ -125,24 +132,6 @@ export function CommandPalette() {
 
   const close = () => setMode("closed");
 
-  if (mode === "help") {
-    return createPortal(
-      <div className="dialog-backdrop palette-backdrop" onMouseDown={close} onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
-        <section className="palette help" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" onMouseDown={(event) => event.stopPropagation()}>
-          <header className="palette-head"><Keyboard size={16} aria-hidden="true" /><strong>Keyboard shortcuts</strong></header>
-          <dl className="shortcut-list">
-            {SHORTCUTS.map((shortcut) => (
-              <div key={shortcut.label}><dt>{shortcut.label}</dt><dd><Keys keys={shortcut.keys} /></dd></div>
-            ))}
-          </dl>
-          <footer className="palette-foot"><span><kbd>esc</kbd> close</span></footer>
-          <button type="button" className="sr-only" autoFocus onClick={close}>Close</button>
-        </section>
-      </div>,
-      document.body,
-    );
-  }
-
   function onKeyDown(event: React.KeyboardEvent) {
     if (event.key === "Escape") close();
     else if (event.key === "ArrowDown") {
@@ -157,10 +146,30 @@ export function CommandPalette() {
     }
   }
 
+  // One Dialog serves both views, so switching from the palette to the shortcut list keeps the original opener.
+  const help = mode === "help";
   let lastGroup = "";
   return createPortal(
-    <div className="dialog-backdrop palette-backdrop" onMouseDown={close}>
-      <section className="palette" role="dialog" aria-modal="true" aria-label="Command palette" onMouseDown={(event) => event.stopPropagation()}>
+    <div className="dialog-backdrop palette-backdrop" onMouseDown={close} onKeyDown={help ? (event) => { if (event.key === "Escape") close(); } : undefined}>
+      <Dialog
+        className={help ? "palette help" : "palette"}
+        role="dialog"
+        aria-modal="true"
+        aria-label={help ? "Keyboard shortcuts" : "Command palette"}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        {help ? (
+          <>
+            <header className="palette-head"><Keyboard size={16} aria-hidden="true" /><strong>Keyboard shortcuts</strong></header>
+            <dl className="shortcut-list">
+              {SHORTCUTS.map((shortcut) => (
+                <div key={shortcut.label}><dt>{shortcut.label}</dt><dd><Keys keys={shortcut.keys} /></dd></div>
+              ))}
+            </dl>
+            <footer className="palette-foot"><span><kbd>esc</kbd> close</span></footer>
+            <button type="button" className="sr-only" autoFocus onClick={close}>Close</button>
+          </>
+        ) : (<>
         <label className="palette-search">
           <Search size={16} aria-hidden="true" />
           <input
@@ -207,7 +216,8 @@ export function CommandPalette() {
           <span><kbd><CornerDownLeft size={10} /></kbd> open</span>
           <span className="palette-brand"><Command size={11} aria-hidden="true" /> RCP</span>
         </footer>
-      </section>
+        </>)}
+      </Dialog>
     </div>,
     document.body,
   );
