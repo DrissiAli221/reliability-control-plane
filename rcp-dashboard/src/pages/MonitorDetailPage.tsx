@@ -273,9 +273,14 @@ export function MonitorDetailPage() {
         </header>
         {isLocalAuth() && !readOnly && <ChaosPanel failuresToOpen={incident?.failuresToOpen} inline />}
         {incident && <PolicyStrip state={incident} now={now} expanded={machineOpen} onToggle={() => setMachineOpen(!machineOpen)} />}
-        {incident && machineOpen && (
-          <div className="panel-body machine-body">
-            <IncidentMachine state={incident} now={now} showTape={false} />
+        {incident && (
+          // Stays mounted so it can fold away instead of vanishing; inert keeps the folded copy out of tab order.
+          <div className="collapse" data-open={machineOpen} inert={!machineOpen}>
+            <div>
+              <div className="panel-body machine-body">
+                <IncidentMachine state={incident} now={now} showTape={false} />
+              </div>
+            </div>
           </div>
         )}
         {history && (
