@@ -16,7 +16,7 @@
   --text: #ededed;
   --text-2: #a1a1a1;
   --text-3: #6b6b6b;
-  /* Signature accent: our own controls and brand only, never status (green/amber/red/blue keep their meaning). */
+  /* Signature accent: our own controls and brand only, never status (green/amber/red keep their meaning). */
   --accent: #7c6cff;
   --accent-hover: #9387ff;
   --on-accent: #ffffff;
@@ -45,9 +45,6 @@
   --red: #e5484d;
   --red-text: #ff6369;
   --red-bg: rgba(229, 72, 77, 0.12);
-  --blue: #3e8ef7;
-  --blue-text: #6aa9ff;
-  --blue-bg: rgba(62, 142, 247, 0.12);
   --gray-bar: #2a2a2a;
   --gray-text: #8f8f8f;
   --gray-bg: rgba(255, 255, 255, 0.06);
@@ -260,7 +257,7 @@ a { color: inherit; }
 .status-dot.good { background: var(--green); }
 .status-dot.warn { background: var(--amber); }
 .status-dot.fault { background: var(--red); }
-.status-dot.info { background: var(--blue); }
+.status-dot.info { background: var(--text-2); }
 .status-dot.muted { background: var(--text-3); }
 /* Active faults breathe gently instead of radiating rings. */
 .status-dot.pulse { animation: breathe 2.4s ease-in-out infinite; }
@@ -288,7 +285,6 @@ a { color: inherit; }
 .badge.good { background: var(--green-bg); color: var(--green-text); }
 .badge.warn { background: var(--amber-bg); color: var(--amber-text); }
 .badge.fault { background: var(--red-bg); color: var(--red-text); }
-.badge.info { background: var(--blue-bg); color: var(--blue-text); }
 
 .result { font-family: var(--font-mono); font-size: 12.5px; font-weight: 500; }
 .result.good { color: var(--green-text); }
@@ -305,9 +301,8 @@ a { color: inherit; }
 /* A faint status light falling from the top edge, like the button highlight. Neutral tiles get none. */
 .metric[data-tone="fault"], .lit.fault { --hue: var(--red); }
 .metric[data-tone="warn"], .lit.warn { --hue: var(--amber); }
-.metric[data-tone="info"], .lit.info { --hue: var(--blue); }
 .metric[data-tone="good"], .lit.good { --hue: var(--green); }
-.metric:is([data-tone="fault"], [data-tone="warn"], [data-tone="info"], [data-tone="good"]), .lit:is(.fault, .warn, .info, .good) {
+.metric:is([data-tone="fault"], [data-tone="warn"], [data-tone="good"]), .lit:is(.fault, .warn, .good) {
   background: linear-gradient(180deg, color-mix(in srgb, var(--hue) var(--light-fall), transparent) 0%, transparent 55%), var(--surface);
 }
 .metric-label { display: flex; align-items: center; gap: 8px; }
@@ -333,7 +328,7 @@ a { color: inherit; }
 .latency-range { background: var(--gray-bar); }
 .range-span { position: absolute; top: 0; bottom: 0; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--text-3) 55%, transparent); }
 .range-dot { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--text-2); box-shadow: 0 0 0 2px var(--surface); }
-.range-tick { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--blue-text); }
+.range-tick { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text); }
 
 /* ---------- Panels & tables ---------- */
 .panel { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--panel-shadow); }
@@ -420,15 +415,16 @@ a { color: inherit; }
 .banner.fault svg, .banner.fault strong { color: var(--red-text); }
 
 /* ---------- Scheduled outage drill ---------- */
-/* Blue, not red: the drill is information about a planned event. Real failures keep the status colours. */
+/* A neutral chip: the drill is information about a planned event, not a status. Real failures keep the status colours. */
 .drill-tag {
   display: inline-flex; align-items: center; gap: 4px; height: 18px; margin-left: 8px; padding: 0 6px; vertical-align: 1px;
-  border: 1px solid color-mix(in srgb, var(--blue) 40%, transparent); border-radius: var(--radius-pill);
-  background: var(--blue-bg); color: var(--blue-text); font-size: 11px; font-weight: 500; letter-spacing: 0.02em;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-pill);
+  background: transparent; color: var(--text-2); font-size: 11px; font-weight: 500; letter-spacing: 0.02em;
 }
+.drill-tag svg { color: var(--text-3); }
 .title-row .drill-tag { height: 22px; margin-left: 0; padding: 0 8px; font-size: 12px; }
 .drill-line { display: block; margin-top: 2px; font-size: 12px; color: var(--text-3); }
-.drill-line b { font-family: var(--font-mono); font-weight: 500; font-variant-numeric: tabular-nums; color: var(--blue-text); }
+.drill-line b { font-family: var(--font-mono); font-weight: 500; font-variant-numeric: tabular-nums; color: var(--text); }
 .drill-line.drill-active { color: var(--amber-text); }
 .drill-line.drill-active b { color: var(--amber-text); }
 
@@ -546,7 +542,7 @@ a { color: inherit; }
 .segment.down { background: var(--red); }
 .segment.disagreement { background: var(--amber); }
 .segment.no-data { background: var(--no-data); }
-.segment.pending { background: var(--blue); }
+.segment.pending { background: var(--text-2); }
 .segment.unscheduled, .segment.empty { background: repeating-linear-gradient(135deg, var(--hatch-a) 0 4px, var(--hatch-b) 4px 8px); }
 .evidence-legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 12px; margin: 14px 0 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--text-2); font-variant-numeric: tabular-nums; }
 .evidence-legend li { display: flex; align-items: center; gap: 8px; }
@@ -555,7 +551,7 @@ a { color: inherit; }
 .evidence-legend i.down { background: var(--red); }
 .evidence-legend i.disagreement { background: var(--amber); }
 .evidence-legend i.no-data { background: var(--no-data); }
-.evidence-legend i.pending { background: var(--blue); }
+.evidence-legend i.pending { background: var(--text-2); }
 .evidence-legend i.unscheduled { background: repeating-linear-gradient(135deg, var(--text-3) 0 2px, var(--hatch-b) 2px 4px); }
 
 /* ---------- Incidents & limits ---------- */
@@ -670,9 +666,6 @@ a { color: inherit; }
   --red: #dc3b41;
   --red-text: #c22b30;
   --red-bg: rgba(220, 59, 65, 0.09);
-  --blue: #2f7de6;
-  --blue-text: #1f63c4;
-  --blue-bg: rgba(47, 125, 230, 0.1);
   --gray-bar: #e6e6e3;
   --gray-text: #75756f;
   --gray-bg: rgba(0, 0, 0, 0.045);
@@ -690,7 +683,7 @@ a { color: inherit; }
   color-scheme: light;
 }
 :root[data-theme="light"] { --light-fall: 5%; }
-:root[data-theme="light"] .metric:not([data-tone="fault"], [data-tone="warn"], [data-tone="info"], [data-tone="good"]) { box-shadow: var(--panel-shadow); }
+:root[data-theme="light"] .metric:not([data-tone="fault"], [data-tone="warn"], [data-tone="good"]) { box-shadow: var(--panel-shadow); }
 :root[data-theme="light"] .timeline-span { background: color-mix(in srgb, var(--red) 85%, var(--surface)); }
 :root[data-theme="light"] .chaos-inline, :root[data-theme="light"] .trace-panel, :root[data-theme="light"] .table th { background: #fafaf8; }
 :root[data-theme="light"] .hero::before { background: radial-gradient(circle, rgba(0, 0, 0, 0.07) 1px, transparent 1.2px) 0 0 / 14px 14px; }
@@ -925,13 +918,13 @@ a { color: inherit; }
 .machine-node.current.good rect:not(.machine-halo) { stroke: var(--green); fill: rgba(48, 164, 108, 0.14); }
 .machine-node.current.warn rect:not(.machine-halo) { stroke: var(--amber); fill: rgba(245, 165, 36, 0.14); }
 .machine-node.current.fault rect:not(.machine-halo) { stroke: var(--red); fill: rgba(229, 72, 77, 0.16); }
-.machine-node.current.info rect:not(.machine-halo) { stroke: var(--blue); fill: rgba(62, 142, 247, 0.14); }
+.machine-node.current.info rect:not(.machine-halo) { stroke: var(--text-2); fill: rgba(255, 255, 255, 0.05); }
 .machine-node.current .machine-sub { fill: var(--text-2); }
 .machine-halo { fill: none; stroke-width: 1; opacity: 0.6; animation: halo 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
 .machine-node.good .machine-halo { stroke: var(--green); }
 .machine-node.warn .machine-halo { stroke: var(--amber); }
 .machine-node.fault .machine-halo { stroke: var(--red); }
-.machine-node.info .machine-halo { stroke: var(--blue); }
+.machine-node.info .machine-halo { stroke: var(--text-2); }
 .machine-edge path { fill: none; stroke: var(--border-strong); stroke-width: 1.25; }
 .machine-arrowhead { fill: var(--border-strong); }
 .machine-label { fill: var(--text-3); font-size: 11px; text-anchor: middle; font-family: var(--font-mono); paint-order: stroke; stroke: var(--surface); stroke-width: 6px; stroke-linejoin: round; }

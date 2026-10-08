@@ -198,7 +198,7 @@ export function MonitorDetailPage() {
           value={report?.latency.p50Ms != null ? milliseconds(report.latency.p50Ms) : "—"}
           suffix={report?.latency.p95Ms != null ? `p95 ${milliseconds(report.latency.p95Ms)}` : undefined}
           hint={report ? (report.latency.p50Ms != null ? `p50 of ${count(report.latency.sampleCount)} HTTP responses` : `Needs ${report.latency.minimumSamples} HTTP responses`) : undefined}
-          tone="info"
+          tone="muted"
         />
         <Metric
           label="error budget · 7d"

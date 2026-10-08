@@ -34,7 +34,7 @@ export function TraceView({ trace }: { trace: ExecutionTrace }) {
   const [view, setView] = useState<View>("timeline");
   const { rows, totalMs } = useMemo(() => traceRows(trace), [trace]);
   const events = useMemo(() => traceEvents(trace), [trace]);
-  const verdict = trace.verdict ? verdictState(trace.verdict) : { label: "Pending", tone: "info" as const };
+  const verdict = trace.verdict ? verdictState(trace.verdict) : { label: "Pending", tone: "muted" as const };
   const t0 = new Date(trace.scheduledAt).getTime();
   const [hover, setHover] = useState<RowHover | null>(null);
   const axis = useRef<HTMLDivElement>(null);
