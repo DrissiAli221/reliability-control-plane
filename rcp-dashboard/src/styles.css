@@ -714,7 +714,7 @@ a { color: inherit; }
   --raise-sheen: linear-gradient(180deg, #ffffff, #fafafb);
 }
 :root[data-theme="light"] body { background: linear-gradient(180deg, #f6f6f7, #f1f1f3) fixed; background-color: #f4f4f5; }
-:root[data-theme="light"] .sidebar { background: transparent; }
+:root[data-theme="light"] .sidebar { background: #fbfbfc; } /* near-white: between the grey page and the white cards */
 :root[data-theme="light"] :is(.panel, .metric-grid, .banner) { border-color: var(--card-border); box-shadow: var(--card-shadow); }
 :root[data-theme="light"] .panel-header { background: linear-gradient(180deg, #ffffff, #fcfcfd); }
 /* The tiles' own hairlines stay (grid gap); the whole grid is one card. */
