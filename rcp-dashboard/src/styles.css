@@ -1172,13 +1172,15 @@ a { color: inherit; }
 .pulse { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
 .pulse-readout { min-height: 16px; line-height: 16px; }
 .pulse-readout b { color: var(--text); font-weight: 500; }
-.pulse-bars { display: flex; gap: 2px; height: 36px; }
+.pulse-bars { position: relative; display: flex; gap: 2px; height: 36px; }
 .pulse-bar {
   flex: 1; min-width: 2px; display: flex; flex-direction: column; overflow: hidden; background: var(--gray-bar);
   transform-origin: bottom; animation: grow 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both; transition: opacity 120ms;
 }
-/* Empty time is a thin baseline, healthy time is full green, and a column that also holds failures steps its green back so the failure leads. */
-.pulse-bar.idle { background: linear-gradient(var(--gray-bar), var(--gray-bar)) bottom / 100% 2px no-repeat; animation: none; }
+/* Empty time is an explicit hatched cell (the same hatch as "No data" on the latency chart); healthy time is full green, and a column that also holds failures steps its green back so the failure leads. */
+.pulse-bar.idle { background: repeating-linear-gradient(135deg, var(--border-strong) 0 1px, transparent 1px 5px); animation: none; }
+.pulse-idle-label { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; overflow: hidden; pointer-events: none; font-size: 11px; color: var(--text-3); }
+.pulse-idle-label i { padding: 1px 6px; font-style: normal; white-space: nowrap; background: var(--surface); border: 1px solid var(--border); }
 .pulse-bar i { display: block; flex-basis: 0; min-height: 0; }
 .pulse-bar i + i { box-shadow: 0 -1px 0 var(--surface); }
 .pulse-bar i.up { background: var(--green); }
@@ -1517,6 +1519,11 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .incident-band-fill { fill: color-mix(in srgb, var(--red) 8%, transparent); }
 .incident-band-hatch { stroke: color-mix(in srgb, var(--red) 30%, transparent); stroke-width: 1.5; }
 .incident-band-edge { stroke: color-mix(in srgb, var(--red) 75%, transparent); stroke-width: 1; }
+/* Missing data on the latency chart: an opaque surface with a light diagonal hatch, so held values never show. */
+.gap-band-fill { fill: var(--surface); }
+.gap-band-hatch { stroke: var(--border-strong); stroke-width: 1; opacity: 0.7; }
+.gap-band-tag { stroke: var(--border); stroke-width: 1; }
+.gap-band-label { fill: var(--text-3); font-family: var(--font-mono); font-size: 11px; }
 .latency-chart-canvas { position: relative; height: 220px; }
 .latency-chart-canvas > * { height: 100%; }
 

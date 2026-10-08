@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LatencyChart } from "./LatencyChart";
+import { latencyRows } from "./latencyRows";
 import type { LatencyHeatmap } from "../types";
 
 afterEach(cleanup);
@@ -57,5 +58,23 @@ describe("LatencyChart", () => {
       regions: heatmap.regions.map(({ region, samples, counts }) => ({ region, samples, counts })) as LatencyHeatmap["regions"],
     }} range={24} onRangeChange={() => {}} now={now} />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("keeps a row for every column and holds the last known value across a gap", () => {
+    const rows = latencyRows(heatmap, heatmap.regions[0], false);
+    expect(rows).toHaveLength(48);
+    expect(rows.slice(0, 4).map((row) => row.gap)).toEqual([false, true, false, true]);
+    expect(rows[1]).toMatchObject({ p50: 120, p95: 300, gap: true });
+    expect(rows[2]).toMatchObject({ p50: 140, p95: 310, gap: false });
+    expect(rows[47]).toMatchObject({ p50: 140, p95: 310, gap: true });
+    // The time scale is unchanged: columns stay half an hour apart from the window start.
+    expect(rows[47].start - rows[0].start).toBe(47 * 1800 * 1000);
+  });
+
+  it("gives leading gaps the first known value", () => {
+    const leading = { ...heatmap.regions[0], p50Ms: columns([null, null, 80]), p95Ms: columns([null, null, 160]) };
+    const rows = latencyRows(heatmap, leading, false);
+    expect(rows[0]).toMatchObject({ p50: 80, p95: 160, gap: true });
+    expect(rows[2].gap).toBe(false);
   });
 });
