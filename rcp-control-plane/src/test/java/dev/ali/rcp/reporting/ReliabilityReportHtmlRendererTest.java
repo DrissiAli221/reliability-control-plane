@@ -77,7 +77,7 @@ class ReliabilityReportHtmlRendererTest {
         assertThat(css).contains("\"Geist\"", "\"Geist Mono\"", "\"Doto\"", "#0a0a0a", "#111111", "#242424",
                 "#30a46c", "#e5484d", "#f5a524", "#ededf0", "#1a7f4b", "#d1342f", "#b86e00", "#dcdce1");
         assertThat(html).contains("<h1 id=\"report-title\">Reliability report</h1>", "Measured availability",
-                "Error budget remaining", "Observed down", "Occurred at · UTC");
+                "Error budget", "Observed down", "Occurred at · UTC");
     }
 
     @Test
@@ -107,7 +107,7 @@ class ReliabilityReportHtmlRendererTest {
         ReliabilityReport report = reportWithEvidence(new BigDecimal("100"), null,
                 new BigDecimal("0.00500"), 0, new BigDecimal("0.00500"));
         String html = renderer.render(report);
-        assertThat(html).contains("INSUFFICIENT_DATA", "Insufficient evidence to judge this SLO",
+        assertThat(html).contains("NO VERDICT", "Insufficient evidence to judge this SLO",
                 "Observed availability is not an SLO pass", "not enough to compute (minimum 20)");
         assertThat(html).doesNotContain("The observed SLO target was met.");
     }

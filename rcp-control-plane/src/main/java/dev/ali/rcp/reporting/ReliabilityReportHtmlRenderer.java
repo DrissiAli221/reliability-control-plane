@@ -146,7 +146,7 @@ public class ReliabilityReportHtmlRenderer {
     public String render(ReliabilityReport report) {
         AvailabilityReport a = report.availability();
         String tone = a.sloMet() == null ? "warn" : a.sloMet() ? "good" : "bad";
-        String decision = a.sloMet() == null ? "INSUFFICIENT_DATA" : a.sloMet() ? "MET" : "MISSED";
+        String decision = a.sloMet() == null ? "NO VERDICT" : a.sloMet() ? "MET" : "MISSED";
         StringBuilder html = new StringBuilder(96000);
         html.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
@@ -179,7 +179,7 @@ public class ReliabilityReportHtmlRenderer {
         ReportErrorBudget budget = report.errorBudget();
         boolean overspent = budget.remainingExecutions().signum() < 0;
         // An overspent budget reads as how far over it is, never as a negative count of checks left.
-        metric(html, "Error budget remaining",
+        metric(html, "Error budget",
                 oneDecimal(overspent ? budget.remainingExecutions().negate() : budget.remainingExecutions()),
                 overspent ? checks(budget.remainingExecutions().negate()) + " over budget"
                         : "of " + oneDecimal(budget.allowedBadExecutions()) + " checks left",
