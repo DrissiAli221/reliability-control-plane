@@ -237,7 +237,7 @@ a { color: inherit; }
 .button:disabled, .icon-button.bordered:disabled { box-shadow: inset 0 0 0 1px var(--lift-ring); }
 .button.primary:disabled { box-shadow: inset 0 0 0 1px var(--lift-ring-accent); }
 .segmented button[aria-pressed="true"], .segmented button[aria-checked="true"] { position: relative; }
-.button:active:not(:disabled), .icon-button.bordered:active:not(:disabled), .segmented button:active { background-image: none; box-shadow: var(--lift-pressed); }
+.button:active:not(:disabled), .icon-button.bordered:active:not(:disabled), .segmented button[aria-pressed="true"]:active, .segmented button[aria-checked="true"]:active { background-image: none; box-shadow: var(--lift-pressed); }
 .button.primary:active:not(:disabled) { box-shadow: var(--lift-pressed-accent); }
 .spin { animation: spin 0.9s linear infinite; }
 .inline-action { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; }
@@ -336,11 +336,14 @@ a { color: inherit; }
 .search:focus-within { border-color: var(--text-3); }
 .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font-size: 13.5px; }
 .search input::placeholder { color: var(--text-3); }
-.segmented { display: inline-flex; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg); }
+.segmented { display: inline-flex; overflow: hidden; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg); }
 .segmented button { height: 28px; padding: 0 10px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--text-2); font-size: 12.5px; font-weight: 500; transition: background 120ms, color 120ms, transform 100ms ease-out; }
 .segmented button:hover { color: var(--text); }
 .segmented button + button { border-left: 1px solid var(--border); }
-.segmented button[aria-pressed="true"] { background: var(--surface-2); color: var(--accent-text); }
+/* The selected segment keeps the button depth recipe. background-color (not the shorthand) so the sheen from the depth rule survives,
+   and the strip clips the outer shadow so it cannot spill below and make the segment look shifted down. */
+.segmented button[aria-pressed="true"] { background-color: var(--surface-2); color: var(--accent-text); }
+.segmented button[aria-pressed="true"]:hover { background-color: var(--surface-hover); }
 
 .table-scroll { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
