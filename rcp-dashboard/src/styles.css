@@ -636,7 +636,7 @@ a { color: inherit; }
 :root[data-theme="light"] {
   --bg: #f4f4f5;
   --bg-sidebar: #f4f4f5;
-  --surface: #ffffff;
+  --surface: #fdfdfd;
   --surface-2: #fafafa;
   --surface-hover: #f4f4f5;
   --border: #e6e6e9;
@@ -709,20 +709,16 @@ a { color: inherit; }
 /* ---- Light depth: modules are separate white cards floating on the page, with gaps and soft layered shadows.
    Dark keeps its touching hardware-panel grid. Cells inside a module (tiles, steps, nodes, rows) still share hairlines. ---- */
 :root[data-theme="light"] {
-  --card-border: rgba(10, 10, 11, 0.07);
+  --card-border: var(--border); /* modules touch and share this line, as in dark */
   --card-shadow: 0 1px 2px rgba(10, 10, 11, 0.04), 0 2px 8px -2px rgba(10, 10, 11, 0.06), 0 12px 24px -12px rgba(10, 10, 11, 0.08);
   --raise-sheen: linear-gradient(180deg, #ffffff, #fafafb);
 }
 :root[data-theme="light"] body { background: linear-gradient(180deg, #f6f6f7, #f1f1f3) fixed; background-color: #f4f4f5; }
-:root[data-theme="light"] .sidebar { background: #fbfbfc; } /* near-white: between the grey page and the white cards */
+:root[data-theme="light"] .sidebar { background: #f9f9fa; } /* near-white: between the grey page and the cards */
 :root[data-theme="light"] :is(.panel, .metric-grid, .banner) { border-color: var(--card-border); box-shadow: var(--card-shadow); }
-:root[data-theme="light"] .panel-header { background: linear-gradient(180deg, #ffffff, #fcfcfd); }
+:root[data-theme="light"] .panel-header { background: linear-gradient(180deg, #fefefe, var(--surface)); }
 /* The tiles' own hairlines stay (grid gap); the whole grid is one card. */
 :root[data-theme="light"] .metric-grid { border-color: var(--card-border); background: var(--border); }
-:root[data-theme="light"] .main :is(.panel, .split, .metric-grid, .banner) + :is(.panel, .split, .metric-grid, .banner) { margin-top: 12px; }
-:root[data-theme="light"] .split { gap: 12px; }
-:root[data-theme="light"] .split > .panel + .panel { margin-left: 0; margin-top: 0; }
-:root[data-theme="light"] .hero.incident { z-index: auto; }
 /* Raised inner cells: a faint top-to-bottom sheen and a hairline. Status tints (.lit, [data-tone]) keep their own background. */
 :root[data-theme="light"] :is(.fanout-node, .chip) { background: var(--raise-sheen); }
 :root[data-theme="light"] .machine-cells li.current,
@@ -733,9 +729,6 @@ a { color: inherit; }
 :root[data-theme="light"] .topbar::after { display: none; }
 :root[data-theme="light"] .topbar.scrolled { box-shadow: 0 4px 12px -6px rgba(10, 10, 11, 0.08); }
 :root[data-theme="light"] .statusbar { border-top-color: transparent; box-shadow: 0 -1px 0 rgba(10, 10, 11, 0.06), 0 -4px 12px -8px rgba(10, 10, 11, 0.06); }
-@media (max-width: 1100px) {
-  :root[data-theme="light"] .split > .panel + .panel { margin-left: 0; margin-top: 0; }
-}
 
 /* ---------- Public status page (light) ---------- */
 .status-page {
