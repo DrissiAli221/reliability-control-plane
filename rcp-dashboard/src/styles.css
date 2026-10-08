@@ -1196,8 +1196,10 @@ a { color: inherit; }
 }
 /* Empty time is an explicit hatched cell (the same hatch as "No data" on the latency chart); healthy time is full green, and a column that also holds failures steps its green back so the failure leads. */
 .pulse-bar.idle { background: repeating-linear-gradient(135deg, var(--border-strong) 0 1px, transparent 1px 5px); animation: none; }
-.pulse-idle-label { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; overflow: hidden; pointer-events: none; font-size: 11px; color: var(--text-3); }
+.pulse-idle-label { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; overflow: hidden; pointer-events: none; font-size: 11px; color: var(--text-3); container-type: inline-size; }
 .pulse-idle-label i { padding: 1px 6px; font-style: normal; white-space: nowrap; background: var(--surface); border: 1px solid var(--border); }
+/* Drop the tag when the run is too narrow to hold it, rather than clipping it to "No". */
+@container (max-width: 64px) { .pulse-idle-label i { display: none; } }
 .pulse-bar i { display: block; flex-basis: 0; min-height: 0; }
 .pulse-bar i + i { box-shadow: 0 -1px 0 var(--surface); }
 .pulse-bar i.up { background: var(--green); }
