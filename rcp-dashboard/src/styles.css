@@ -146,9 +146,9 @@ a { color: inherit; }
 /* Translucent material: the page scrolls underneath. The edge is a fade that appears only once something is underneath. */
 .topbar {
   position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  height: 40px; padding: 0 clamp(20px, 4vw, 48px);
+  height: 44px; padding: 0 clamp(20px, 4vw, 48px);
   background: color-mix(in srgb, var(--bg) 72%, transparent); backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%);
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--track-label); color: var(--text-3); white-space: nowrap;
+  font-family: var(--font-sans); font-size: 13px; letter-spacing: 0; color: var(--text-3); white-space: nowrap;
 }
 .topbar::after {
   content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 16px; pointer-events: none; opacity: 0; transition: opacity 160ms;
@@ -160,9 +160,11 @@ a { color: inherit; }
 .topbar-crumb { display: inline-flex; align-items: center; min-width: 0; }
 .topbar-crumb a { color: var(--text-3); text-decoration: none; }
 .topbar-crumb a:hover { color: var(--text); }
-.topbar-crumb [aria-current] { color: var(--text-2); }
-.topbar-sep { margin: 0 8px; color: var(--border-strong); }
-.topbar-clock { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.topbar-crumb [aria-current] { color: var(--text); font-weight: 500; }
+.topbar-sep { margin: 0 10px; color: var(--border-strong); font-family: var(--font-mono); }
+.topbar-clock { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.topbar-clock time { color: var(--ink-dots); font-family: var(--font-dots); font-size: 15px; font-weight: 800; letter-spacing: 0; }
+.topbar-clock.stale time { color: var(--amber-text); }
 .topbar-clock.stale { color: var(--amber-text); }
 @media (prefers-reduced-transparency: reduce) {
   .topbar { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
@@ -193,6 +195,8 @@ a { color: inherit; }
 
 .live { display: inline-flex; align-items: center; gap: 8px; margin-right: 4px; font-size: 12.5px; color: var(--text-2); white-space: nowrap; }
 .live.stale { color: var(--amber-text); }
+/* The top bar carries the live state on desktop; the page keeps it only where there is no top bar, and always on failure. */
+.live.fresh { display: none; }
 /* A fixed slot for the changing age, so "just now" → "12s ago" never shifts the buttons beside it. */
 .live-age { display: inline-block; min-width: 8.5ch; font-variant-numeric: tabular-nums; }
 
@@ -742,6 +746,7 @@ a { color: inherit; }
   .nav-optional, .nav-external { display: none; }
   .main { padding: 24px 16px 48px; }
   .topbar { display: none; }
+  .live.fresh { display: inline-flex; }
   .page-header { flex-direction: column; align-items: stretch; }
   .page-actions { justify-content: flex-start; }
   .toolbar { flex-direction: column; align-items: stretch; }
