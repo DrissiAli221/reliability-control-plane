@@ -1500,45 +1500,49 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 
 /* ---------- Latest check fan-out: control plane → every region → one verdict ---------- */
 .fanout {
-  display: grid; grid-template-columns: minmax(140px, 0.75fr) 56px minmax(0, 1.6fr) 56px minmax(170px, 0.95fr);
+  display: grid; grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1.2fr) 56px minmax(0, 1fr);
   align-items: stretch; padding: 22px 16px;
   background: radial-gradient(circle, var(--dot) 1px, transparent 1.2px) 0 0 / 16px 16px;
 }
-.fanout-node { display: grid; align-content: center; gap: 2px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
-.fanout-source strong { font-size: 13px; font-weight: 600; }
-.fanout-source .mono { font-size: 11.5px; }
+.fanout-node { display: grid; align-content: center; gap: 4px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); min-width: 0; }
+.fanout-source { gap: 5px; }
+.fanout-time { font-size: 15px; color: var(--text); }
+.fanout-meta { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fanout-regions { display: grid; align-content: center; margin: 0; padding: 0; list-style: none; }
 .fanout-region + .fanout-region { margin-top: -1px; }
-.fanout-region { position: relative; grid-template-columns: minmax(0, 1fr) auto; align-items: center; height: 56px; padding: 0 12px 0 15px; overflow: hidden; }
-/* The left edge carries what the region saw. */
-.fanout-region::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 2px; background: var(--text-3); }
-.fanout-region.good::before { background: var(--green); }
-.fanout-region.fault::before { background: var(--red); }
-.fanout-region-name { display: grid; gap: 1px; min-width: 0; }
-.fanout-region-name .mono { font-size: 12.5px; color: var(--text); }
-.fanout-region-name .subtle { font-size: 11.5px; }
-.fanout-region-result { display: grid; justify-items: end; gap: 1px; }
-.fanout-region-result .mono { font-size: 11.5px; color: var(--text-2); }
-/* How much of the timeout the response used. */
-.fanout-meter { position: absolute; left: 15px; right: 12px; bottom: 6px; height: 2px; background: var(--gray-bar); }
-.fanout-meter i { display: block; height: 100%; background: color-mix(in srgb, var(--text) 40%, transparent); }
-.fanout-region.fault .fanout-meter i { background: var(--red); }
+.fanout-region { gap: 6px; height: 56px; padding: 0 12px; overflow: hidden; }
+.fanout-region-top, .fanout-region-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.fanout-region-bottom { justify-content: flex-start; gap: 8px; }
+.fanout-region-name { display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap; overflow: hidden; }
+.fanout-region-name .mono { font-size: 12px; color: var(--text); }
+.fanout-region-name .subtle { font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+.fanout-status { flex: none; font-size: 11px; color: var(--text-3); }
+.fanout-status.good { color: var(--green-text, var(--green)); }
+.fanout-status.fault { color: var(--red-text, var(--red)); }
+.fanout-latency { flex: none; display: inline-flex; align-items: baseline; color: var(--text); }
+.fanout-latency b { font-family: var(--font-dots); font-size: 20px; font-weight: 800; line-height: 1; letter-spacing: 0; font-variant-numeric: tabular-nums; color: var(--ink-dots); }
+.fanout-latency .mono { font-size: 11px; color: var(--text-3); }
+.fanout-meter { --hue: var(--text-3); flex: 1 1 auto; min-width: 40px; display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 1px; height: 10px; border: 1px solid var(--border); background: var(--border); }
+.fanout-meter.good { --hue: var(--green); }
+.fanout-meter.warn { --hue: var(--amber); }
+.fanout-meter.fault { --hue: var(--red); }
+.fanout-meter i { position: relative; display: block; background: var(--surface); }
+.fanout-meter i b { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--hue) 70%, transparent); transform-origin: left; animation: fanout-fill 400ms ease-out both; }
+@keyframes fanout-fill { from { transform: scaleX(0); } }
+.fanout-of { flex: none; font-size: 10px; color: var(--text-3); white-space: nowrap; }
 .fanout-links { display: block; align-self: center; overflow: visible; }
 .fanout-link { fill: none; stroke: var(--border-strong); stroke-width: 1.5; stroke-dasharray: 1; stroke-dashoffset: 1; animation: fanout-draw 650ms cubic-bezier(0.3, 0.7, 0.2, 1) forwards; }
 .fanout-links.out .fanout-link { animation-delay: 300ms; }
 .fanout-link.good { stroke: color-mix(in srgb, var(--green) 55%, var(--border-strong)); }
 .fanout-link.fault { stroke: color-mix(in srgb, var(--red) 70%, var(--border-strong)); }
 @keyframes fanout-draw { to { stroke-dashoffset: 0; } }
-.fanout-verdict { --hue: var(--text-3); gap: 4px; padding: 12px 14px; border-color: color-mix(in srgb, var(--hue) 40%, var(--border)); background: radial-gradient(ellipse at 0 0, color-mix(in srgb, var(--hue) 14%, transparent), transparent 70%), var(--surface-2); }
-.fanout-verdict.good { --hue: var(--green); }
-.fanout-verdict.fault { --hue: var(--red); }
-.fanout-verdict.warn { --hue: var(--amber); }
-.fanout-verdict-word { font-family: var(--font-dots); font-size: 30px; font-weight: 800; line-height: var(--lead-display); letter-spacing: 0; color: color-mix(in srgb, var(--hue) 70%, var(--text)); }
-.fanout-sentence { font-size: 12px; line-height: 1.45; color: var(--text-2); }
+.fanout-verdict { --hue: var(--text-3); gap: 4px; padding: 12px 14px; border-left: 2px solid var(--hue); }
+.fanout-verdict-word { font-family: var(--font-dots); font-size: 30px; font-weight: 800; line-height: var(--lead-display); letter-spacing: 0; color: var(--hue); }
+.fanout-sentence { font-size: 13px; line-height: 1.45; color: var(--text-2); }
 .text-button { display: inline-flex; align-items: center; gap: 4px; margin-left: 12px; padding: 0; border: 0; background: none; font-size: 12.5px; color: var(--accent-text); }
 .text-button:hover { color: var(--accent-strong); }
-@media (max-width: 760px) {
-  .fanout { grid-template-columns: 1fr; }
+@media (max-width: 860px) {
+  .fanout { grid-template-columns: minmax(0, 1fr); }
   .fanout > * + *, .fanout-regions + .fanout-node { margin-top: -1px; }
   .fanout-links { display: none; }
 }
@@ -1587,6 +1591,7 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
   .main { animation: fade 160ms ease-out; }
   .row-link, .decision-times button, .machine-body, .trace { animation-duration: 160ms; }
   .fanout-link { animation: none; stroke-dashoffset: 0; }
+  .fanout-meter i b { animation: none; }
   .spin { animation: breathe 1.4s ease-in-out infinite; }
   .status-dot.pulse, .drill-steps li.now .drill-step-index { animation: none; }
   .led i { animation: none; opacity: 0.85; }

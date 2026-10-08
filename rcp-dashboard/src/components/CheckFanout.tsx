@@ -8,6 +8,7 @@ const PLACES: Record<string, string> = { "eu-west-1": "Ireland", "us-east-1": "N
 const NODE_HEIGHT = 56;
 const NODE_GAP = -1; // region nodes share one hairline
 const LINK_WIDTH = 56;
+const METER_CELLS = 10;
 
 const VERDICT_TONE: Record<Verdict, Tone> = { UP: "good", DOWN: "fault", DISAGREEMENT: "warn", NO_DATA: "muted" };
 const VERDICT_WORD: Record<Verdict, string> = { UP: "Up", DOWN: "Down", DISAGREEMENT: "Disagreed", NO_DATA: "No data" };
@@ -43,6 +44,8 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
   const mid = height / 2;
   const center = (i: number) => i * (NODE_HEIGHT + NODE_GAP) + NODE_HEIGHT / 2;
   const tone = VERDICT_TONE[check.verdict];
+  const scheduledClock = `${new Date(check.scheduledAt).toISOString().slice(11, 19)} UTC`;
+  const timeoutLabel = timeoutMs % 1000 === 0 ? `${timeoutMs / 1000} s` : milliseconds(timeoutMs);
   const curve = (from: number, to: number) => `M0 ${from} C ${LINK_WIDTH / 2} ${from}, ${LINK_WIDTH / 2} ${to}, ${LINK_WIDTH} ${to}`;
 
   return (
@@ -57,8 +60,8 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
       <div className="fanout" style={{ ["--fanout-height" as string]: `${height}px` }}>
         <div className="fanout-node fanout-source">
           <span className="fanout-label">control plane</span>
-          <strong>Scheduled a check</strong>
-          <span className="mono subtle">every {intervalLabel}</span>
+          <strong className="fanout-time mono">{scheduledClock}</strong>
+          <span className="fanout-meta mono">{check.executionId.slice(0, 8)} · every {intervalLabel}</span>
         </div>
 
         <svg key={`in-${check.executionId}`} className="fanout-links" width={LINK_WIDTH} height={height} aria-hidden="true">
@@ -71,21 +74,32 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
           {results.map((result) => {
             const resultTone = outcomeTone(result.outcome, result.httpStatus);
             const share = Math.min(1, result.latencyMs / Math.max(timeoutMs, 1));
+            const meterTone = resultTone === "fault" ? "fault" : resultTone === "muted" ? "muted" : share > 0.5 ? "warn" : "good";
             return (
               <li key={result.region} className={`fanout-node fanout-region ${resultTone}`}>
-                <div className="fanout-region-name">
-                  <span className="mono">{result.region}</span>
-                  {PLACES[result.region] && <span className="subtle">{PLACES[result.region]}</span>}
-                </div>
-                <div className="fanout-region-result">
-                  <span className={`result ${resultTone}`}>
+                <div className="fanout-region-top">
+                  <span className="fanout-region-name">
+                    <span className="mono">{result.region}</span>
+                    {PLACES[result.region] && <span className="subtle">{PLACES[result.region]}</span>}
+                  </span>
+                  <span className={`fanout-status mono ${resultTone}`}>
                     {result.outcome === "HTTP_RESPONSE" ? `HTTP ${outcomeLabel(result.outcome, result.httpStatus)}` : outcomeLabel(result.outcome, result.httpStatus)}
                   </span>
-                  <span className="mono">{milliseconds(result.latencyMs)}</span>
                 </div>
-                <span className="fanout-meter" title={`${milliseconds(result.latencyMs)} of the ${milliseconds(timeoutMs)} timeout`}>
-                  <i style={{ width: `${Math.max(2, share * 100)}%` }} />
-                </span>
+                <div className="fanout-region-bottom">
+                  <span className="fanout-latency"><b>{Math.round(result.latencyMs)}</b><span className="mono"> ms</span></span>
+                  <span
+                    key={check.executionId}
+                    className={`fanout-meter ${meterTone}`}
+                    title={`${milliseconds(result.latencyMs)} of the ${milliseconds(timeoutMs)} timeout`}
+                  >
+                    {Array.from({ length: METER_CELLS }, (_, cell) => {
+                      const fill = Math.min(1, Math.max(0, share * METER_CELLS - cell));
+                      return <i key={cell}>{fill > 0 && <b style={{ width: `${fill * 100}%` }} />}</i>;
+                    })}
+                  </span>
+                  <span className="fanout-of mono">of {timeoutLabel}</span>
+                </div>
               </li>
             );
           })}
@@ -97,7 +111,7 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
           ))}
         </svg>
 
-        <div className={`fanout-node fanout-verdict ${tone}`}>
+        <div className={`fanout-node fanout-verdict lit ${tone}`}>
           <span className="fanout-label">verdict</span>
           <strong className="fanout-verdict-word">{VERDICT_WORD[check.verdict]}</strong>
           <span className="fanout-sentence">{verdictSentence(check.verdict, results.length)}</span>
