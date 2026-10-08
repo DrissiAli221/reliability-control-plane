@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { isLocalAuth, login, safeNext, startDemoSession } from "../auth";
 import { BrandMark } from "../components/AppShell";
+import { StatusDot } from "../components/StatusBadge";
 import { drillPhase, utcClock } from "../drill";
 import { useNow } from "../useLiveData";
 
@@ -90,7 +91,7 @@ function DemoStatus() {
   const phase = drillPhase(now);
   return (
     <span className="signin-status">
-      <i aria-hidden="true" />
+      <StatusDot tone="good" />
       {phase.active
         ? "Demo live in 2 regions · outage drill running"
         : `Demo live in 2 regions · next drill ${utcClock(phase.nextStart)} UTC`}

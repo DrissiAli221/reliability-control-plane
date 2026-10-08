@@ -11,6 +11,7 @@ import { toggleTheme, useTheme } from "../theme";
 import { CommandPalette, PaletteButton } from "./CommandPalette";
 import { IncidentToasts } from "./IncidentToasts";
 import { StatusBar } from "./StatusBar";
+import { StatusDot } from "./StatusBadge";
 import { TopBar } from "./TopBar";
 import { Tour } from "./Tour";
 
@@ -26,7 +27,7 @@ export function BrandMark() {
   );
 }
 
-/** One square light per probe region: lit green when it delivered results in the pipeline window, grey otherwise. */
+/** One dot-matrix light per probe region: green when it delivered results in the pipeline window, grey otherwise. */
 function SidebarRegions({ snapshot }: { snapshot: LiveData<PipelineSnapshot> }) {
   const regions = snapshot.data?.regions;
   if (!regions || regions.length === 0) return null;
@@ -38,7 +39,7 @@ function SidebarRegions({ snapshot }: { snapshot: LiveData<PipelineSnapshot> }) 
           const live = region.resultsReceived > 0 && !snapshot.error;
           return (
             <li key={region.region} className={live ? "live-region" : undefined}>
-              <i className="region-light" aria-hidden="true" />
+              <StatusDot tone={live ? "good" : "muted"} />
               <span className="mono">{region.region}</span>
               <span className="region-state">{live ? "reporting" : "quiet"}</span>
             </li>
