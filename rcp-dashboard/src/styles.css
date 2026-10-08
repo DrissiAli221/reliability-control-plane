@@ -716,6 +716,8 @@ a { color: inherit; }
 :root[data-theme="light"] body { background: linear-gradient(180deg, #f6f6f7, #f1f1f3) fixed; background-color: #f4f4f5; }
 :root[data-theme="light"] .sidebar { background: #f9f9fa; } /* near-white: between the grey page and the cards */
 :root[data-theme="light"] :is(.panel, .metric-grid, .banner) { border-color: var(--card-border); box-shadow: var(--card-shadow); }
+:root[data-theme="light"] .table th { background: #efeff1; border-bottom-color: var(--border-strong); color: var(--text-2); } /* title band */
+:where(:root[data-theme="light"] .table tbody tr) { background: #ffffff; } /* data rows; zero specificity so hover and selected still win */
 :root[data-theme="light"] .panel-header { background: linear-gradient(180deg, #fefefe, var(--surface)); }
 /* The tiles' own hairlines stay (grid gap); the whole grid is one card. */
 :root[data-theme="light"] .metric-grid { border-color: var(--card-border); background: var(--border); }
