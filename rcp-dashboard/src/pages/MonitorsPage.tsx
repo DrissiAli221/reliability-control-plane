@@ -137,11 +137,11 @@ export function MonitorsPage() {
       <section className="metric-grid fleet-summary" aria-label="Fleet summary">
         <Metric label="Operational" value={`${summary.operational}`} suffix={`/ ${summary.total - summary.paused}`} tone="good"
           visual={<FleetCells rows={rows} lit={(monitor) => monitor.enabled && monitor.incidentStatus !== "OPEN" && monitor.latestVerdict === "UP"} tone="good" />} />
-        <Metric label="Open incidents" value={`${summary.incidents}`} tone={summary.incidents ? "fault" : "muted"}
+        <Metric label="Open incidents" value={`${summary.incidents}`} hint="Active outages" tone={summary.incidents ? "fault" : "muted"}
           visual={<FleetCells rows={rows} lit={(monitor) => monitor.incidentStatus === "OPEN"} tone="fault" />} />
         <Metric label="Needs attention" value={`${summary.attention}`} hint="Down, disagreement or no data" tone={summary.attention ? "warn" : "muted"}
           visual={<FleetCells rows={rows} lit={(monitor) => monitor.enabled && monitor.incidentStatus !== "OPEN" && monitor.latestVerdict !== "UP" && monitor.latestVerdict !== null} tone="warn" />} />
-        <Metric label="Paused" value={`${summary.paused}`} tone="muted"
+        <Metric label="Paused" value={`${summary.paused}`} hint="Not being checked" tone="muted"
           visual={<FleetCells rows={rows} lit={(monitor) => !monitor.enabled} tone="muted" />} />
       </section>
 
