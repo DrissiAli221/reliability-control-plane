@@ -142,6 +142,26 @@ class ReliabilityReportHtmlRendererTest {
     }
 
     @Test
+    void marksStatusWithDotMatrixBlocksAndTouchingModules() {
+        String html = renderer.render(sampleReport());
+        String nine = "<i></i>".repeat(9);
+        // MET strip, two OPENED and one RESOLVED transition.
+        assertThat(html).contains("<span class=\"status-dot good\" aria-hidden=\"true\">" + nine + "</span>MET",
+                "<span class=\"status-dot bad\" aria-hidden=\"true\">" + nine + "</span>OPENED",
+                "<span class=\"status-dot good\" aria-hidden=\"true\">" + nine + "</span>RESOLVED");
+        assertThat(Pattern.compile("class=\"status-dot ").matcher(html).results().count()).isEqualTo(4);
+        assertThat(html).doesNotContain("●").doesNotContain("::before");
+        assertThat(html).contains("class=\"decision lit\" data-tone=\"good\"", "class=\"metric lit\" data-tone=\"good\"",
+                "gap: 1px", "linear-gradient(180deg, color-mix(in srgb, var(--hue) var(--light-fall), transparent) 0%",
+                "print-color-adjust: exact");
+        String css = html.substring(html.indexOf("<style>"), html.indexOf("</style>"));
+        assertThat(css).doesNotContain("border-left", "border-radius: 2", "box-shadow");
+        // The only rounding left is the dot itself.
+        assertThat(Pattern.compile("border-radius:\\s*([^;}]+)").matcher(css).results().map(m -> m.group(1)).distinct().toList())
+                .containsExactly("50%");
+    }
+
+    @Test
     void formatsValuesForPeople() {
         assertThat(renderer.percent(new BigDecimal("99.72222"))).isEqualTo("99.72%");
         assertThat(renderer.percent(new BigDecimal("99.995"))).isEqualTo("100.00%");

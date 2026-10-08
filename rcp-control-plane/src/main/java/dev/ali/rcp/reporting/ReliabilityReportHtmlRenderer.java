@@ -35,7 +35,7 @@ public class ReliabilityReportHtmlRenderer {
             @media (prefers-color-scheme: light) { :root { color-scheme: light; """ + LIGHT_TOKENS + """
             } }
             * { box-sizing: border-box; }
-            body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-sans);
+            body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; background: var(--bg); color: var(--text); font-family: var(--font-sans);
               font-size: 13px; font-weight: 400; line-height: 1.5; letter-spacing: 0;
               -webkit-font-smoothing: antialiased; font-synthesis: none; }
             h1, h2, h3, p, dl, dd { margin: 0; }
@@ -58,23 +58,34 @@ public class ReliabilityReportHtmlRenderer {
             .target { color: var(--text-2); margin: 5px 0 18px; overflow-wrap: anywhere; }
             .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
             dt { margin-bottom: 4px; } dd { overflow-wrap: anywhere; }
-            .decision { display: flex; align-items: flex-start; gap: 14px; padding: 14px 16px;
-              border: 1px solid var(--border); background: var(--surface); margin-bottom: 18px; }
+            .decision { display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+              border: 1px solid var(--border); background: var(--surface); margin-bottom: -1px; }
             .decision p { color: var(--text-2); }
             .tag { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; color: var(--text); }
-            .tag::before { content: ""; width: 6px; height: 6px; background: currentColor; border-radius: 50%; }
+            /* Status marker: a 3x3 dot-matrix block, the same shape as the dashboard's StatusDot (9px). */
+            .status-dot { --dot-size: 2px; --dot-gap: 1.5px; --dot-color: var(--text-3); display: inline-grid;
+              grid-template-columns: repeat(3, var(--dot-size)); gap: var(--dot-gap); flex: none; }
+            .status-dot i { width: var(--dot-size); height: var(--dot-size); border-radius: 50%; background: var(--dot-color); }
+            .status-dot.good { --dot-color: var(--green); } .status-dot.bad { --dot-color: var(--red); }
+            .status-dot.warn { --dot-color: var(--amber); }
+            /* A faint status light falling from the top edge; neutral modules get none. */
+            .lit[data-tone="good"] { --hue: var(--green); } .lit[data-tone="bad"] { --hue: var(--red); }
+            .lit[data-tone="warn"] { --hue: var(--amber); }
+            .lit[data-tone] { background: linear-gradient(180deg, color-mix(in srgb, var(--hue) var(--light-fall), transparent) 0%,
+              transparent 55%), var(--surface); }
             .good { color: var(--green-text); } .bad { color: var(--red-text); } .warn { color: var(--amber-text); }
             .figure.good, .figure.bad, .figure.warn { color: var(--text); }
-            .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--border); }
+            /* Modules touch: the 1px grid gap shows the container's hairline colour, so dividers survive any wrap. */
+            .metrics, .visuals, .facts { display: grid; gap: 1px; border: 1px solid var(--border); background: var(--border); }
+            .metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
             .metric { padding: 18px; min-width: 0; background: var(--surface); }
-            .metric + .metric { border-left: 1px solid var(--border); }
             .readout { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 18px; margin: 12px 0 10px; }
             .readout span.pair { display: inline-flex; align-items: baseline; gap: 7px; }
             .metric p { color: var(--text-3); }
             .section-heading { display: flex; align-items: baseline; gap: 12px; margin: 28px 0 12px; }
             .section-note { margin-left: auto; }
-            .visuals { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border); }
-            .visual { min-width: 0; padding: 18px; } .visual + .visual { border-left: 1px solid var(--border); }
+            .visuals { grid-template-columns: 1fr 1fr; margin-top: 0; }
+            .visual { min-width: 0; padding: 18px; background: var(--surface); }
             .visual h3 { margin-bottom: 4px; }
             .visual p { color: var(--text-2); }
             .chart { display: block; width: 100%; height: 14px; margin: 12px 0 6px; overflow: visible; }
@@ -85,15 +96,16 @@ public class ReliabilityReportHtmlRenderer {
             .legend b { font-weight: 400; color: var(--text); }
             .coverage { margin: 16px 0 0; } .coverage .chart { margin: 9px 0 6px; }
             .bar-head { margin-top: 18px; } .bar-head + .chart { margin-top: 6px; }
-            .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
-              padding: 18px 0; border-bottom: 1px solid var(--border); margin: 0; }
+            .facts { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: -1px 0 0; }
+            .facts > div { padding: 12px 16px; background: var(--surface); }
+            .facts dd { font-family: var(--font-mono); }
             .policy { margin: 10px 0 0; color: var(--text-2); overflow-wrap: anywhere; }
             table { border-collapse: collapse; width: 100%; }
             th { text-align: left; background: var(--surface-2); }
-            th, td { border-bottom: 1px solid var(--border); padding: 10px 12px; vertical-align: top; }
-            th:first-child, td:first-child { padding-left: 12px; } td.mono { overflow-wrap: anywhere; }
-            .table-wrap { overflow-x: auto; }
-            .empty { padding: 18px 0; color: var(--text-2); border-bottom: 1px solid var(--border); }
+            th, td { border-bottom: 1px solid var(--border); padding: 10px 16px; vertical-align: middle; }
+            tbody tr:last-child td { border-bottom: 0; } td.mono { overflow-wrap: anywhere; }
+            .table-wrap { overflow-x: auto; border: 1px solid var(--border); background: var(--surface); }
+            .empty { padding: 18px 16px; color: var(--text-2); border: 1px solid var(--border); background: var(--surface); }
             .notice { color: var(--amber-text); margin-top: 10px; }
             .limitations { color: var(--text-2); padding-left: 16px; margin: 0; }
             .limitations li { padding-left: 3px; margin: 4px 0; }
@@ -101,8 +113,7 @@ public class ReliabilityReportHtmlRenderer {
               display: flex; justify-content: space-between; gap: 12px; overflow-wrap: anywhere; }
             @media (max-width: 700px) {
               .report { padding: 24px 20px; } .metrics { grid-template-columns: 1fr 1fr; }
-              .metric:nth-child(3) { border-left: 0; } .metric:nth-child(n+3) { border-top: 1px solid var(--border); }
-              .visuals { grid-template-columns: 1fr; } .visual + .visual { border-left: 0; border-top: 1px solid var(--border); }
+              .visuals { grid-template-columns: 1fr; }
               .facts { grid-template-columns: 1fr 1fr; } .meta { grid-template-columns: 1fr; }
               .section-note { display: none; } .decision, footer { flex-wrap: wrap; } .edition { text-align: right; }
             }
@@ -123,10 +134,10 @@ public class ReliabilityReportHtmlRenderer {
               .chart { margin: 3mm 0 2mm; } .coverage { margin-top: 3mm; }
               .coverage .chart { margin: 2mm 0 1mm; }
               .section-heading { margin: 3mm 0 2mm; break-after: avoid; }
-              .facts { padding: 2mm 0; gap: 3mm; }
+              .facts > div { padding: 2mm 3mm; }
               .table-wrap { overflow: visible; }
               th, td { padding: 1.5mm; } thead { display: table-header-group; } tr { break-inside: avoid; }
-              .masthead, .intro, .decision, .metric, .metrics, .visual, .visuals, .facts { break-inside: avoid; }
+              .masthead, .intro, .decision, .metric, .metrics, .visual, .visuals, .facts, .facts > div, .table-wrap { break-inside: avoid; }
               .limitations li { margin: 1mm 0; } footer { margin-top: 3mm; padding-top: 2mm; }
               p, li { orphans: 3; widows: 3; }
             }
@@ -151,8 +162,10 @@ public class ReliabilityReportHtmlRenderer {
         item(html, "Observation window · end exclusive", window(a.from(), a.to()),
                 " data-from=\"" + a.from() + "\" data-to=\"" + a.to() + "\" title=\"" + a.from() + " → " + a.to() + "\"");
         item(html, "Generated", dateTime(report.generatedAt()), " data-value=\"" + report.generatedAt() + "\" title=\"" + report.generatedAt() + "\"");
-        html.append("</dl></section><div class=\"decision\"><span class=\"tag ").append(tone).append("\">")
-                .append(decision).append("</span><p>");
+        html.append("</dl></section><div class=\"decision lit\" data-tone=\"").append(tone).append("\"><span class=\"tag ")
+                .append(tone).append("\">");
+        dot(html, tone);
+        html.append(decision).append("</span><p>");
         if (a.sloMet() == null) {
             html.append("Insufficient evidence to judge this SLO. Observed availability is not an SLO pass.");
         } else {
@@ -221,7 +234,9 @@ public class ReliabilityReportHtmlRenderer {
                 html.append("<tr><td class=\"mono\"><time datetime=\"").append(event.occurredAt()).append("\" title=\"")
                         .append(event.occurredAt()).append("\">").append(timelineTime(event.occurredAt()))
                         .append("</time>")
-                        .append("</td><td><span class=\"tag ").append(eventTone).append("\">").append(escape(event.eventType()))
+                        .append("</td><td><span class=\"tag ").append(eventTone).append("\">");
+                dot(html, eventTone);
+                html.append(escape(event.eventType()))
                         .append("</span></td><td class=\"mono\"><span title=\"").append(event.incidentId()).append("\">")
                         .append(shortId(event.incidentId())).append("</span></td></tr>");
             }
@@ -256,6 +271,11 @@ public class ReliabilityReportHtmlRenderer {
         }
     }
 
+    /** The 3x3 dot-matrix status block; the tone is good, bad, warn or empty for neutral. */
+    private void dot(StringBuilder html, String tone) {
+        html.append("<span class=\"status-dot ").append(tone).append("\" aria-hidden=\"true\">").append("<i></i>".repeat(9)).append("</span>");
+    }
+
     private void section(StringBuilder html, String index, String title, String note) {
         html.append("<div class=\"section-heading\"><span class=\"section-index\">").append(index)
                 .append(" /</span><h2>").append(escape(title)).append("</h2><span class=\"section-note\">")
@@ -263,7 +283,8 @@ public class ReliabilityReportHtmlRenderer {
     }
 
     private void metric(StringBuilder html, String label, String value, String unit, String note, String tone, String raw) {
-        html.append("<div class=\"metric\"><div class=\"eyebrow\">").append(escape(label)).append("</div><div class=\"readout\">");
+        html.append(tone.isEmpty() ? "<div class=\"metric\">" : "<div class=\"metric lit\" data-tone=\"" + tone + "\">")
+                .append("<div class=\"eyebrow\">").append(escape(label)).append("</div><div class=\"readout\">");
         pair(html, value, unit, raw);
         html.append("</div><p>").append(escape(note)).append("</p></div>");
     }
