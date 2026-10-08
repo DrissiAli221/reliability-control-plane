@@ -4,7 +4,8 @@ import { NavLink, useLocation } from "react-router-dom";
 import { onboard, pipelineSnapshot } from "../api";
 import { isLocalAuth } from "../auth";
 import { useSession } from "../session";
-import { useLiveData } from "../useLiveData";
+import type { PipelineSnapshot } from "../types";
+import { useLiveData, type LiveData } from "../useLiveData";
 import { useFleetWatch } from "../tabSignal";
 import { toggleTheme, useTheme } from "../theme";
 import { CommandPalette, PaletteButton } from "./CommandPalette";
@@ -22,6 +23,29 @@ export function BrandMark() {
       <rect x="0.5" y="0.5" width="23" height="23" rx="6" />
       <path d="M4.5 13h3.2l2-5.5 3.6 10 2.2-4.5h4" />
     </svg>
+  );
+}
+
+/** One square light per probe region: lit green when it delivered results in the pipeline window, grey otherwise. */
+function SidebarRegions({ snapshot }: { snapshot: LiveData<PipelineSnapshot> }) {
+  const regions = snapshot.data?.regions;
+  if (!regions || regions.length === 0) return null;
+  return (
+    <section className="sidebar-regions" aria-label="Probe regions">
+      <p className="nav-label">regions</p>
+      <ul>
+        {regions.map((region) => {
+          const live = region.resultsReceived > 0 && !snapshot.error;
+          return (
+            <li key={region.region} className={live ? "live-region" : undefined}>
+              <i className="region-light" aria-hidden="true" />
+              <span className="mono">{region.region}</span>
+              <span className="region-state">{live ? "reporting" : "quiet"}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -82,6 +106,8 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
             <BookOpen size={16} aria-hidden="true" /> Source <ExternalLink size={12} className="nav-external" aria-hidden="true" />
           </a>
         </nav>
+
+        <SidebarRegions snapshot={snapshot} />
 
         <div className="sidebar-footer">
           {local && (
