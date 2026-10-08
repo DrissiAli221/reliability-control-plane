@@ -168,10 +168,14 @@ a { color: inherit; }
 .topbar.scrolled::after { opacity: 1; }
 .topbar-path { display: flex; align-items: center; min-width: 0; overflow: hidden; }
 .topbar-crumb { display: inline-flex; align-items: center; min-width: 0; }
-.topbar-crumb a { color: var(--text-3); text-decoration: none; }
+.topbar-led { width: 8px; height: 8px; flex: none; margin-right: 14px; background: var(--green); box-shadow: 0 0 6px color-mix(in srgb, var(--green) 55%, transparent); }
+.topbar-led.stale { background: var(--amber); box-shadow: 0 0 6px color-mix(in srgb, var(--amber) 55%, transparent); }
+.topbar-path { font-size: 14px; }
+.topbar-crumb a { color: var(--text-2); text-decoration: none; }
 .topbar-crumb a:hover { color: var(--text); }
-.topbar-crumb [aria-current] { color: var(--text); font-weight: 500; }
-.topbar-sep { margin: 0 10px; color: var(--border-strong); font-family: var(--font-mono); }
+.topbar-crumb [aria-current] { display: inline-flex; align-items: center; gap: 6px; color: var(--text); font-weight: 500; }
+.topbar-crumb [aria-current] svg { color: var(--text-3); }
+.topbar-sep { margin: 0 10px; color: var(--text-3); font-family: var(--font-sans); }
 .topbar-clock { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
 .topbar-clock time { color: var(--ink-dots); font-family: var(--font-dots); font-size: 15px; font-weight: 800; letter-spacing: 0; }
 .topbar-clock.stale time { color: var(--amber-text); }

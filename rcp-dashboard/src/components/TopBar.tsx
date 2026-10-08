@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
+import { Gauge, LayoutList, Workflow, type LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useNow } from "../useLiveData";
 import { crumbs } from "../crumbs";
 import { LiveLed } from "./StatusBadge";
+
+/** The same icons as the nav items, so the current crumb reads as "you are here". */
+const PAGE_ICONS: Record<string, LucideIcon> = { "": Gauge, monitors: LayoutList, pipeline: Workflow };
 
 /**
  * A slim translucent bar over the scrolling page: the path on the left, and a clock that says the console is
@@ -20,15 +24,17 @@ export function TopBar({ pathname, updatedAt, stale }: { pathname: string; updat
   }, []);
 
   const trail = crumbs(pathname);
+  const PageIcon = PAGE_ICONS[pathname.split("/").filter(Boolean)[0] ?? ""];
   const clock = new Date(now).toISOString().slice(11, 19);
 
   return (
     <div className={`topbar${scrolled ? " scrolled" : ""}`}>
       <nav className="topbar-path" aria-label="Location">
+        <i className={`topbar-led${stale ? " stale" : ""}`} aria-hidden="true" />
         {trail.map((crumb, index) => (
           <span key={index} className="topbar-crumb">
             {index > 0 && <span className="topbar-sep" aria-hidden="true">/</span>}
-            {crumb.to ? <Link to={crumb.to}>{crumb.label}</Link> : <span aria-current={index === trail.length - 1 ? "page" : undefined}>{crumb.label}</span>}
+            {crumb.to ? <Link to={crumb.to}>{crumb.label}</Link> : <span aria-current={index === trail.length - 1 ? "page" : undefined}>{PageIcon && trail.length === 2 && index === 1 && <PageIcon size={14} aria-hidden="true" />}{crumb.label}</span>}
           </span>
         ))}
       </nav>
