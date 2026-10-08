@@ -13,6 +13,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -29,10 +31,13 @@ class ReliabilityReportHtmlRendererTest {
 
         assertThat(Files.readString(download)).isEqualTo(html);
         assertThat(html).contains("Demo API", "https://example.com/health", "99.72222%", "Target 99.5%",
-                "3.2 executions", "142 p50 ms", "387 p95 ms", "2480 HTTP samples", "<table>",
+                "class=\"figure\">3.2</span><span class=\"unit\">executions", "class=\"figure\">142</span><span class=\"unit\">p50 ms",
+                "class=\"figure\">387</span><span class=\"unit\">p95 ms", "2480 HTTP samples", "<table>",
                 "@media print", "size: A4", "table-header-group", "break-inside: avoid",
                 "2026-10-06T00:00:00Z", "2026-10-07T00:05:00Z", "rcp-report-v1");
-        assertThat(html).doesNotContain("<script", "<link", "<iframe", "src=", "href=", "@import", "url(", "99.9%");
+        assertThat(html).doesNotContain("<script", "<link", "<iframe", "src=", "href=", "@import", "99.9%");
+        // The only url() allowed is an embedded font, so the file never fetches anything.
+        assertThat(Pattern.compile("url\\((?!data:font/woff2;base64,)").matcher(html).find()).isFalse();
 
         // Parse every chart/readout, rather than only checking for the word "svg".
         var parser = DocumentBuilderFactory.newInstance();
@@ -50,6 +55,24 @@ class ReliabilityReportHtmlRendererTest {
             count++;
         }
         assertThat(count).isGreaterThanOrEqualTo(3);
+    }
+
+    @Test
+    void usesExactlyTheFiveRoleTypeScaleWithoutUppercaseTransforms() {
+        String html = renderer.render(sampleReport());
+        String css = html.substring(html.indexOf("<style>"), html.indexOf("</style>"));
+        Set<String> sizes = new TreeSet<>();
+        var matcher = Pattern.compile("font-size:\\s*([^;}\\s]+)").matcher(css);
+        while (matcher.find()) {
+            sizes.add(matcher.group(1));
+        }
+        assertThat(sizes).containsExactlyInAnyOrder("40px", "28px", "15px", "13px", "11px",
+                "26pt", "18pt", "10.5pt", "9pt", "7.5pt");
+        assertThat(css).doesNotContain("text-transform", "font: ", "border-radius: 4", "border-radius: 6");
+        assertThat(css).contains("\"Geist\"", "\"Geist Mono\"", "\"Doto\"", "#0a0a0a", "#111111", "#242424",
+                "#30a46c", "#e5484d", "#f5a524", "#ededf0", "#1a7f4b", "#d1342f", "#b86e00", "#dcdce1");
+        assertThat(html).contains("<h1 id=\"report-title\">Reliability report</h1>", "Measured availability",
+                "Error budget remaining", "Observed down", "Occurred at · UTC");
     }
 
     @Test
@@ -89,15 +112,15 @@ class ReliabilityReportHtmlRendererTest {
         String html = renderer.render(reportWithEvidence(null, null, BigDecimal.ZERO, 0, BigDecimal.ZERO));
         assertThat(html).contains("UNDEFINED", "NO_SOURCE_DATA", "No failed executions allowed",
                 "No incident transitions recorded", "does not rule out an incident opened earlier");
-        assertThat(html).doesNotContain("NaN", "Infinity", "width=\"-", "aria-label=\"100%\"");
+        assertThat(html).doesNotContain("NaN", "Infinity", "width=\"-");
     }
 
     @Test
     void overspentBudgetsKeepTheirNegativeValueAndBoundTheChart() {
         String html = renderer.render(reportWithEvidence(new BigDecimal("50.00000"), false,
                 BigDecimal.ZERO, 1, new BigDecimal("-1.00000")));
-        assertThat(html).contains("MISSED", "Budget exceeded", "-1 executions", "Remaining -1.00000",
-                "class=\"fill-bad\" y=\"74\" width=\"440\"");
+        assertThat(html).contains("MISSED", "Budget exceeded", "class=\"figure\">-1</span>", "Remaining -1.00000");
+        assertThat(html).containsPattern("budget-observed.*?class=\"fill-bad\" x=\"0\" y=\"2\" width=\"440\"");
         assertThat(html).doesNotContain("NaN", "Infinity", "width=\"-");
     }
 
@@ -105,11 +128,11 @@ class ReliabilityReportHtmlRendererTest {
     void countsDistinctIncidentsRatherThanTransitionsAndLabelsTruncation() {
         ReliabilityReport sample = sampleReport();
         String html = renderer.render(sample);
-        assertThat(html).contains("aria-label=\"2\"", "3 transitions · UTC", "Distinct IDs in shown transitions");
+        assertThat(html).contains("class=\"figure\">2</span>", "3 transitions · UTC", "Distinct IDs in shown transitions");
         ReliabilityReport truncated = new ReliabilityReport(sample.schemaVersion(), sample.generatedAt(),
                 sample.sourceDataWatermark(), sample.monitorName(), sample.targetUrl(), sample.availability(),
                 sample.errorBudget(), sample.latency(), sample.incidentTimeline(), true, sample.limitations());
-        assertThat(renderer.render(truncated)).contains("aria-label=\"2+\"", "Lower bound · timeline truncated",
+        assertThat(renderer.render(truncated)).contains("class=\"figure\">2+</span>", "Lower bound · timeline truncated",
                 "Incident timeline truncated at 100 transitions");
     }
 
