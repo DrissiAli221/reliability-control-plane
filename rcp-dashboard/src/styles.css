@@ -213,6 +213,14 @@ a { color: inherit; }
 .metric-label .status-dot { width: 6px; height: 6px; }
 .metric-value { color: var(--ink-dots); font-family: var(--font-dots); font-size: 30px; font-weight: 800; letter-spacing: 0.01em; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .metric-value small { margin-left: 6px; font-family: var(--font-sans); font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--text-3); }
+/* Monitors summary: compact tiles, the operational count leads and is the largest figure. */
+.fleet-summary { grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); gap: 8px; }
+.fleet-summary .metric { gap: 3px; padding: 9px 12px; }
+.fleet-summary .metric-value { font-size: 22px; }
+.fleet-summary .metric:first-child { padding: 12px 16px; }
+.fleet-summary .metric:first-child .metric-value { font-size: 40px; }
+.fleet-summary .metric-visual { height: 14px; margin-top: 0; }
+.fleet-summary .metric:not(:first-child) .metric-visual { display: none; }
 .metric-hint { font-size: 12px; color: var(--text-3); }
 /* Attention is a hue, not a fill: only fault and warn pool colour in the corners; other tiles stay plain. */
 .metric.attention { --hue: transparent; --wash: color-mix(in srgb, var(--hue) var(--wash-strength), transparent); background: radial-gradient(circle at 0 0, var(--wash), transparent 45%), radial-gradient(circle at 100% 0, var(--wash), transparent 45%), radial-gradient(circle at 0 100%, var(--wash), transparent 45%), radial-gradient(circle at 100% 100%, var(--wash), transparent 45%), var(--surface); }
@@ -666,6 +674,8 @@ a { color: inherit; }
 /* ---------- Responsive ---------- */
 @media (max-width: 1100px) {
   .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fleet-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .fleet-summary .metric:first-child { grid-column: 1 / -1; }
   .split { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .col-latency { display: none; }
 }
@@ -684,6 +694,7 @@ a { color: inherit; }
 }
 @media (max-width: 560px) {
   .metric-grid { grid-template-columns: minmax(0, 1fr); }
+  .fleet-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .workspace strong { display: none; }
   .evidence-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .field-pair { grid-template-columns: 1fr; }

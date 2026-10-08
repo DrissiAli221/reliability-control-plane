@@ -134,7 +134,7 @@ export function MonitorsPage() {
         </div>
       </header>
 
-      <section className="metric-grid" aria-label="Fleet summary">
+      <section className="metric-grid fleet-summary" aria-label="Fleet summary">
         <Metric label="Operational" value={`${summary.operational}`} suffix={`/ ${summary.total - summary.paused}`} tone="good"
           visual={<FleetCells rows={rows} lit={(monitor) => monitor.enabled && monitor.incidentStatus !== "OPEN" && monitor.latestVerdict === "UP"} tone="good" />} />
         <Metric label="Open incidents" value={`${summary.incidents}`} tone={summary.incidents ? "fault" : "muted"}
