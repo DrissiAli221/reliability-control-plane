@@ -88,7 +88,7 @@ class ReliabilityReportHtmlRendererTest {
     @Test
     void showsTheWindowInTheDotFaceAndWhereEveryDueCheckWent() {
         String html = renderer.render(sampleReport());
-        assertThat(html).contains("<span class=\"dots\">6 OCT</span><span class=\"arrow\">→</span><span class=\"dots\">7 OCT</span>",
+        assertThat(html).contains("<span class=\"dots\">6 OCT</span><span class=\"arrow\" role=\"img\" aria-label=\"to\">", "</span><span class=\"dots\">7 OCT</span>",
                 "2026 · 00:00 UTC · <span>1 day</span>", "Where the 1440 due checks went", "1440 finalized · 1440 conclusive (UP + DOWN)",
                 "<i class=\"seg-up\" style=\"flex:1436\"></i><i class=\"seg-down\" style=\"flex:4\"></i></div>",
                 "UP</dt><dd>1436<span>99.7%</span>", "Missing</dt><dd>0<span>0%</span>");

@@ -66,7 +66,10 @@ public class ReliabilityReportHtmlRenderer {
             .window { text-align: right; }
             .window-days { display: flex; align-items: baseline; justify-content: flex-end; gap: 10px; white-space: nowrap; }
             .dots { font-family: var(--font-dots); font-size: 30px; font-weight: 800; line-height: 1; color: var(--text); }
-            .arrow { font-family: var(--font-mono); font-size: 13px; color: var(--text-3); }
+            /* A dot-matrix arrow on Doto's own dot pitch, so it reads as part of the dates rather than a text glyph. */
+            .arrow { display: inline-grid; grid-template-columns: repeat(8, .08em); grid-auto-rows: .08em; gap: .02em;
+              align-self: center; margin: 0 .15em; font-size: 30px; }
+            .arrow i.on { background: var(--text-2); }
             .window-meta { margin-top: 8px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em; color: var(--text-3); }
             .title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; }
             .chip { display: inline-flex; align-items: center; gap: 7px; height: 24px; padding: 0 9px; white-space: nowrap;
@@ -183,7 +186,7 @@ public class ReliabilityReportHtmlRenderer {
               .intro { margin: 4mm 0 3mm; flex-wrap: nowrap; } h1 { font-size: 22pt; }
               .figure { font-size: 19pt; }
               h2, h3, .brand { font-size: 10.5pt; }
-              .label, dt, th, .section-note, .ticks, .chip, .tag, .edition, .window-meta, .readout-row, footer { font-size: 7.5pt; } .dots { font-size: 19pt; }
+              .label, dt, th, .section-note, .ticks, .chip, .tag, .edition, .window-meta, .readout-row, footer { font-size: 7.5pt; } .dots, .arrow { font-size: 19pt; }
               .hint, .unit, .note, .metric-value .unit, .lines dd { font-size: 8pt; }
               .target { margin: 2mm 0 1mm; }
               .decision { padding: 3mm; } .panel-header { min-height: 0; padding: 1.8mm 3mm; } .stack { margin-top: 4mm; }
@@ -212,6 +215,20 @@ public class ReliabilityReportHtmlRenderer {
             <path fill="url(#rcp-lavender)" d="M12 1h-2v2h1v1h1v1h1v1h1v1h-1v1h-1v1h-1v1h-1v2h2v-1h1v-1h1V9h1V8h1V7h1V6h-1V5h-1V4h-1V3h-1V2h-1Z"/>\
             <path fill="currentColor" d="M7.75 5.25h2.5v2.5h-2.5Z"/></svg>""";
 
+    private static final String ARROW = arrow();
+
+    /** A seven-row dot-matrix right arrow, the height of Doto's capitals: a shaft and a three-step head. */
+    private static String arrow() {
+        String[] rows = {"....#...", ".....#..", "......#.", "########", "......#.", ".....#..", "....#..."};
+        StringBuilder html = new StringBuilder("<span class=\"arrow\" role=\"img\" aria-label=\"to\">");
+        for (String row : rows) {
+            for (char cell : row.toCharArray()) {
+                html.append(cell == '#' ? "<i class=\"on\"></i>" : "<i></i>");
+            }
+        }
+        return html.append("</span>").toString();
+    }
+
     public String render(ReliabilityReport report) {
         AvailabilityReport a = report.availability();
         String tone = a.sloMet() == null ? "warn" : a.sloMet() ? "good" : "bad";
@@ -233,7 +250,7 @@ public class ReliabilityReportHtmlRenderer {
         html.append(decision).append("</span></div><p class=\"target mono\">").append(escape(report.targetUrl()))
                 .append("</p></div><div class=\"window\" data-from=\"").append(a.from()).append("\" data-to=\"").append(a.to())
                 .append("\" title=\"").append(window(a.from(), a.to())).append("\"><p class=\"window-days\">")
-                .append("<span class=\"dots\">").append(day(a.from())).append("</span><span class=\"arrow\">→</span>")
+                .append("<span class=\"dots\">").append(day(a.from())).append("</span>").append(ARROW)
                 .append("<span class=\"dots\">").append(day(a.to())).append("</span></p><p class=\"window-meta\">")
                 .append(windowMeta(a.from(), a.to())).append(" · <span>").append(span(a.from(), a.to())).append("</span></p></div></section>")
                 .append("<div class=\"stack\"><div class=\"decision lit\" data-tone=\"").append(tone).append("\"><p>");
