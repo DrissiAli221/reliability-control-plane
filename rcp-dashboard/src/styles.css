@@ -6,6 +6,9 @@
   /* Dot-matrix readouts for headline numbers only, like a device display. */
   --font-dots: "Doto", var(--font-mono);
 
+  /* Height of the top bar and of the sidebar header beside it; they share one hairline, so they share one value. */
+  --bar-h: 52px;
+
   /* Operator console: near-black neutrals, colour reserved for evidence. */
   --bg: #0a0a0a;
   --bg-sidebar: #0d0d0d;
@@ -115,8 +118,8 @@ a { color: inherit; }
   position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 20px;
   padding: 0; background: var(--bg-sidebar); border-right: 1px solid var(--border);
 }
-/* The header is exactly the top bar's 44px with its own bottom hairline, so the two read as one line across the screen. Everything below sits on an 8px inset. */
-.workspace { display: flex; align-items: center; gap: 10px; flex: none; height: 44px; padding: 0 16px; border-bottom: 1px solid var(--border); }
+/* The header is exactly the top bar's height (--bar-h) with its own bottom hairline, so the two read as one line across the screen. Everything below sits on an 8px inset. */
+.workspace { display: flex; align-items: center; gap: 10px; flex: none; height: var(--bar-h); padding: 0 16px; border-bottom: 1px solid var(--border); }
 .workspace > div { min-width: 0; line-height: 1.2; }
 .sidebar > :not(.workspace) { margin-inline: 8px; }
 .workspace + * { margin-top: -8px; }
@@ -170,7 +173,7 @@ a { color: inherit; }
 /* Translucent material: the page scrolls underneath. The edge is a fade that appears only once something is underneath. */
 .topbar {
   position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  height: 44px; padding: 0 clamp(20px, 4vw, 48px); border-bottom: 1px solid var(--border); /* same 44px box and hairline as the sidebar header */
+  height: var(--bar-h); padding: 0 clamp(20px, 4vw, 48px); border-bottom: 1px solid var(--border); /* same box and hairline as the sidebar header */
   background: color-mix(in srgb, var(--bg) 72%, transparent); backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%);
   font-family: var(--font-sans); font-size: 13px; letter-spacing: 0; color: var(--text-3); white-space: nowrap;
 }
@@ -865,7 +868,7 @@ a { color: inherit; }
 }
 @media (max-width: 860px) {
   .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; } /* the bar keeps its height; a short page leaves its spare space below, not in the bar */
-  .sidebar { position: static; height: auto; flex-direction: row; align-items: center; gap: 12px; padding: 10px 16px; border-right: 0; border-bottom: 1px solid var(--border); }
+  .sidebar { position: static; height: auto; min-height: var(--bar-h); flex-direction: row; align-items: center; gap: 12px; padding: 10px 16px; border-right: 0; border-bottom: 1px solid var(--border); }
   .workspace { height: auto; padding: 0; border-bottom: 0; }
   .sidebar > :not(.workspace), .workspace + * { margin: 0; }
   .workspace span, .nav-label, .sidebar-regions { display: none; }
