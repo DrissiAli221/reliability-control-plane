@@ -24,6 +24,12 @@ public record CreateMonitorRequest(
         @NotNull
         @Min(100)
         @Max(30_000)
-        Integer timeoutMs
+        Integer timeoutMs,
+
+        @Size(min = 1, max = 500)
+        java.util.List<@NotNull @Min(100) @Max(599) Integer> acceptedHttpStatuses
 ) {
+    public CreateMonitorRequest(String name, String targetUrl, Integer checkIntervalSeconds, Integer timeoutMs) {
+        this(name, targetUrl, checkIntervalSeconds, timeoutMs, null);
+    }
 }

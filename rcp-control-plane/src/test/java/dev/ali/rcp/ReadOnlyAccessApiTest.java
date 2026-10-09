@@ -15,6 +15,7 @@ import java.util.UUID;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -39,6 +40,8 @@ class ReadOnlyAccessApiTest {
     void theDemoGroupCanReadButNotChangeAnything() throws Exception {
         String subject = UUID.randomUUID().toString();
 
+        mockMvc.perform(patch("/api/monitors/{id}",UUID.randomUUID()).with(demo(subject)).contentType(MediaType.APPLICATION_JSON).content("{\"acceptedHttpStatuses\":[403]}")).andExpect(status().isForbidden());
+        mockMvc.perform(delete("/api/monitors/{id}", UUID.randomUUID()).with(demo(subject))).andExpect(status().isForbidden());
         mockMvc.perform(get("/api/monitors").with(demo(subject))).andExpect(status().isOk());
         mockMvc.perform(get("/api/pipeline").with(demo(subject))).andExpect(status().isOk());
         mockMvc.perform(post("/api/monitors").with(demo(subject)).contentType(MediaType.APPLICATION_JSON).content(BODY))

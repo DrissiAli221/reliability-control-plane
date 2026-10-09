@@ -385,6 +385,13 @@ its quota check now also uses five. These helpers do not delete monitors to make
 space. Verify the backend version and existing names before choosing the startup
 seeder or SQL path.
 
+Both helpers work before and after the V11 soft-delete migration. After V11,
+quota counts, workspace validation and URL deduplication consider only rows with
+`deleted_at IS NULL`. A deleted target is replaced by a new monitor ID; its
+tombstone and schedule history remain intact. An owner with only deleted rows
+does not satisfy the existing-workspace check. The transaction keeps live limits
+at five per owner and eight globally, and rolls back every addition on failure.
+
 For configuration rollback, disable the drill timer and restore the endpoint
 first. Restore `application.before-variety.json` with private permissions, set
 0444 inside the protected directory, and recreate the backend. This restores the

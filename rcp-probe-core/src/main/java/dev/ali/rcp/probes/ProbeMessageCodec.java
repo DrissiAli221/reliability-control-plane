@@ -54,7 +54,7 @@ public class ProbeMessageCodec {
                 result.latencyMillis(),
                 result.responseBytes(),
                 result.errorType(),
-                result.monitorBehaviorVersion()
+                result.monitorBehaviorVersion(), result.botProtection()
         );
         try {
             return objectMapper.writeValueAsString(message);
@@ -84,7 +84,7 @@ public class ProbeMessageCodec {
                     message.latencyMillis(),
                     message.responseBytes(),
                     message.errorType(),
-                    message.monitorBehaviorVersion()
+                    message.monitorBehaviorVersion(), message.botProtection()
             );
         } catch (JacksonException exception) {
             throw new IllegalArgumentException("invalid probe-result JSON", exception);
@@ -106,6 +106,7 @@ public class ProbeMessageCodec {
     ) {
     }
 
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
     private record ProbeResultMessage(
             int schemaVersion,
             UUID jobId,
@@ -120,7 +121,8 @@ public class ProbeMessageCodec {
             long latencyMillis,
             long responseBytes,
             String errorType,
-            int monitorBehaviorVersion
+            int monitorBehaviorVersion,
+            @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) String botProtection
     ) {
     }
 }

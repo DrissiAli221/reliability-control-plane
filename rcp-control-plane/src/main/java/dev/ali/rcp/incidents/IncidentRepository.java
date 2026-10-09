@@ -28,6 +28,7 @@ public class IncidentRepository {
                 SELECT execution_id, monitor_id, scheduled_at, verdict, monitor_behavior_version
                 FROM probe_executions executions
                 WHERE status = 'FINALIZED'
+                  AND EXISTS (SELECT 1 FROM monitors m WHERE m.monitor_id = executions.monitor_id AND m.deleted_at IS NULL)
                   AND NOT EXISTS (
                       SELECT 1 FROM incident_evaluations evaluated
                       WHERE evaluated.execution_id = executions.execution_id
@@ -45,7 +46,9 @@ public class IncidentRepository {
                   )
                 ORDER BY scheduled_at, execution_id
                 LIMIT ?
-                FOR UPDATE SKIP LOCKED
+                -- Serialize evaluation without blocking the key-share lock needed by late-result FKs.
+                -- Ingestion holds a monitor share lock; FOR UPDATE here would invert that lock order.
+                FOR NO KEY UPDATE SKIP LOCKED
                 """,
                 (resultSet, rowNumber) -> new FinalizedExecution(
                         resultSet.getObject("execution_id", UUID.class),
@@ -58,14 +61,18 @@ public class IncidentRepository {
         );
     }
 
-    public MonitorRunState lockMonitorRun(UUID monitorId) {
-        return Objects.requireNonNull(jdbcTemplate.queryForObject(
-                "SELECT behavior_version, enabled FROM monitors WHERE monitor_id = ? FOR UPDATE",
+    /** Locks the live monitor row; empty when the monitor was deleted (soft delete) before the lock. */
+    public java.util.Optional<MonitorRunState> lockMonitorRun(UUID monitorId) {
+        return jdbcTemplate.query(
+                """
+                SELECT behavior_version, enabled FROM monitors
+                WHERE monitor_id = ? AND deleted_at IS NULL FOR UPDATE
+                """,
                 (resultSet, rowNumber) -> new MonitorRunState(
                         resultSet.getLong("behavior_version"), resultSet.getBoolean("enabled")
                 ),
                 monitorId
-        ));
+        ).stream().findFirst();
     }
 
     public long behaviorVersionAt(UUID monitorId, Instant scheduledAt) {

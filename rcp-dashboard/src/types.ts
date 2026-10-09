@@ -12,6 +12,7 @@ export type MonitorOverview = {
 };
 
 export type MonitorDetail = {
+  acceptedHttpStatuses?: number[] | null;
   id: string;
   name: string;
   targetUrl: string;
@@ -23,6 +24,7 @@ export type MonitorDetail = {
 };
 
 export type CreateMonitorInput = {
+  acceptedHttpStatuses?: number[] | null;
   name: string;
   targetUrl: string;
   checkIntervalSeconds: number;
@@ -69,6 +71,7 @@ export type DailyEvidence = {
 };
 
 export type RegionSummary = {
+  lastAcceptedHttpStatuses?: number[] | null;
   region: string;
   httpSamples: number;
   p50Ms: number | null;
@@ -80,10 +83,11 @@ export type RegionSummary = {
 };
 
 export type RecentCheck = {
+  acceptedHttpStatuses?: number[] | null;
   executionId: string;
   scheduledAt: string;
   verdict: Verdict;
-  results: Array<{ region: string; outcome: string; httpStatus: number | null; latencyMs: number }>;
+  results: Array<{ region: string; outcome: string; httpStatus: number | null; latencyMs: number; botProtection?: string | null }>;
 };
 
 export type MonitorHistory = {
@@ -125,6 +129,7 @@ export type PublicStatusPage = {
 };
 
 export type JobTrace = {
+  botProtection?: string | null;
   jobId: string;
   region: string;
   createdAt: string | null;
@@ -143,6 +148,7 @@ export type JobTrace = {
 };
 
 export type ExecutionTrace = {
+  acceptedHttpStatuses?: number[] | null;
   executionId: string;
   monitorId: string;
   scheduledAt: string;

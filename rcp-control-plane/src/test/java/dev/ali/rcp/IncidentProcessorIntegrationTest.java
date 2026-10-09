@@ -28,6 +28,9 @@ class IncidentProcessorIntegrationTest {
     @Autowired
     private IncidentProcessor processor;
 
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    private dev.ali.rcp.incidents.IncidentRepository incidentRepository;
+
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -102,6 +105,32 @@ class IncidentProcessorIntegrationTest {
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT transition FROM incident_evaluations", String.class
         )).isEqualTo("IGNORED_STALE");
+    }
+
+    @Test
+    void monitorDeletedBetweenCandidateQueryAndLockOpensNoIncidentAndWritesNoState() {
+        Monitor monitor = createMonitor();
+        insertFinalizedExecution(monitor, minute(0), ExecutionVerdict.DOWN);
+        insertFinalizedExecution(monitor, minute(1), ExecutionVerdict.DOWN);
+        // The first candidate is read while the monitor is live; the delete then commits before the lock.
+        org.mockito.Mockito.doAnswer(invocation -> {
+            Object candidates = invocation.callRealMethod();
+            jdbcTemplate.update(
+                    "UPDATE monitors SET deleted_at = CURRENT_TIMESTAMP, enabled = FALSE, next_check_at = NULL WHERE monitor_id = ?",
+                    monitor.getId()
+            );
+            return candidates;
+        }).when(incidentRepository).findAndLockNextUnevaluated(org.mockito.ArgumentMatchers.anyInt());
+
+        assertThat(processor.processBatch()).isEqualTo(1);
+        org.mockito.Mockito.reset(incidentRepository);
+
+        assertThat(count("incidents")).isZero();
+        assertThat(count("monitor_incident_state")).isZero();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT transition FROM incident_evaluations", String.class
+        )).isEqualTo("IGNORED_STALE");
+        assertThat(processor.processBatch()).isZero();
     }
 
     @Test

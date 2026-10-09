@@ -1,11 +1,14 @@
-import { AlertTriangle, ChevronLeft, ExternalLink, PauseCircle, RefreshCw } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ExternalLink, PauseCircle, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FALLBACK_CAVEATS } from "../caveats";
 import {
   availability, executionTrace, getMonitor, incidentState, latencyHeatmap, listMonitors, monitorHistory, reliabilityReport, setMonitorEnabled,
 } from "../api";
 import { isLocalAuth } from "../auth";
+import { AcceptedStatusCodesDialog } from "../components/AcceptedStatusCodesDialog";
+import { formatStatusCodes } from "../statusCodes";
+import { DeleteMonitorDialog } from "../components/DeleteMonitorDialog";
 import { ChaosPanel } from "../components/ChaosPanel";
 import { CheckTimeline } from "../components/CheckTimeline";
 import { ExportReportButton } from "../components/ExportReportButton";
@@ -50,6 +53,9 @@ type DetailData = {
 
 export function MonitorDetailPage() {
   const { monitorId = "" } = useParams();
+  const navigate = useNavigate();
+  const [editingStatuses, setEditingStatuses] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [latencyRange, setLatencyRange] = useState<LatencyWindow>(24);
   const load = useCallback(async (): Promise<DetailData> => {
     const monitor = await getMonitor(monitorId);
@@ -111,6 +117,8 @@ export function MonitorDetailPage() {
   return (
     <>
       <Breadcrumb name={monitor.name} />
+      {editingStatuses && !readOnly && <AcceptedStatusCodesDialog monitorId={monitor.id} codes={monitor.acceptedHttpStatuses} onClose={() => setEditingStatuses(false)} onSaved={detail.refresh} />}
+      {deleting && !readOnly && <DeleteMonitorDialog monitorId={monitor.id} name={monitor.name} onClose={() => setDeleting(false)} onDeleted={() => navigate("/monitors", { replace: true })} />}
 
       <header className="page-header detail-header">
         <div>
@@ -126,6 +134,7 @@ export function MonitorDetailPage() {
             </a>
             <span>Every {interval(monitor.checkIntervalSeconds)}</span>
             <span>Timeout {monitor.timeoutMs / 1000} s</span>
+            {monitor.acceptedHttpStatuses && <span>Accepts {formatStatusCodes(monitor.acceptedHttpStatuses)}</span>}
             <span>{history?.regions.length ?? 0} regions</span>
           </div>
         </div>
@@ -134,7 +143,9 @@ export function MonitorDetailPage() {
           <button type="button" className="icon-button bordered" onClick={() => void detail.refresh()} aria-label="Refresh" disabled={detail.loading}>
             <RefreshCw size={16} className={detail.loading ? "spin" : undefined} />
           </button>
+          {!readOnly && <button type="button" className="button secondary" onClick={() => setEditingStatuses(true)}>Accepted statuses</button>}
           {!readOnly && <MonitorToggleButton enabled={monitor.enabled} onToggle={toggle} />}
+          {!readOnly && <button type="button" className="button danger" onClick={() => setDeleting(true)}><Trash2 size={14} aria-hidden="true" />Delete monitor</button>}
           <ExportReportButton monitorId={monitor.id} monitorName={monitor.name} />
         </div>
       </header>
@@ -317,7 +328,7 @@ export function MonitorDetailPage() {
                   <tr key={region.region}>
                     <td className="mono">{region.region}</td>
                     <td>
-                      <span className={`result ${outcomeTone(region.lastOutcome, region.lastHttpStatus)}`}>
+                      <span className={`result ${outcomeTone(region.lastOutcome, region.lastHttpStatus, region.lastAcceptedHttpStatuses)}`}>
                         {outcomeLabel(region.lastOutcome, region.lastHttpStatus)}
                       </span>
                       <span className="subtle mono"> {milliseconds(region.lastLatencyMs)}</span>

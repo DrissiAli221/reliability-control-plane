@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Transactional
 class DataRetentionIntegrationTest {
     @Autowired DataRetention retention;
+    @Autowired dev.ali.rcp.monitors.MonitorService monitorService;
     @Autowired MonitorRepository monitorRepository;
     @Autowired JdbcTemplate jdbc;
 
@@ -111,6 +112,37 @@ class DataRetentionIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM outbox_events WHERE event_id = ?", Integer.class, oldUnpublished)).isOne();
         assertThat(jdbc.queryForList("SELECT message_id FROM processed_messages WHERE consumer_name = 'results'", String.class))
                 .containsExactly("new");
+    }
+
+    @Test
+    void deletedMonitorsReleaseAbandonedHistoryButKeepIncidentAnchors() {
+        UUID abandoned = execution(now.minus(Duration.ofDays(120)), false);
+        UUID unevaluated = execution(now.minus(Duration.ofDays(119)), true);
+        jdbc.update("DELETE FROM incident_evaluations WHERE execution_id = ?", unevaluated);
+        UUID anchor = execution(now.minus(Duration.ofDays(118)), true);
+        jdbc.update("""
+                INSERT INTO incidents(incident_id,monitor_id,status,opened_by_execution_id,opened_at)
+                VALUES (?,?,'OPEN',?,?)
+                """,UUID.randomUUID(),monitor.getId(),anchor,timestamp(now.minus(Duration.ofDays(118))));
+        monitorService.delete(monitor.getOwnerSubject(),monitor.getId());
+
+        retention.prune();
+
+        assertThat(exists("probe_executions",abandoned)).isFalse();
+        assertThat(exists("probe_executions",unevaluated)).isFalse();
+        assertThat(exists("probe_executions",anchor)).isTrue();
+        assertThat(jdbc.queryForObject("SELECT deleted_at IS NOT NULL FROM monitors WHERE monitor_id = ?",Boolean.class,monitor.getId())).isTrue();
+    }
+
+    @Test
+    void oldDeletionCancellationsExpireButRealPublishFailuresStay() {
+        UUID cancelled = outboxEvent(now.minus(Duration.ofDays(20)),false);
+        UUID failed = outboxEvent(now.minus(Duration.ofDays(20)),false);
+        jdbc.update("UPDATE outbox_events SET failed_at = ?, last_error = 'monitor_deleted' WHERE event_id = ?",timestamp(now.minus(Duration.ofDays(20))),cancelled);
+        jdbc.update("UPDATE outbox_events SET failed_at = ?, last_error = 'network_failure' WHERE event_id = ?",timestamp(now.minus(Duration.ofDays(20))),failed);
+        retention.prune();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM outbox_events WHERE event_id = ?",Integer.class,cancelled)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM outbox_events WHERE event_id = ?",Integer.class,failed)).isOne();
     }
 
     private UUID execution(Instant scheduledAt, boolean finalized) {

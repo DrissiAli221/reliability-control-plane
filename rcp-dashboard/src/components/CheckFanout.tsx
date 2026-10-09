@@ -1,3 +1,5 @@
+import { BotProtectionHint } from "./BotProtectionHint";
+import { formatStatusCodes } from "../statusCodes";
 import { ArrowRight } from "lucide-react";
 import { BlockMeter } from "./BlockMeter";
 import { milliseconds, outcomeLabel, outcomeTone, relativeTime, type Tone } from "../format";
@@ -73,7 +75,7 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
 
         <ol className="fanout-regions" aria-label="What each region saw">
           {results.map((result) => {
-            const resultTone = outcomeTone(result.outcome, result.httpStatus);
+            const resultTone = outcomeTone(result.outcome, result.httpStatus, check.acceptedHttpStatuses);
             const share = Math.min(1, result.latencyMs / Math.max(timeoutMs, 1));
             const meterTone = resultTone === "fault" ? "fault" : resultTone === "muted" ? "muted" : share > 0.5 ? "warn" : "good";
             return (
@@ -106,7 +108,7 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
 
         <svg key={`out-${check.executionId}`} className="fanout-links out" width={LINK_WIDTH} height={height} aria-hidden="true">
           {results.map((result, i) => (
-            <path key={result.region} d={curve(center(i), mid)} pathLength={1} className={`fanout-link ${outcomeTone(result.outcome, result.httpStatus)}`} />
+            <path key={result.region} d={curve(center(i), mid)} pathLength={1} className={`fanout-link ${outcomeTone(result.outcome, result.httpStatus, check.acceptedHttpStatuses)}`} />
           ))}
         </svg>
 
@@ -116,6 +118,8 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
           <span className="fanout-sentence">{verdictSentence(check.verdict, results.length)}</span>
         </div>
       </div>
+      {check.acceptedHttpStatuses && <p className="trace-note">Accepted statuses for this check: {formatStatusCodes(check.acceptedHttpStatuses)}.</p>}
+      <BotProtectionHint results={results} />
     </section>
   );
 }

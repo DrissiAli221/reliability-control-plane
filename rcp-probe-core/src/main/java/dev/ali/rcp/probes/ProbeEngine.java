@@ -115,7 +115,7 @@ public final class ProbeEngine {
         return new ProbeResult(
                 job.jobId(), job.executionId(), job.monitorId(), job.probeRegion(), job.scheduledAt(),
                 startedAt, completedAt, ProbeOutcome.HTTP_RESPONSE, response.statusCode(), latencyMillis,
-                response.responseBytes(), null, job.monitorBehaviorVersion()
+                response.responseBytes(), null, job.monitorBehaviorVersion(), response.botProtection()
         );
     }
 

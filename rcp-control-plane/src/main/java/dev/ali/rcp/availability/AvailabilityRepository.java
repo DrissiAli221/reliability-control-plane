@@ -24,7 +24,7 @@ public class AvailabilityRepository {
                 SELECT COUNT(*)
                 FROM monitors
                 WHERE monitor_id = ?
-                  AND owner_subject = ?
+                  AND owner_subject = ? AND deleted_at IS NULL
                 """,
                 Integer.class,
                 monitorId,
