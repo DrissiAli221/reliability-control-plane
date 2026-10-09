@@ -551,7 +551,7 @@ a { color: inherit; }
 .tracker-tooltip dl { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; margin: 0; }
 .tracker-tooltip dl div { display: flex; justify-content: space-between; }
 .tracker-tooltip dt { color: var(--text-2); }
-.tracker-tooltip dd { margin: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.tracker-tooltip dd { margin: 0; white-space: nowrap; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .tracker-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--text-2); }
 .tracker-legend li { display: inline-flex; align-items: center; gap: 6px; }
 .tracker-legend i { width: 8px; height: 8px; border-radius: var(--radius-xs); background: var(--gray-bar); }
@@ -979,7 +979,7 @@ a { color: inherit; }
 .trace-tooltip dl { display: grid; gap: 5px; margin: 0 0 8px; }
 .trace-tooltip dl div { display: flex; justify-content: space-between; gap: 12px; }
 .trace-tooltip dt { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); }
-.trace-tooltip dd { margin: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.trace-tooltip dd { margin: 0; white-space: nowrap; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .trace-tooltip > span { font-size: 11.5px; color: var(--text-3); }
 .event-history td { vertical-align: top; }
 .event-type { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12.5px; }
@@ -1602,7 +1602,7 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .incident-lane-span { fill: var(--red); opacity: 0.72; }
 .incident-lane-span.open { opacity: 1; }
 /* The "Incident" line in the chart tooltip: label left, time range(s) right, never wrapped. */
-.chart-tip-incident { display: flex; align-items: baseline; gap: 6px; margin-top: 3px; padding-top: 4px; border-top: 1px solid var(--border); white-space: nowrap; font-family: var(--font-mono); font-size: 11px; }
+.chart-tip-incident { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 6px; margin-top: 3px; padding-top: 4px; border-top: 1px solid var(--border); white-space: nowrap; font-family: var(--font-mono); font-size: 11px; }
 .chart-tip-incident i { width: 8px; height: 6px; flex: none; align-self: center; background: var(--red); }
 .chart-tip-incident > span:first-of-type { color: var(--text-3); }
 .chart-tip-incident-times { display: flex; flex-direction: column; align-items: flex-end; margin-left: auto; padding-left: 8px; font-variant-numeric: tabular-nums; }

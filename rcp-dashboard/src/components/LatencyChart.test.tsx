@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { LatencyChart } from "./LatencyChart";
 import { laneBounds, latencyRows } from "./latencyRows";
@@ -156,6 +156,11 @@ describe("incident lane", () => {
     });
     move(36); // the first column, which the incident overlaps
     expect(screen.getByText("Incident")).toBeInTheDocument();
+    // Values never wrap: the rows share one nowrap grid inside a card that sizes to its content.
+    const rows = container.querySelector(".chart-tip-incident")!.parentElement!;
+    expect(rows).toHaveClass("grid", "whitespace-nowrap");
+    expect(rows.parentElement).toHaveClass("w-max", "whitespace-nowrap");
+    expect(within(rows).getByText("p50").nextElementSibling).toHaveClass("justify-self-end");
     expect(container.querySelector(".chart-tip-incident-times")?.textContent).toMatch(/^\d\d:\d\d–\d\d:\d\d$/);
     move(36 + 852 / 2); // mid-day: nothing overlaps
     expect(screen.queryByText("Incident")).toBeNull();

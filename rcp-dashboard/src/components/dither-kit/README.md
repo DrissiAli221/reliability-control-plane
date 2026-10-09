@@ -7,7 +7,8 @@ Copied from its shadcn registry (`core` and `area-chart`, v0.1.0). The upstream 
 Local changes, each marked `RCP change` in the source:
 
 - `palette.ts`: green, orange and red use the console's status colours.
-- `tooltip.tsx`: optional `footer(index)` renders extra rows under the series values.
+- `tooltip.tsx`: optional `footer(index)` renders extra rows under the series values; the card is `w-max`/`nowrap` and the
+  rows share one grid, so labels and values line up and never wrap.
 - `cartesian-canvas.tsx`: `animate` is read live, so the entrance plays once and live refreshes repaint in place.
 
 Tailwind is scoped to this folder by `src/dither-kit.css` (utilities only, no preflight).

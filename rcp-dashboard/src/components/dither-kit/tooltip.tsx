@@ -71,7 +71,9 @@ export function Tooltip({
             mass: 0.6,
           }}
           className={cn(
-            "pointer-events-none absolute z-10 rounded-md border px-2 py-1 shadow-sm",
+            // RCP change: w-max + nowrap. An absolutely placed card shrinks to the space right of its `left`, which
+            // wrapped values such as "p95 3.90 s" onto two lines near the right edge of the plot.
+            "pointer-events-none absolute z-10 w-max rounded-md border px-2 py-1 shadow-sm whitespace-nowrap",
             VARIANT[variant]
           )}
         >
@@ -80,25 +82,30 @@ export function Tooltip({
               {heading}
             </div>
           )}
-          <div className="flex flex-col gap-0.5">
-            {items.map((item) => (
-              <div
-                key={item.name}
-                className="flex items-center gap-1.5 font-mono text-[11px] text-popover-foreground tabular-nums"
-                style={{ opacity: item.dimmed ? 0.4 : 1 }}
-              >
-                <span
-                  className="size-2 rounded-[1px]"
-                  style={{ backgroundColor: rgb(item.seed.fill) }}
-                />
-                <span className="text-muted-foreground">{item.label}</span>
-                <span className="ml-auto pl-2 text-foreground">
-                  {valueFormatter
-                    ? valueFormatter(item.value, item.name)
-                    : item.value.toLocaleString()}
-                </span>
-              </div>
-            ))}
+          {/* RCP change: one grid so every row shares the swatch, label and value columns, and nothing wraps. */}
+          <div className="grid grid-cols-[auto_auto_1fr] items-center gap-x-1.5 gap-y-0.5 font-mono text-[11px] text-popover-foreground tabular-nums whitespace-nowrap">
+            {items.map((item) => {
+              const opacity = item.dimmed ? 0.4 : 1
+              return (
+                <div key={item.name} className="contents">
+                  <span
+                    className="size-2 rounded-[1px]"
+                    style={{ backgroundColor: rgb(item.seed.fill), opacity }}
+                  />
+                  <span className="text-muted-foreground" style={{ opacity }}>
+                    {item.label}
+                  </span>
+                  <span
+                    className="justify-self-end pl-2 text-right text-foreground"
+                    style={{ opacity }}
+                  >
+                    {valueFormatter
+                      ? valueFormatter(item.value, item.name)
+                      : item.value.toLocaleString()}
+                  </span>
+                </div>
+              )
+            })}
             {footer?.(index)}
           </div>
         </motion.div>
