@@ -1769,6 +1769,7 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
   .tracker-swatch, .tracker-legend i, .evidence-legend i:not(.unscheduled), .chip i.p50, .chip i.incident, .segment.pending,
   .chart-tip-incident i, .tip-swatch, .event-type i, .tour-progress i.done
 ) { background-image: var(--key-sheen); box-shadow: var(--key-edge); }
-/* Status badges and chips are small keys too: the button's sheen and lit top edge on their tinted face. */
-:is(.badge, .chip) { background-image: var(--key-sheen); box-shadow: var(--key-edge); }
-:root[data-theme="light"] :is(.badge, .chip) { box-shadow: inset 0 1px 0.4px rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(10, 10, 11, 0.06); }
+/* Status badges and chips are dark or tinted faces, so they take the buttons' own, softer lift rather than the
+   bright edge of a solid fill, which reads as a grey line on them. */
+:is(.badge, .chip) { background-image: var(--lift-sheen); box-shadow: var(--lift-hi); }
+:root[data-theme="light"] :is(.badge, .chip) { box-shadow: var(--lift-hi), inset 0 0 0 1px rgba(10, 10, 11, 0.06); }
