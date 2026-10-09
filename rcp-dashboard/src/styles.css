@@ -277,7 +277,7 @@ a { color: inherit; }
   border: 0; border-radius: var(--radius-sm); background: none; color: var(--text); text-align: left;
 }
 .split-menu button:hover { background: var(--surface-hover); }
-.split-menu button:focus-visible { outline: none; background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+.split-menu button:focus-visible { outline: none; background: var(--accent-soft); }
 .split-label, .split-hint { font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--track-label); }
 .split-hint { color: var(--text-3); }
 @keyframes split-menu-in { from { opacity: 0; transform: translateY(-4px); } }
