@@ -76,9 +76,11 @@ class AcceptedHttpStatusesTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(csv).isEqualTo("incident_id,state,opened_at,resolved_at,duration_seconds\r\n");
         mvc.perform(get("/api/monitors/{id}/executions/{execution}/trace",id,custom).with(jwt().jwt(t -> t.subject(owner))))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.acceptedHttpStatuses[0]").value(403));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.acceptedHttpStatuses[0]").value(403))
+                .andExpect(jsonPath("$.jobs[0].botProtection").value("CLOUDFLARE_CHALLENGE"));
         mvc.perform(get("/api/monitors/{id}/history",id).with(jwt().jwt(t -> t.subject(owner))))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.recentChecks[0].acceptedHttpStatuses[0]").value(403));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.recentChecks[0].acceptedHttpStatuses[0]").value(403))
+                .andExpect(jsonPath("$.recentChecks[0].results[0].botProtection").value("CLOUDFLARE_CHALLENGE"));
     }
 
     @Test void incidentsAndCsvUseThePinnedRuleAndSurviveLaterEdits() throws Exception {
@@ -114,7 +116,7 @@ class AcceptedHttpStatusesTest {
         int version = jdbc.queryForObject("SELECT monitor_behavior_version FROM probe_executions WHERE execution_id = ?",Integer.class,execution);
         jdbc.query("SELECT job_id,probe_region FROM probe_jobs WHERE execution_id = ?",rs -> {
             UUID job = rs.getObject("job_id",UUID.class);
-            ProbeResult result = new ProbeResult(job,execution,id,rs.getString("probe_region"),at,at,at.plusMillis(25),ProbeOutcome.HTTP_RESPONSE,403,25,0,null,version);
+            ProbeResult result = new ProbeResult(job,execution,id,rs.getString("probe_region"),at,at,at.plusMillis(25),ProbeOutcome.HTTP_RESPONSE,403,25,0,null,version,"CLOUDFLARE_CHALLENGE");
             assertThat(ingestion.ingest("codes-"+job,codec.encodeResult(result))).isEqualTo(ProbeResultIngestion.STORED);
         },execution);
     }

@@ -1,3 +1,5 @@
+import { BotProtectionHint } from "./BotProtectionHint";
+import { formatStatusCodes } from "../statusCodes";
 import { ArrowRight } from "lucide-react";
 import { BlockMeter } from "./BlockMeter";
 import { milliseconds, outcomeLabel, outcomeTone, relativeTime, type Tone } from "../format";
@@ -116,6 +118,8 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
           <span className="fanout-sentence">{verdictSentence(check.verdict, results.length)}</span>
         </div>
       </div>
+      {check.acceptedHttpStatuses && <p className="trace-note">Accepted statuses for this check: {formatStatusCodes(check.acceptedHttpStatuses)}.</p>}
+      <BotProtectionHint results={results} />
     </section>
   );
 }

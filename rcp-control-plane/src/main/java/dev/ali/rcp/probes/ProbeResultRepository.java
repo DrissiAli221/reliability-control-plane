@@ -51,9 +51,9 @@ public class ProbeResultRepository {
                     latency_ms,
                     response_bytes,
                     error_type,
-                    monitor_behavior_version
+                    monitor_behavior_version, bot_protection
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (job_id) DO NOTHING
                 """,
                 result.jobId(),
@@ -68,7 +68,7 @@ public class ProbeResultRepository {
                 result.latencyMillis(),
                 result.responseBytes(),
                 result.errorType(),
-                result.monitorBehaviorVersion()
+                result.monitorBehaviorVersion(), result.botProtection()
         ) == 1;
     }
 

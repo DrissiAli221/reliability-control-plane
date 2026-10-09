@@ -24,7 +24,7 @@ export function AcceptedStatusCodesDialog({ monitorId, codes, onClose, onSaved }
     catch (reason) { setError(reason instanceof Error ? reason.message : "Statuses could not be saved"); setBusy(false); }
   }
   return <div className="dialog-backdrop" onMouseDown={(event) => { if (!busy && event.target === event.currentTarget) onClose(); }}>
-    <section className="dialog" role="dialog" aria-modal="true" aria-labelledby="statuses-title" ref={dialog}>
+    <section className="dialog monitor-settings" role="dialog" aria-modal="true" aria-labelledby="statuses-title" ref={dialog}>
       <header className="dialog-header"><div><h2 id="statuses-title">Accepted HTTP statuses</h2><p>Applies to new checks. Past checks keep their original rule and verdict.</p></div>
         <button className="icon-button" type="button" aria-label="Close" disabled={busy} onClick={onClose}><X size={16} /></button></header>
       <form onSubmit={(event) => void submit(event)}>

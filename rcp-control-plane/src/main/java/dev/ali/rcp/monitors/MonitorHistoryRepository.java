@@ -137,7 +137,7 @@ public class MonitorHistoryRepository {
         jdbcTemplate.query(
                 """
                 SELECT executions.execution_id, executions.scheduled_at, executions.verdict, executions.accepted_http_statuses_snapshot,
-                       results.probe_region, results.outcome, results.http_status, results.latency_ms
+                       results.probe_region, results.outcome, results.http_status, results.latency_ms, results.bot_protection
                 FROM (
                     SELECT execution_id, scheduled_at, verdict, accepted_http_statuses_snapshot
                     FROM probe_executions
@@ -161,7 +161,7 @@ public class MonitorHistoryRepository {
                                 region,
                                 resultSet.getString("outcome"),
                                 resultSet.getObject("http_status", Integer.class),
-                                resultSet.getLong("latency_ms")
+                                resultSet.getLong("latency_ms"), resultSet.getString("bot_protection")
                         ));
                     }
                 },

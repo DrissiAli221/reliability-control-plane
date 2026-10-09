@@ -50,7 +50,7 @@ export function CreateMonitorDialog({ onClose, onCreate }: {
 
   return (
     <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section className="dialog" role="dialog" aria-modal="true" aria-labelledby="create-title" ref={dialog}>
+      <section className="dialog monitor-settings" role="dialog" aria-modal="true" aria-labelledby="create-title" ref={dialog}>
         <header className="dialog-header">
           <div>
             <h2 id="create-title">Create monitor</h2>

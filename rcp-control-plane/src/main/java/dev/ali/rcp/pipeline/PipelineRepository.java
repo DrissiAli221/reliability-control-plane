@@ -43,7 +43,7 @@ public class PipelineRepository {
                 SELECT jobs.job_id, jobs.probe_region, jobs.created_at,
                        outbox.published_at, outbox.attempt_count, outbox.failed_at, outbox.last_error,
                        results.started_at, results.completed_at, results.received_at, results.outcome,
-                       results.http_status, results.latency_ms, results.response_bytes, results.error_type
+                       results.http_status, results.latency_ms, results.response_bytes, results.error_type, results.bot_protection
                 FROM probe_jobs jobs
                 LEFT JOIN outbox_events outbox
                   ON outbox.event_type = 'PROBE_JOB_REQUESTED'
@@ -67,7 +67,7 @@ public class PipelineRepository {
                         resultSet.getObject("http_status", Integer.class),
                         resultSet.getObject("latency_ms", Long.class),
                         resultSet.getObject("response_bytes", Long.class),
-                        resultSet.getString("error_type")
+                        resultSet.getString("error_type"), resultSet.getString("bot_protection")
                 ),
                 executionId
         );

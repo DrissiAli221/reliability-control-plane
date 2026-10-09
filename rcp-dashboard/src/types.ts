@@ -87,7 +87,7 @@ export type RecentCheck = {
   executionId: string;
   scheduledAt: string;
   verdict: Verdict;
-  results: Array<{ region: string; outcome: string; httpStatus: number | null; latencyMs: number }>;
+  results: Array<{ region: string; outcome: string; httpStatus: number | null; latencyMs: number; botProtection?: string | null }>;
 };
 
 export type MonitorHistory = {
@@ -129,6 +129,7 @@ export type PublicStatusPage = {
 };
 
 export type JobTrace = {
+  botProtection?: string | null;
   jobId: string;
   region: string;
   createdAt: string | null;

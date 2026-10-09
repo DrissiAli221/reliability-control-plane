@@ -105,6 +105,9 @@ class MonitorDeletionTest {
         for (String route : new String[]{"", "/history", "/latency-heatmap", "/availability", "/reliability-report", "/incident-state", "/reliability-report/html", "/reliability-report/csv", "/executions/"+execution+"/trace"}) {
             mvc.perform(get("/api/monitors/"+id+route).param("from",Instant.now().minusSeconds(86400).toString()).param("to",Instant.now().toString()).with(jwt().jwt(t -> t.subject(owner)))).andExpect(status().isNotFound());
         }
+        mvc.perform(get("/api/pipeline").with(jwt().jwt(t -> t.subject(owner))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.enabledMonitors").value(0))
+                .andExpect(jsonPath("$.pendingExecutions").value(0)).andExpect(jsonPath("$.failedOutbox").value(0));
         mvc.perform(get("/api/monitors").with(jwt().jwt(t -> t.subject(owner)))).andExpect(content().json("[]"));
         mvc.perform(delete("/api/monitors/{id}",id).with(jwt().jwt(t -> t.subject(owner)))).andExpect(status().isNotFound());
         ProbeResult result = new ProbeResult(job,execution,id,"eu-west-1",at,at,at.plusMillis(30),ProbeOutcome.HTTP_RESPONSE,200,30,0,null,1);

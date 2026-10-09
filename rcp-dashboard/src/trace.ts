@@ -65,6 +65,7 @@ export function traceEvents(trace: ExecutionTrace): TraceEvent[] {
       const details: Array<[string, string]> = [["outcome", outcomeLabel(job.outcome, job.httpStatus)]];
       if (job.latencyMs != null) details.push(["latency", `${job.latencyMs} ms`]);
       if (job.responseBytes != null) details.push(["bytes", String(job.responseBytes)]);
+      if (job.botProtection === "CLOUDFLARE_CHALLENGE") details.push(["bot protection", "Cloudflare challenge"]);
       if (job.errorType) details.push(["error", job.errorType]);
       add({
         at: job.completedAt, type: "ProbeCompleted", category: "probe", region: job.region,

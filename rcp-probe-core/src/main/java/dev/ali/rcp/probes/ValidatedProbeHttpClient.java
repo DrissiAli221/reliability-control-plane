@@ -110,8 +110,11 @@ public final class ValidatedProbeHttpClient implements ProbeHttpClient {
         );
         try {
             ProbeHttpResponse result = client.execute(request, response -> {
+                var marker = response.getFirstHeader("cf-mitigated");
+                String botProtection = marker != null && "challenge".equalsIgnoreCase(marker.getValue().trim())
+                        ? "CLOUDFLARE_CHALLENGE" : null;
                 if (response.getEntity() == null) {
-                    return new ProbeHttpResponse(response.getCode(), 0);
+                    return new ProbeHttpResponse(response.getCode(), 0, botProtection);
                 }
                 InputStream body = response.getEntity().getContent();
                 long bytesRead = countUpTo(body, maximumBodyBytes);
@@ -119,10 +122,10 @@ public final class ValidatedProbeHttpClient implements ProbeHttpClient {
                     // The status line already answers the probe. Closing the stream normally would drain
                     // the rest of a huge or endless body, so drop the connection instead.
                     request.cancel();
-                    throw new BodyCapReached(new ProbeHttpResponse(response.getCode(), bytesRead));
+                    throw new BodyCapReached(new ProbeHttpResponse(response.getCode(), bytesRead, botProtection));
                 }
                 body.close();
-                return new ProbeHttpResponse(response.getCode(), bytesRead);
+                return new ProbeHttpResponse(response.getCode(), bytesRead, botProtection);
             });
             if (request.isCancelled()) {
                 throw new SocketTimeoutException("total probe request deadline exceeded");

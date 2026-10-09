@@ -43,8 +43,15 @@ public record ExecutionTrace(
             Integer httpStatus,
             Long latencyMs,
             Long responseBytes,
-            String errorType
+            String errorType,
+            String botProtection
     ) {
+        public JobTrace(UUID jobId, String region, Instant createdAt, Instant publishedAt, int failedPublishAttempts,
+                Instant publishFailedAt, String publishLastError, Instant startedAt, Instant completedAt, Instant receivedAt,
+                String outcome, Integer httpStatus, Long latencyMs, Long responseBytes, String errorType) {
+            this(jobId,region,createdAt,publishedAt,failedPublishAttempts,publishFailedAt,publishLastError,
+                    startedAt,completedAt,receivedAt,outcome,httpStatus,latencyMs,responseBytes,errorType,null);
+        }
     }
 
     public record Evaluation(String verdict, String transition, Instant evaluatedAt) {

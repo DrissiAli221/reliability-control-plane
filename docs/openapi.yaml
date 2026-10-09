@@ -664,6 +664,11 @@ components:
           type: string
         instance:
           type: string
+    BotProtection:
+      type: string
+      nullable: true
+      enum: [CLOUDFLARE_CHALLENGE, null]
+      description: Known cf-mitigated challenge marker, never inferred from a 403 alone. Older probes omit it. Does not affect the verdict.
     AcceptedHttpStatuses:
       type: array
       nullable: true
@@ -1047,6 +1052,8 @@ components:
                       type: string
                     outcome:
                       type: string
+                    botProtection:
+                      $ref: '#/components/schemas/BotProtection'
                     httpStatus:
                       type: integer
                       nullable: true
@@ -1211,6 +1218,8 @@ components:
               responseBytes:
                 type: integer
                 nullable: true
+              botProtection:
+                $ref: '#/components/schemas/BotProtection'
               errorType:
                 type: string
                 nullable: true

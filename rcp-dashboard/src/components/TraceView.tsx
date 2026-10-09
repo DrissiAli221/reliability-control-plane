@@ -4,6 +4,7 @@ import { milliseconds, verdictState } from "../format";
 import { labelFits, spanLabel, traceEvents, traceRows, verdictRule, type SpanKind, type TraceRow } from "../trace";
 import type { ExecutionTrace } from "../types";
 import { formatStatusCodes } from "../statusCodes";
+import { BotProtectionHint } from "./BotProtectionHint";
 import { StatusBadge } from "./StatusBadge";
 
 type View = "timeline" | "history";
@@ -173,6 +174,7 @@ export function TraceView({ trace }: { trace: ExecutionTrace }) {
           </table>
         </div>
       )}
+      <BotProtectionHint results={trace.jobs} />
       <p className="trace-note">
         Accepted statuses for this check: {formatStatusCodes(trace.acceptedHttpStatuses)}.
         Worker start and finish times use the worker's clock; every other timestamp is PostgreSQL time.

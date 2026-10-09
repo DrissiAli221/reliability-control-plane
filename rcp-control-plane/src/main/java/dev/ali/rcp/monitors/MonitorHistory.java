@@ -46,7 +46,11 @@ public record MonitorHistory(
             String region,
             String outcome,
             Integer httpStatus,
-            long latencyMs
+            long latencyMs,
+            String botProtection
     ) {
+        public RegionResult(String region, String outcome, Integer httpStatus, long latencyMs) {
+            this(region,outcome,httpStatus,latencyMs,null);
+        }
     }
 }
