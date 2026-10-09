@@ -126,11 +126,16 @@ public class ReliabilityReportHtmlRenderer {
             .meter-fill.good { background: var(--green); } .meter-fill.bad { background: var(--red); }
             .meter-fill.warn { background: var(--amber); }
             .meter-mark { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--surface); }
-            /* Latency: the p50..p95 spread on a scale from zero, a dot at p50 and a tick at p95. */
-            .range-span { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--text-3) 55%, transparent); }
-            .range-dot { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%;
-              background: var(--text-2); outline: 2px solid var(--surface); }
-            .range-tick { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--text); }
+            /* Tile meters: ten square blocks, the dashboard's block meter drawn flat for print (solid fills and plain track
+               blocks, no gradients or inset shadows). A block fills left to right; the stretch from the value to its target
+               is hatched in the tone. */
+            .blocks { --hue: var(--text-3); display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; height: 12px; }
+            .blocks[data-tone="good"] { --hue: var(--green); } .blocks[data-tone="bad"] { --hue: var(--red); }
+            .blocks[data-tone="warn"] { --hue: var(--amber); }
+            .blocks b { position: relative; display: block; overflow: hidden; background: var(--track); }
+            .blocks i { position: absolute; top: 0; bottom: 0; }
+            .blocks i.fill { left: 0; background: var(--hue); }
+            .blocks i.short { background: repeating-linear-gradient(135deg, var(--hue) 0 1.5px, transparent 1.5px 4px); }
             /* Incidents: each one drawn where it happened in the window, from opened to resolved. */
             .meter-span { position: absolute; top: -3px; bottom: -3px; min-width: 2px; background: var(--red); }
             .meter-span.resolved { background: color-mix(in srgb, var(--red) 55%, var(--track)); }
@@ -194,7 +199,8 @@ public class ReliabilityReportHtmlRenderer {
               .hint, .unit, .note, .metric-value .unit, .lines dd { font-size: 8pt; }
               .target { margin: 2mm 0 1mm; }
               .decision { padding: 3mm; } .panel-header { min-height: 0; padding: 1.8mm 3mm; } .stack { margin-top: 4mm; }
-              .metric { gap: 1.5mm; padding: 3mm; } .metric-visual { height: 4mm; }
+              .metric { gap: 1.5mm; padding: 3mm; } .metric-visual { height: 4mm; } .blocks { height: 3mm; gap: 1mm; }
+              .blocks i.short, .blocks i.fill { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
               .visual { padding: 3mm; } .readout-row { margin: 3mm 0 2mm; } .lines { margin-top: 3mm; }
               .lines > div { padding: 1mm 0; }
               .panel-header { break-after: avoid; } .caveats > div { padding: 1mm 3mm; }
@@ -268,7 +274,7 @@ public class ReliabilityReportHtmlRenderer {
 
         String availabilityTone = a.sloMet() == null ? "" : tone;
         StringBuilder visual = new StringBuilder();
-        meter(visual, "availability", "Measured availability " + percent(a.measuredAvailabilityPercent()) + " against a target of "
+        blockMeter(visual, "availability", "Measured availability " + percent(a.measuredAvailabilityPercent()) + " against a target of "
                 + given(a.sloTargetPercent()) + ", on a nines scale", nines(a.measuredAvailabilityPercent()), availabilityTone,
                 nines(a.sloTargetPercent()));
         metric(html, "Availability", fixed(a.measuredAvailabilityPercent(), 2), "%",
@@ -457,6 +463,33 @@ public class ReliabilityReportHtmlRenderer {
         html.append("</div>");
     }
 
+    /**
+     * The tile meter: ten blocks, each taking its slice of the share (0..1). A target above the share is hatched from the
+     * share up to the target; a target at or below it draws nothing.
+     */
+    private void blockMeter(StringBuilder html, String id, String label, BigDecimal share, String tone, BigDecimal target) {
+        double value = share.doubleValue();
+        double goal = target == null ? value : target.doubleValue();
+        html.append("<div class=\"blocks\" role=\"img\" aria-label=\"").append(escape(label)).append("\" data-meter=\"").append(id)
+                .append("\" data-share=\"").append(share.toPlainString()).append("\"")
+                .append(tone.isEmpty() ? "" : " data-tone=\"" + tone + "\"").append(">");
+        for (int i = 0; i < BLOCKS; i++) {
+            double from = (double) i / BLOCKS;
+            double to = (double) (i + 1) / BLOCKS;
+            double fill = Math.max(0, Math.min(value, to) - from) * BLOCKS;
+            double hatch = Math.max(0, Math.min(goal, to) - Math.max(value, from)) * BLOCKS;
+            html.append("<b>");
+            if (fill > 0) {
+                html.append("<i class=\"fill\" style=\"width:").append(cssPercent(fill)).append("\"></i>");
+            }
+            if (hatch > 0) {
+                html.append("<i class=\"short\" style=\"left:").append(cssPercent(fill)).append(";width:").append(cssPercent(hatch)).append("\"></i>");
+            }
+            html.append("</b>");
+        }
+        html.append("</div>");
+    }
+
     /** Down checks against the allowance, like the dashboard's budget meter: amber past 75%, red and full once spent. */
     private void budgetMeter(StringBuilder html, ReportErrorBudget budget) {
         BigDecimal observed = BigDecimal.valueOf(budget.observedBadExecutions());
@@ -464,25 +497,20 @@ public class ReliabilityReportHtmlRenderer {
         boolean exceeded = budget.remainingExecutions().signum() < 0;
         BigDecimal used = allowed.signum() > 0 ? share(observed, allowed) : observed.signum() > 0 ? BigDecimal.ONE : BigDecimal.ZERO;
         String tone = exceeded ? "bad" : used.compareTo(new BigDecimal("0.75")) > 0 ? "warn" : "good";
-        meter(html, "budget", exceeded ? "Error budget exceeded: " + budget.observedBadExecutions() + " down against "
+        blockMeter(html, "budget", exceeded ? "Error budget exceeded: " + budget.observedBadExecutions() + " down against "
                 + oneDecimal(allowed) + " allowed" : budget.observedBadExecutions() + " of " + oneDecimal(allowed)
                 + " allowed down checks used", used, tone, null);
     }
 
-    /** The p50..p95 spread on a scale from zero; an empty track when there are too few samples. */
+    /** Solid blocks to the p50 and hatched to the p95 on a scale from zero; all-empty blocks when there are too few samples. */
     private void latencyRange(StringBuilder html, ReportLatency latency) {
         if (latency.p50Ms() == null || latency.p95Ms() == null) {
-            html.append("<div class=\"meter\" role=\"img\" aria-label=\"Not enough samples for latency percentiles\"></div>");
+            blockMeter(html, "latency", "Not enough samples for latency percentiles", BigDecimal.ZERO, "", null);
             return;
         }
-        double scale = Math.max(latency.p95Ms() * 1.1, 1);
-        double p50 = latency.p50Ms() / scale;
-        double p95 = latency.p95Ms() / scale;
-        html.append("<div class=\"meter\" role=\"img\" aria-label=\"p50 ").append(latency.p50Ms()).append(" ms, p95 ")
-                .append(latency.p95Ms()).append(" ms\"><span class=\"range-span\" style=\"left:").append(cssPercent(p50))
-                .append(";width:").append(cssPercent(p95 - p50)).append("\"></span><span class=\"range-dot\" style=\"left:")
-                .append(cssPercent(p50)).append("\"></span><span class=\"range-tick\" style=\"left:").append(cssPercent(p95))
-                .append("\"></span></div>");
+        BigDecimal scale = BigDecimal.valueOf(Math.max(latency.p95Ms() * 1.1, 1));
+        blockMeter(html, "latency", "p50 " + latency.p50Ms() + " ms, p95 " + latency.p95Ms() + " ms",
+                share(BigDecimal.valueOf(latency.p50Ms()), scale), "", share(BigDecimal.valueOf(latency.p95Ms()), scale));
     }
 
     /** The window as a track with each incident drawn where it happened, from opened (or the window start) to resolved. */
@@ -567,6 +595,8 @@ public class ReliabilityReportHtmlRenderer {
         }
         return s / 86400 + "d " + s % 86400 / 3600 + "h";
     }
+
+    private static final int BLOCKS = 10;
 
     private String cssPercent(BigDecimal share) {
         return share.multiply(HUNDRED).setScale(1, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString() + "%";

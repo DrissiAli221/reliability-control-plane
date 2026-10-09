@@ -46,9 +46,38 @@ class ReliabilityReportHtmlRendererTest {
         assertThat(html).contains("fill=\"url(#rcp-violet)\"", "fill=\"currentColor\"");
 
         // Every meter is a labelled image with its share recorded, never an unlabelled bar.
+        // The three tile meters are ten flat blocks; the two panel scales and the incident strip stay slim tracks.
+        assertThat(Pattern.compile("<div class=\"blocks\" role=\"img\" aria-label=\"[^\"]+\" data-meter=\"[a-z-]+\" data-share=\"[0-9.]+\"[^>]*>")
+                .matcher(html).results().count()).isEqualTo(3);
         assertThat(Pattern.compile("<div class=\"meter\" role=\"img\" aria-label=\"[^\"]+\" data-meter=\"[a-z-]+\" data-share=\"[0-9.]+\">")
-                .matcher(html).results().count()).isEqualTo(4);
-        assertThat(Pattern.compile("<div class=\"meter\" role=\"img\" aria-label=\"[^\"]+\"").matcher(html).results().count()).isEqualTo(6);
+                .matcher(html).results().count()).isEqualTo(2);
+        assertThat(Pattern.compile("<div class=\"meter\" role=\"img\" aria-label=\"[^\"]+\"").matcher(html).results().count()).isEqualTo(3);
+        assertThat(Pattern.compile("<div class=\"blocks\"[^>]*>(?:<b>(?:<i [^>]*></i>)*</b>){10}</div>").matcher(html).results().count()).isEqualTo(3);
+    }
+
+    @Test
+    void tileMetersAreFlatBlocksWithTheShortfallHatched() {
+        String html = renderer.render(sampleReport());
+        // p50 142 ms and p95 387 ms on a scale of 1.1 x p95: solid through the p50, hatched from there to the p95.
+        String latency = blocksOf(html, "latency");
+        assertThat(latency).startsWith("<b><i class=\"fill\" style=\"width:100%\"></i></b>".repeat(3));
+        assertThat(latency).contains("<b><i class=\"fill\" style=\"width:34%\"></i><i class=\"short\" style=\"left:34%;width:66%\"></i></b>");
+        assertThat(latency).contains("<b><i class=\"short\" style=\"left:0%;width:100%\"></i></b>".repeat(5));
+        assertThat(Pattern.compile("class=\"short\"").matcher(latency).results().count()).isEqualTo(7);
+        // Availability is past its target, so there is nothing to hatch; the budget has no target at all.
+        assertThat(blocksOf(html, "availability")).doesNotContain("short");
+        assertThat(blocksOf(html, "budget")).doesNotContain("short");
+        // Print stays clean: the block styles carry no gradient except the hatching and no inset shadows.
+        String rules = html.substring(html.indexOf(".blocks {"), html.indexOf("/* Incidents:"));
+        assertThat(rules).contains("repeating-linear-gradient(135deg").doesNotContain("inset", "box-shadow", "linear-gradient(180deg");
+        // The block meters add no font size, so the six-role type scale is untouched.
+        assertThat(rules).doesNotContain("font-size");
+    }
+
+    private static String blocksOf(String html, String id) {
+        var matcher = Pattern.compile("<div class=\"blocks\"[^>]*data-meter=\"" + id + "\"[^>]*>(.*?)</div>").matcher(html);
+        assertThat(matcher.find()).as("block meter " + id).isTrue();
+        return matcher.group(1);
     }
 
     @Test
@@ -62,7 +91,7 @@ class ReliabilityReportHtmlRendererTest {
         assertThat(renderer.nines(null)).isEqualByComparingTo("0");
         String html = renderer.render(sampleReport());
         // 99.72% against 99.5%: the fill passes the target marker, and the ticks name the scale.
-        assertThat(html).contains("data-meter=\"availability\" data-share=\"0.639\"", "class=\"meter-mark\" style=\"left:57.5%\"",
+        assertThat(html).contains("data-meter=\"availability-scale\" data-share=\"0.639\"", "class=\"meter-mark\" style=\"left:57.5%\"",
                 "<span style=\"left:75%\">99.9%</span>", "Scaled in nines");
     }
 
@@ -175,7 +204,9 @@ class ReliabilityReportHtmlRendererTest {
                 BigDecimal.ZERO, 1, new BigDecimal("-1.00000")));
         assertThat(html).contains("MISSED", "Error budget exceeded", "title=\"-1.00000 of 0\"", ">1</span><span class=\"unit\">over",
                 "1 check over a budget of 0", "Allowed 0 checks · 1 down");
-        assertThat(html).contains("data-meter=\"budget\" data-share=\"1\"><span class=\"meter-fill bad\" style=\"width:100%\"></span></div>");
+        // Overspent: every one of the ten blocks is full and red.
+        assertThat(html).contains("data-meter=\"budget\" data-share=\"1\" data-tone=\"bad\">");
+        assertThat(blocksOf(html, "budget")).isEqualTo("<b><i class=\"fill\" style=\"width:100%\"></i></b>".repeat(10));
         assertThat(html).doesNotContain("NaN", "Infinity", "width=\"-");
     }
 
