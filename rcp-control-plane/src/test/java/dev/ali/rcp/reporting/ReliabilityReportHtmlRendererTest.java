@@ -100,6 +100,15 @@ class ReliabilityReportHtmlRendererTest {
     }
 
     @Test
+    void rendersTheLimitsAsATopicTableWithoutBullets() {
+        String html = renderer.render(sampleReport());
+        assertThat(html).contains("What this report does not prove", "<dl class=\"caveats\">",
+                "<div><dt>Coverage</dt><dd>Counts due checks that never ran", "<dt>Regions</dt><dd>Region labels come from the probe configuration");
+        assertThat(html).doesNotContain("class=\"limitations\"", "<ul class=\"limitations");
+        assertThat(html.split("<div><dt>", -1).length - 1).isGreaterThanOrEqualTo(ReliabilityReportService.CAVEATS.size());
+    }
+
+    @Test
     void usesExactlyTheSixRoleTypeScaleWithoutUppercaseTransforms() {
         String html = renderer.render(sampleReport());
         String css = html.substring(html.indexOf("<style>"), html.indexOf("</style>"));
@@ -132,12 +141,13 @@ class ReliabilityReportHtmlRendererTest {
                 a.expectedOpportunities(), input);
         ReliabilityReport malicious = new ReliabilityReport(input, sample.generatedAt(), null, input, input,
                 withPolicy, sample.errorBudget(), sample.latency(),
-                List.of(new ReportIncidentEvent(UUID.randomUUID(), input, a.from())), false, List.of(input));
+                List.of(new ReportIncidentEvent(UUID.randomUUID(), input, a.from())), false, List.of(input),
+                List.of(new ReportCaveat(input, input)));
 
         String html = renderer.render(malicious);
         assertThat(html).doesNotContain(input, "<script>");
         assertThat(html).contains("<title>" + escaped, "<h1 id=\"report-title\">" + escaped,
-                "<p class=\"target mono\">" + escaped, "title=\"" + escaped + "\"", "<li>" + escaped,
+                "<p class=\"target mono\">" + escaped, "title=\"" + escaped + "\"", "<dt>" + escaped + "</dt><dd>" + escaped + "</dd>",
                 "Schema " + escaped, "No source data");
     }
 
@@ -176,7 +186,7 @@ class ReliabilityReportHtmlRendererTest {
         assertThat(html).contains("class=\"figure\">2</span>", "2 incidents");
         ReliabilityReport truncated = new ReliabilityReport(sample.schemaVersion(), sample.generatedAt(),
                 sample.sourceDataWatermark(), sample.monitorName(), sample.targetUrl(), sample.availability(),
-                sample.errorBudget(), sample.latency(), sample.incidentTimeline(), true, sample.limitations());
+                sample.errorBudget(), sample.latency(), sample.incidentTimeline(), true, sample.limitations(), sample.caveats());
         assertThat(renderer.render(truncated)).contains("class=\"figure\">2+</span>", "Lower bound · timeline truncated",
                 "Incident timeline truncated at 100 transitions");
     }
@@ -239,11 +249,8 @@ class ReliabilityReportHtmlRendererTest {
                 List.of(new ReportIncidentEvent(first, "OPENED", from.plusSeconds(3600)),
                         new ReportIncidentEvent(first, "RESOLVED", from.plusSeconds(3720)),
                         new ReportIncidentEvent(second, "OPENED", to.minusSeconds(180))), false,
-                List.of("Coverage includes due schedule slots without an execution and excludes recorded paused periods; maintenance and late-correction policies remain incomplete.",
-                        "Maintenance windows and regional SLIs are not implemented.",
-                        "Incident timeline contains transitions in the requested window; an incident opened earlier may still be active.",
-                        "Latency percentiles use HTTP-response samples only and require at least 20 samples.",
-                        "Local region labels do not prove geographic probe execution or AWS production operation."));
+                ReliabilityReportService.CAVEATS.stream().map(ReportCaveat::text).toList(),
+                ReliabilityReportService.CAVEATS);
     }
 
     private ReliabilityReport reportWithEvidence(BigDecimal measured, Boolean sloMet,
@@ -260,6 +267,6 @@ class ReliabilityReportHtmlRendererTest {
                 sloMet == null ? 10 - conclusive : 0, sloMet == null ? 10 : conclusive, a.denominatorPolicy());
         return new ReliabilityReport(sample.schemaVersion(), sample.generatedAt(), null, sample.monitorName(),
                 sample.targetUrl(), evidence, new ReportErrorBudget(allowed, down, remaining),
-                new ReportLatency(2, null, null, 20), List.of(), false, sample.limitations());
+                new ReportLatency(2, null, null, 20), List.of(), false, sample.limitations(), sample.caveats());
     }
 }

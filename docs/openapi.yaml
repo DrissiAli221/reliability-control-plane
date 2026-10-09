@@ -819,6 +819,18 @@ components:
           type: array
           items:
             type: string
+        caveats:
+          type: array
+          description: The same limits as `limitations`, grouped by topic.
+          items:
+            type: object
+            required: [topic, text]
+            properties:
+              topic:
+                type: string
+                example: Coverage
+              text:
+                type: string
     CreateStatusPageRequest:
       type: object
       required: [name, slug, monitorIds]

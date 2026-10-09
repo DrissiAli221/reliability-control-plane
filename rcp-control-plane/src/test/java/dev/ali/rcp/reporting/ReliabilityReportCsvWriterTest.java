@@ -28,7 +28,7 @@ class ReliabilityReportCsvWriterTest {
         ReliabilityReport report = new ReliabilityReport(sample.schemaVersion(), sample.generatedAt(), null,
                 sample.monitorName(), sample.targetUrl(), sample.availability(), sample.errorBudget(), sample.latency(),
                 List.of(new ReportIncidentEvent(id, "RESOLVED", Instant.parse("2026-10-06T01:00:00Z"))), false,
-                sample.limitations());
+                sample.limitations(), sample.caveats());
 
         assertThat(writer.write(report)).endsWith(id + ",RESOLVED,,2026-10-06T01:00:00Z,\r\n");
     }
@@ -38,7 +38,7 @@ class ReliabilityReportCsvWriterTest {
         ReliabilityReport sample = ReliabilityReportHtmlRendererTest.sampleReport();
         ReliabilityReport report = new ReliabilityReport(sample.schemaVersion(), sample.generatedAt(), null,
                 sample.monitorName(), sample.targetUrl(), sample.availability(), sample.errorBudget(), sample.latency(),
-                List.of(), false, sample.limitations());
+                List.of(), false, sample.limitations(), sample.caveats());
 
         assertThat(writer.write(report)).isEqualTo(ReliabilityReportCsvWriter.HEADER + "\r\n");
     }

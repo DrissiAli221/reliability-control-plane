@@ -19,13 +19,15 @@ public class ReliabilityReportService {
     private static final int MAX_INCIDENT_EVENTS = 100;
     private static final int MINIMUM_LATENCY_SAMPLES = 20;
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
-    private static final List<String> LIMITATIONS = List.of(
-            "Coverage includes due schedule slots without an execution and excludes recorded paused periods; maintenance and late-correction policies remain incomplete.",
-            "Maintenance windows and regional SLIs are not implemented.",
-            "Incident timeline contains transitions in the requested window; an incident opened earlier may still be active.",
-            "Latency percentiles use HTTP-response samples only and require at least 20 samples.",
-            "Local region labels do not prove geographic probe execution or AWS production operation."
+    /** The one place the report's stated limits live; `limitations` in the JSON is derived from these texts. */
+    static final List<ReportCaveat> CAVEATS = List.of(
+            new ReportCaveat("Coverage", "Counts due checks that never ran and skips paused periods. Maintenance windows and late corrections are not modelled yet."),
+            new ReportCaveat("Scope", "One availability number for the whole monitor; there are no per-region SLIs or maintenance windows yet."),
+            new ReportCaveat("Incidents", "Shows transitions inside this window only; an incident opened earlier may still be active."),
+            new ReportCaveat("Latency", "Uses HTTP responses only and needs at least 20 of them; timeouts and refused connections are not in the percentiles."),
+            new ReportCaveat("Regions", "Region labels come from the probe configuration; locally they do not prove the check ran in that geography.")
     );
+    private static final List<String> LIMITATIONS = CAVEATS.stream().map(ReportCaveat::text).toList();
 
     private final AvailabilityService availabilityService;
     private final ReliabilityReportRepository repository;
@@ -93,7 +95,8 @@ public class ReliabilityReportService {
                 latency,
                 timeline,
                 truncated,
-                LIMITATIONS
+                LIMITATIONS,
+                CAVEATS
         );
     }
 }

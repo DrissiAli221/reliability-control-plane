@@ -166,8 +166,11 @@ public class ReliabilityReportHtmlRenderer {
             .table-wrap { overflow-x: auto; }
             .empty { padding: 18px 16px; color: var(--text-2); }
             .notice { color: var(--amber-text); padding: 10px 16px; border-top: 1px solid var(--border); }
-            .limitations { color: var(--text-2); padding: 14px 16px 14px 32px; margin: 0; }
-            .limitations li { padding-left: 3px; margin: 4px 0; }
+            /* One row per topic, label left and the limit right; rows touch, as in the explain lines. */
+            .caveats { margin: 0; }
+            .caveats > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding: 9px 16px; border-bottom: 1px solid var(--border); }
+            .caveats > div:last-child { border-bottom: 0; }
+            .caveats dd { margin: 0; color: var(--text-2); }
             footer { border-top: 1px solid var(--border); margin-top: 24px; padding-top: 12px;
               display: flex; justify-content: space-between; gap: 12px; overflow-wrap: anywhere; }
             @media (max-width: 700px) {
@@ -177,6 +180,7 @@ public class ReliabilityReportHtmlRenderer {
               .section-note, .edition { display: none; } footer { flex-wrap: wrap; }
               .window { text-align: left; } .window-days { justify-content: flex-start; }
             }
+            @media (max-width: 520px) { .caveats > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
             @page { size: A4; margin: 12mm; }
             @media print {
               :root { color-scheme: light; """ + LIGHT_TOKENS + """
@@ -193,12 +197,12 @@ public class ReliabilityReportHtmlRenderer {
               .metric { gap: 1.5mm; padding: 3mm; } .metric-visual { height: 4mm; }
               .visual { padding: 3mm; } .readout-row { margin: 3mm 0 2mm; } .lines { margin-top: 3mm; }
               .lines > div { padding: 1mm 0; }
-              .panel-header { break-after: avoid; } .limitations { padding: 2mm 3mm 2mm 7mm; }
+              .panel-header { break-after: avoid; } .caveats > div { padding: 1mm 3mm; }
               .breakdown { padding: 3mm; } .composition { height: 2.5mm; margin: 2.5mm 0; } .legend dd span { font-size: 8pt; }
               .table-wrap { overflow: visible; }
               th, td { padding: 1mm 3mm; } thead { display: table-header-group; } tr { break-inside: avoid; }
               .limits, .masthead, .intro, .decision, .metric, .metrics, .visual, .visuals, .breakdown { break-inside: avoid; }
-              .limitations li { margin: .5mm 0; } footer { margin-top: 2mm; padding-top: 1.5mm; }
+              footer { margin-top: 2mm; padding-top: 1.5mm; }
               p, li { orphans: 3; widows: 3; }
             }
             """;
@@ -374,11 +378,12 @@ public class ReliabilityReportHtmlRenderer {
         html.append("</section>");
 
         panel(html, "What this report does not prove", "Read alongside the evidence", "limits");
-        html.append("<ul class=\"limitations\">");
-        for (String limitation : report.limitations()) {
-            html.append("<li>").append(escape(limitation)).append("</li>");
+        html.append("<dl class=\"caveats\">");
+        for (ReportCaveat caveat : report.caveats()) {
+            html.append("<div><dt>").append(escape(caveat.topic())).append("</dt><dd>")
+                    .append(escape(caveat.text())).append("</dd></div>");
         }
-        html.append("</ul></section></div></main><footer><span data-value=\"").append(report.generatedAt()).append("\" title=\"")
+        html.append("</dl></section></div></main><footer><span data-value=\"").append(report.generatedAt()).append("\" title=\"")
                 .append(report.generatedAt()).append("\">Generated ").append(dateTime(report.generatedAt())).append("</span><span>Schema ")
                 .append(escape(report.schemaVersion())).append(" · ")
                 .append(report.sourceDataWatermark() == null ? "No source data"
