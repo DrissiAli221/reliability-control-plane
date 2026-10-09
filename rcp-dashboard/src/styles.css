@@ -1772,3 +1772,10 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 /* Monitor settings stay reachable on short screens and with long user-supplied names. */
 .monitor-settings { max-height: calc(100dvh - 40px); overflow-y: auto; overflow-wrap: anywhere; }
 .monitor-settings .field input { width: 100%; min-width: 0; }
+
+/* A footer row inside a panel: a hairline above, the panel's own padding, an icon and a short explanation. */
+.panel-note { display: flex; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--border); color: var(--text); }
+.panel-note > svg { flex: none; margin-top: 1px; color: var(--text-2); }
+.panel-note strong { font-size: 13px; font-weight: 500; }
+.panel-note-tag { margin-left: 8px; font-size: 11px; color: var(--text-3); }
+.panel-note p { margin-top: 4px; max-width: 72ch; font-size: 12px; line-height: 1.5; color: var(--text-2); }
