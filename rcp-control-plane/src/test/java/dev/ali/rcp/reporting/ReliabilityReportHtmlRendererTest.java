@@ -86,6 +86,20 @@ class ReliabilityReportHtmlRendererTest {
     }
 
     @Test
+    void showsTheWindowInTheDotFaceAndWhereEveryDueCheckWent() {
+        String html = renderer.render(sampleReport());
+        assertThat(html).contains("<span class=\"dots\">6 OCT</span><span class=\"arrow\">→</span><span class=\"dots\">7 OCT</span>",
+                "2026 · 00:00 UTC · <span>1 day</span>", "Where the 1440 due checks went", "1440 finalized · 1440 conclusive (UP + DOWN)",
+                "<i class=\"seg-up\" style=\"flex:1436\"></i><i class=\"seg-down\" style=\"flex:4\"></i></div>",
+                "UP</dt><dd>1436<span>99.7%</span>", "Missing</dt><dd>0<span>0%</span>");
+        assertThat(html).doesNotContain("UP / DOWN", "seg-gap", "meta-line");
+        assertThat(renderer.windowMeta(Instant.parse("2026-12-31T22:00:00Z"), Instant.parse("2027-01-01T06:30:00Z")))
+                .isEqualTo("2026 → 2027 · 22:00 → 06:30 UTC");
+        // The tag's text sets its baseline, so a status lines up with the times in its row.
+        assertThat(html).contains(".tag { display: inline-flex; align-items: baseline;", ".tag .status-dot { align-self: center; }");
+    }
+
+    @Test
     void usesExactlyTheSixRoleTypeScaleWithoutUppercaseTransforms() {
         String html = renderer.render(sampleReport());
         String css = html.substring(html.indexOf("<style>"), html.indexOf("</style>"));

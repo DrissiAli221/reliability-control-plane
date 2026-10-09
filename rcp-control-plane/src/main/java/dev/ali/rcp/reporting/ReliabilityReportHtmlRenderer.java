@@ -45,7 +45,7 @@ public class ReliabilityReportHtmlRenderer {
               -webkit-font-smoothing: antialiased; font-synthesis: none; }
             h1, h2, h3, p, dl, dd { margin: 0; }
             .report { max-width: 880px; margin: 0 auto; padding: 48px 40px 32px; }
-            .mono, .label, dt, th, .tag, .chip, .ticks, .meta-line, .edition, footer { font-family: var(--font-mono); }
+            .mono, .label, dt, th, .tag, .chip, .ticks, .edition, footer { font-family: var(--font-mono); }
             h1 { font-size: 32px; font-weight: 600; line-height: 1.15; letter-spacing: -.02em; overflow-wrap: anywhere; }
             .figure { font-family: var(--font-dots); font-size: 30px; font-weight: 800; line-height: 1;
               letter-spacing: 0; color: var(--text); font-variant-numeric: tabular-nums; }
@@ -56,30 +56,37 @@ public class ReliabilityReportHtmlRenderer {
             /* The hint role: one step under body, quieter, in the reading face so it never competes with a label. */
             .hint, .unit, .note { font-size: 12px; color: var(--text-3); }
             .masthead { display: flex; align-items: center; justify-content: space-between; gap: 16px;
-              padding-bottom: 22px; border-bottom: 1px solid var(--border); }
+              padding-bottom: 14px; border-bottom: 1px solid var(--border); }
             .brand { display: flex; align-items: center; gap: 10px; }
             .brand svg { width: 27px; height: 21px; flex: none; color: var(--text); }
             /* The subject is the title, as on the monitor page: name and verdict chip, then target and one meta line. */
-            .intro { margin: 40px 0 24px; }
+            .intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px 32px; flex-wrap: wrap; margin: 28px 0 20px; }
+            .subject { min-width: 0; }
+            /* The window, read at a glance: dates in the dot face, times and length in a quiet line under them. */
+            .window { text-align: right; }
+            .window-days { display: flex; align-items: baseline; justify-content: flex-end; gap: 10px; white-space: nowrap; }
+            .dots { font-family: var(--font-dots); font-size: 30px; font-weight: 800; line-height: 1; color: var(--text); }
+            .arrow { font-family: var(--font-mono); font-size: 13px; color: var(--text-3); }
+            .window-meta { margin-top: 8px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em; color: var(--text-3); }
             .title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; }
             .chip { display: inline-flex; align-items: center; gap: 7px; height: 24px; padding: 0 9px; white-space: nowrap;
               border: 1px solid var(--border); background: var(--surface); color: var(--text); }
             .chip.good { color: var(--green-text); border-color: color-mix(in srgb, var(--green) 35%, var(--border)); }
             .chip.bad { color: var(--red-text); border-color: color-mix(in srgb, var(--red) 35%, var(--border)); }
             .chip.warn { color: var(--amber-text); border-color: color-mix(in srgb, var(--amber) 35%, var(--border)); }
-            .target { color: var(--text-2); margin: 8px 0 6px; overflow-wrap: anywhere; }
-            .meta-line { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; letter-spacing: .04em; color: var(--text-3); }
+            .target { color: var(--text-2); margin-top: 8px; overflow-wrap: anywhere; }
             dd { overflow-wrap: anywhere; }
             /* Every module below the intro touches the next and shares its hairline, like the dashboard's stack. */
             .stack > * + * { margin-top: -1px; }
             .decision { padding: 14px 16px; border: 1px solid var(--border); background: var(--surface); }
             .decision p { color: var(--text-2); }
             .decision b { font-weight: 500; color: var(--text); }
-            .tag { display: inline-flex; align-items: center; gap: 7px; vertical-align: middle; line-height: 1; white-space: nowrap; font-size: 11px; letter-spacing: .04em; color: var(--text); }
+            .tag { display: inline-flex; align-items: baseline; gap: 7px; white-space: nowrap; font-size: 11px; letter-spacing: .04em; color: var(--text); }
             /* Status marker: a 3x3 dot-matrix block, the same shape as the dashboard's StatusDot (9px). */
             .status-dot { --dot-size: 2px; --dot-gap: 1.5px; --dot-color: var(--text-3); display: inline-grid;
               grid-template-columns: repeat(3, var(--dot-size)); gap: var(--dot-gap); flex: none; }
             .status-dot i { width: var(--dot-size); height: var(--dot-size); border-radius: 50%; background: var(--dot-color); }
+            .tag .status-dot { align-self: center; } /* the text, not the dot, sets the tag's baseline so it lines up with its row */
             .status-dot.good { --dot-color: var(--green); } .status-dot.bad { --dot-color: var(--red); }
             .status-dot.warn { --dot-color: var(--amber); }
             /* A faint status light falling from the top edge. Only the verdict strip carries it; tiles stay neutral
@@ -90,7 +97,7 @@ public class ReliabilityReportHtmlRenderer {
               transparent 55%), var(--surface); }
             .good { color: var(--green-text); } .bad { color: var(--red-text); } .warn { color: var(--amber-text); }
             /* Modules touch: the 1px grid gap shows the container's hairline colour, so dividers survive any wrap. */
-            .metrics, .visuals, .facts { display: grid; gap: 1px; border: 1px solid var(--border); background: var(--border); }
+            .metrics, .visuals { display: grid; gap: 1px; border: 1px solid var(--border); background: var(--border); }
             .metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
             /* A tile, as on the dashboard: label, one figure with a short unit, a 22px visual row, then a hint. */
             .metric { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 14px 16px; background: var(--surface); }
@@ -102,7 +109,7 @@ public class ReliabilityReportHtmlRenderer {
             .panel { border: 1px solid var(--border); background: var(--surface); }
             .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 49px;
               padding: 10px 16px; border-bottom: 1px solid var(--border); }
-            .panel .visuals, .panel .facts { border: 0; margin: 0; }
+            .panel .visuals { border: 0; margin: 0; }
             .visuals { grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border) !important; }
             .visual { min-width: 0; padding: 18px 16px 20px; background: var(--surface); }
             .visual > p { color: var(--text-2); margin-top: 4px; }
@@ -134,15 +141,24 @@ public class ReliabilityReportHtmlRenderer {
             .lines dd { color: var(--text-2); font-family: var(--font-mono); font-size: 12px; }
             .lines .result dd { color: var(--text); }
             .note { margin-top: 12px; }
-            .facts { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: -1px 0 0; }
-            .facts > div { padding: 12px 16px; background: var(--surface); }
-            .facts dt { margin-bottom: 4px; }
-            .facts dd { font-family: var(--font-mono); }
+            /* Where every due check went: one bar split by outcome, and a legend of counts under it. */
+            .breakdown { padding: 18px 16px 16px; }
+            .breakdown-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+            .composition { display: flex; gap: 1px; height: 10px; margin: 14px 0 14px; background: var(--surface); }
+            .composition i { min-width: 2px; background: var(--seg); }
+            .seg-up { --seg: var(--green); } .seg-down { --seg: var(--red); } .seg-disagreement { --seg: var(--amber); }
+            .seg-nodata { --seg: var(--text-3); } .seg-pending { --seg: color-mix(in srgb, var(--text-3) 45%, var(--track)); }
+            .seg-missing { --seg: repeating-linear-gradient(135deg, var(--text-3) 0 1.5px, transparent 1.5px 4px), var(--track); }
+            .legend { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 16px; margin: 0; }
+            .legend dt { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; white-space: nowrap; }
+            .legend dt i { width: 8px; height: 8px; flex: none; background: var(--seg); }
+            .legend dd { font-family: var(--font-mono); color: var(--text); }
+            .legend dd span { margin-left: 6px; font-family: var(--font-sans); font-size: 12px; color: var(--text-3); }
             table { border-collapse: collapse; width: 100%; }
             th { text-align: left; background: var(--surface-2); }
             th, td { border-bottom: 1px solid var(--border); padding: 10px 16px; vertical-align: middle; }
             th.num, td.num { text-align: right; }
-            tbody tr:last-child td { border-bottom: 0; } td.mono { overflow-wrap: anywhere; }
+            tbody tr:last-child td { border-bottom: 0; } th, td { white-space: nowrap; } /* narrow screens scroll the table instead of breaking times */
             td.num .hint { margin-left: 6px; }
             .table-wrap { overflow-x: auto; }
             .empty { padding: 18px 16px; color: var(--text-2); }
@@ -154,8 +170,9 @@ public class ReliabilityReportHtmlRenderer {
             @media (max-width: 700px) {
               .report { padding: 24px 20px; } .metrics { grid-template-columns: 1fr 1fr; }
               .visuals { grid-template-columns: 1fr; }
-              .facts { grid-template-columns: 1fr 1fr; }
+              .legend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
               .section-note, .edition { display: none; } footer { flex-wrap: wrap; }
+              .window { text-align: left; } .window-days { justify-content: flex-start; }
             }
             @page { size: A4; margin: 12mm; }
             @media print {
@@ -163,10 +180,10 @@ public class ReliabilityReportHtmlRenderer {
                 --bg: #ffffff; }
               body { font-size: 9pt; } .report { max-width: none; padding: 0 1px; } /* keeps right-hand hairlines inside the printable area */
               .masthead { padding-bottom: 3mm; } .brand svg { width: 20px; height: 16px; }
-              .intro { margin: 4mm 0 3mm; } h1 { font-size: 22pt; }
+              .intro { margin: 4mm 0 3mm; flex-wrap: nowrap; } h1 { font-size: 22pt; }
               .figure { font-size: 19pt; }
               h2, h3, .brand { font-size: 10.5pt; }
-              .label, dt, th, .section-note, .ticks, .chip, .tag, .edition, .meta-line, .readout-row, footer { font-size: 7.5pt; }
+              .label, dt, th, .section-note, .ticks, .chip, .tag, .edition, .window-meta, .readout-row, footer { font-size: 7.5pt; } .dots { font-size: 19pt; }
               .hint, .unit, .note, .metric-value .unit, .lines dd { font-size: 8pt; }
               .target { margin: 2mm 0 1mm; }
               .decision { padding: 3mm; } .panel-header { min-height: 0; padding: 1.8mm 3mm; } .stack { margin-top: 4mm; }
@@ -174,10 +191,10 @@ public class ReliabilityReportHtmlRenderer {
               .visual { padding: 3mm; } .readout-row { margin: 3mm 0 2mm; } .lines { margin-top: 3mm; }
               .lines > div { padding: 1mm 0; }
               .panel-header { break-after: avoid; } .limitations { padding: 2mm 3mm 2mm 7mm; }
-              .facts > div { padding: 2mm 3mm; }
+              .breakdown { padding: 3mm; } .composition { height: 2.5mm; margin: 2.5mm 0; } .legend dd span { font-size: 8pt; }
               .table-wrap { overflow: visible; }
               th, td { padding: 1mm 3mm; } thead { display: table-header-group; } tr { break-inside: avoid; }
-              .limits, .masthead, .intro, .decision, .metric, .metrics, .visual, .visuals, .facts, .facts > div { break-inside: avoid; }
+              .limits, .masthead, .intro, .decision, .metric, .metrics, .visual, .visuals, .breakdown { break-inside: avoid; }
               .limitations li { margin: .5mm 0; } footer { margin-top: 2mm; padding-top: 1.5mm; }
               p, li { orphans: 3; widows: 3; }
             }
@@ -208,17 +225,17 @@ public class ReliabilityReportHtmlRenderer {
                 .append("<header class=\"masthead\"><div class=\"brand\">")
                 .append(LOGO)
                 .append("Reliability Control Plane</div><div class=\"edition\">Reliability report</div></header>")
-                // Like the monitor page: name and verdict chip on one row, then the target and one quiet meta line.
-                .append("<main><section class=\"intro\" aria-labelledby=\"report-title\"><div class=\"title-row\">")
+                // Like the monitor page: name and verdict chip, then the target; the window sits opposite in the dot face.
+                .append("<main><section class=\"intro\" aria-labelledby=\"report-title\"><div class=\"subject\"><div class=\"title-row\">")
                 .append("<h1 id=\"report-title\">").append(escape(report.monitorName())).append("</h1><span class=\"chip ")
                 .append(tone).append("\">");
         dot(html, tone);
         html.append(decision).append("</span></div><p class=\"target mono\">").append(escape(report.targetUrl()))
-                .append("</p><p class=\"meta-line\"><span data-from=\"").append(a.from()).append("\" data-to=\"").append(a.to())
-                .append("\" title=\"").append(a.from()).append(" → ").append(a.to()).append("\">").append(window(a.from(), a.to()))
-                .append("</span><span>·</span><span>").append(span(a.from(), a.to()))
-                .append("</span><span>·</span><span data-value=\"").append(report.generatedAt()).append("\" title=\"")
-                .append(report.generatedAt()).append("\">Generated ").append(dateTime(report.generatedAt())).append("</span></p></section>")
+                .append("</p></div><div class=\"window\" data-from=\"").append(a.from()).append("\" data-to=\"").append(a.to())
+                .append("\" title=\"").append(window(a.from(), a.to())).append("\"><p class=\"window-days\">")
+                .append("<span class=\"dots\">").append(day(a.from())).append("</span><span class=\"arrow\">→</span>")
+                .append("<span class=\"dots\">").append(day(a.to())).append("</span></p><p class=\"window-meta\">")
+                .append(windowMeta(a.from(), a.to())).append(" · <span>").append(span(a.from(), a.to())).append("</span></p></div></section>")
                 .append("<div class=\"stack\"><div class=\"decision lit\" data-tone=\"").append(tone).append("\"><p>");
         if (a.sloMet() == null) {
             html.append("<b>Not enough evidence to judge this SLO.</b> Observed availability is not an SLO pass.");
@@ -301,12 +318,9 @@ public class ReliabilityReportHtmlRenderer {
         if (budget.allowedBadExecutions().signum() == 0) {
             html.append("<p class=\"note\">No failed checks are allowed at this target.</p>");
         }
-        html.append("</div></div><dl class=\"facts\">");
-        item(html, "UP / DOWN", a.upExecutions() + " / " + a.downExecutions());
-        item(html, "Disagreement / no data", a.disagreementExecutions() + " / " + a.noDataExecutions());
-        item(html, "Due / pending / missing", a.expectedOpportunities() + " / " + a.pendingExecutions() + " / " + a.missingExecutions());
-        item(html, "Conclusive / finalized", a.conclusiveExecutions() + " / " + a.totalFinalizedExecutions());
-        html.append("</dl></section>");
+        html.append("</div></div>");
+        checkBreakdown(html, a);
+        html.append("</section>");
 
         panel(html, "Incidents", incidentNote(incidents));
         if (incidents.isEmpty()) {
@@ -347,7 +361,9 @@ public class ReliabilityReportHtmlRenderer {
         for (String limitation : report.limitations()) {
             html.append("<li>").append(escape(limitation)).append("</li>");
         }
-        html.append("</ul></section></div></main><footer><span>Schema ").append(escape(report.schemaVersion())).append(" · ")
+        html.append("</ul></section></div></main><footer><span data-value=\"").append(report.generatedAt()).append("\" title=\"")
+                .append(report.generatedAt()).append("\">Generated ").append(dateTime(report.generatedAt())).append("</span><span>Schema ")
+                .append(escape(report.schemaVersion())).append(" · ")
                 .append(report.sourceDataWatermark() == null ? "No source data"
                         : "<time datetime=\"" + report.sourceDataWatermark() + "\" title=\"" + report.sourceDataWatermark()
                                 + "\">Data up to " + dateTime(report.sourceDataWatermark()) + "</time>")
@@ -546,13 +562,48 @@ public class ReliabilityReportHtmlRenderer {
         return value.max(BigDecimal.ZERO).min(scale).divide(scale, 3, RoundingMode.HALF_UP);
     }
 
-    private void item(StringBuilder html, String label, String value) {
-        item(html, label, value, "");
-    }
-
-    private void item(StringBuilder html, String label, String value, String attributes) {
-        html.append("<div><dt>").append(escape(label)).append("</dt><dd").append(attributes).append(">")
-                .append(escape(value)).append("</dd></div>");
+    /**
+     * Every due check by what became of it: UP, DOWN, disagreement and no data are finalized; pending and missing are
+     * not. The bar is scaled to the larger of the due count and the parts, so a mismatch can never overflow it.
+     */
+    private void checkBreakdown(StringBuilder html, AvailabilityReport a) {
+        String[][] parts = {
+                {"up", "UP", Long.toString(a.upExecutions())},
+                {"down", "DOWN", Long.toString(a.downExecutions())},
+                {"disagreement", "Disagreement", Long.toString(a.disagreementExecutions())},
+                {"nodata", "No data", Long.toString(a.noDataExecutions())},
+                {"pending", "Pending", Long.toString(a.pendingExecutions())},
+                {"missing", "Missing", Long.toString(a.missingExecutions())}};
+        long sum = 0;
+        for (String[] part : parts) {
+            sum += Long.parseLong(part[2]);
+        }
+        long total = Math.max(a.expectedOpportunities(), sum);
+        html.append("<div class=\"breakdown\"><div class=\"breakdown-head\"><h3>Where the ").append(a.expectedOpportunities())
+                .append(" due checks went</h3><span class=\"label\">").append(a.totalFinalizedExecutions()).append(" finalized · ")
+                .append(a.conclusiveExecutions()).append(" conclusive (UP + DOWN)</span></div>")
+                .append("<div class=\"composition\" role=\"img\" aria-label=\"");
+        for (int i = 0; i < parts.length; i++) {
+            html.append(i == 0 ? "" : ", ").append(parts[i][1]).append(" ").append(parts[i][2]);
+        }
+        html.append("\">");
+        for (String[] part : parts) {
+            long count = Long.parseLong(part[2]);
+            if (count > 0 && total > 0) {
+                html.append("<i class=\"seg-").append(part[0]).append("\" style=\"flex:").append(count).append("\"></i>");
+            }
+        }
+        if (total > sum) {
+            html.append("<i class=\"seg-gap\" style=\"flex:").append(total - sum).append(";background:var(--track)\"></i>");
+        }
+        html.append("</div><dl class=\"legend\">");
+        for (String[] part : parts) {
+            long count = Long.parseLong(part[2]);
+            html.append("<div><dt><i class=\"seg-").append(part[0]).append("\"></i>").append(part[1]).append("</dt><dd>")
+                    .append(count).append("<span>").append(total == 0 ? "0%" : oneDecimal(BigDecimal.valueOf(count * 100.0 / total)) + "%")
+                    .append("</span></dd></div>");
+        }
+        html.append("</dl></div>");
     }
 
     private static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", Locale.ENGLISH)
@@ -590,6 +641,22 @@ public class ReliabilityReportHtmlRenderer {
 
     private String checks(BigDecimal count) {
         return count.compareTo(BigDecimal.ONE) == 0 ? "check" : "checks";
+    }
+
+    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH).withZone(ZoneOffset.UTC);
+    private static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH).withZone(ZoneOffset.UTC);
+    private static final DateTimeFormatter YEAR = DateTimeFormatter.ofPattern("yyyy", Locale.ENGLISH).withZone(ZoneOffset.UTC);
+
+    /** A window end as the dot face shows it: "1 OCT". */
+    String day(Instant instant) {
+        return DAY.format(instant).toUpperCase(Locale.ROOT);
+    }
+
+    /** The quiet line under the window: "2026 · 21:39 UTC", or both times and years when they differ. */
+    String windowMeta(Instant from, Instant to) {
+        String years = YEAR.format(from).equals(YEAR.format(to)) ? YEAR.format(to) : YEAR.format(from) + " → " + YEAR.format(to);
+        String clocks = CLOCK.format(from).equals(CLOCK.format(to)) ? CLOCK.format(to) : CLOCK.format(from) + " → " + CLOCK.format(to);
+        return years + " · " + clocks + " UTC";
     }
 
     String dateTime(Instant instant) {
