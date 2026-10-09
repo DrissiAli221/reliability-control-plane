@@ -55,7 +55,9 @@ public class MonitorHistoryRepository {
                        COUNT(*) FILTER (WHERE executions.verdict = 'DISAGREEMENT') AS disagreement,
                        COUNT(*) FILTER (WHERE executions.verdict = 'NO_DATA') AS no_data
                 FROM unnest(ARRAY[%s]::uuid[]) AS ids(monitor_id)
-                CROSS JOIN generate_series(?::date, ?::date, INTERVAL '1 day') AS days(day)
+                -- Generate UTC wall-clock midnights before applying the explicit UTC zone.
+                -- Date arguments alone choose timestamptz and inherit the connection zone.
+                CROSS JOIN generate_series(?::date::timestamp, ?::date::timestamp, INTERVAL '1 day') AS days(day)
                 LEFT JOIN probe_executions executions
                   ON executions.monitor_id = ids.monitor_id
                  AND executions.status = 'FINALIZED'
