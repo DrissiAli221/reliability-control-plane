@@ -21,11 +21,11 @@ public class ReliabilityReportService {
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
     /** The one place the report's stated limits live; `limitations` in the JSON is derived from these texts. */
     static final List<ReportCaveat> CAVEATS = List.of(
-            new ReportCaveat("Coverage", "Counts due checks that never ran and skips paused periods. Maintenance windows and late corrections are not modelled yet."),
-            new ReportCaveat("Scope", "One availability number for the whole monitor; there are no per-region SLIs or maintenance windows yet."),
+            new ReportCaveat("Coverage", "Counts checks that never ran and skips paused periods; maintenance and late corrections are not modelled yet."),
+            new ReportCaveat("Scope", "One availability number for the whole monitor; there are no per-region SLIs yet."),
             new ReportCaveat("Incidents", "Shows transitions inside this window only; an incident opened earlier may still be active."),
-            new ReportCaveat("Latency", "Uses HTTP responses only and needs at least 20 of them; timeouts and refused connections are not in the percentiles."),
-            new ReportCaveat("Regions", "Region labels come from the probe configuration; locally they do not prove the check ran in that geography.")
+            new ReportCaveat("Latency", "HTTP responses only, at least 20 of them; timeouts and refused connections are not in the percentiles."),
+            new ReportCaveat("Regions", "Labels come from the probe configuration; locally they do not prove where a check ran.")
     );
     private static final List<String> LIMITATIONS = CAVEATS.stream().map(ReportCaveat::text).toList();
 

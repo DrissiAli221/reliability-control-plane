@@ -103,7 +103,7 @@ class ReliabilityReportHtmlRendererTest {
     void rendersTheLimitsAsATopicTableWithoutBullets() {
         String html = renderer.render(sampleReport());
         assertThat(html).contains("What this report does not prove", "<dl class=\"caveats\">",
-                "<div><dt>Coverage</dt><dd>Counts due checks that never ran", "<dt>Regions</dt><dd>Region labels come from the probe configuration");
+                "<div><dt>Coverage</dt><dd>Counts checks that never ran", "<dt>Regions</dt><dd>Labels come from the probe configuration");
         assertThat(html).doesNotContain("class=\"limitations\"", "<ul class=\"limitations");
         assertThat(html.split("<div><dt>", -1).length - 1).isGreaterThanOrEqualTo(ReliabilityReportService.CAVEATS.size());
     }
