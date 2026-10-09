@@ -1276,7 +1276,8 @@ a { color: inherit; }
 .region-head { display: flex; align-items: center; justify-content: space-between; }
 .region-value { color: var(--ink-dots); font-family: var(--font-dots); font-size: 28px; font-weight: 800; line-height: 1; letter-spacing: 0; font-variant-numeric: tabular-nums; }
 .region-caption { font-size: 12px; color: var(--text-3); }
-.regions .meter { height: 4px; margin-top: 6px; }
+/* One touching cell per expected result (see regionMeter.ts); --cells is set per region. */
+.regions .fanout-meter { margin-top: 6px; }
 
 .fleet-list { margin: 0; padding: 0; list-style: none; }
 .fleet-list a {
@@ -1647,7 +1648,7 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .fanout-latency { flex: none; display: inline-flex; align-items: baseline; color: var(--text); }
 .fanout-latency b { font-family: var(--font-dots); font-size: 20px; font-weight: 800; line-height: 1; letter-spacing: 0; font-variant-numeric: tabular-nums; color: var(--ink-dots); }
 .fanout-latency .mono { font-size: 11px; color: var(--text-3); }
-.fanout-meter { --hue: var(--text-3); flex: 1 1 auto; min-width: 40px; display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 1px; height: 10px; border: 1px solid var(--border); background: var(--border); }
+.fanout-meter { --hue: var(--text-3); flex: 1 1 auto; min-width: 40px; display: grid; grid-template-columns: repeat(var(--cells, 10), minmax(0, 1fr)); gap: 1px; height: 10px; border: 1px solid var(--border); background: var(--border); }
 .fanout-meter.good { --hue: var(--green); }
 .fanout-meter.warn { --hue: var(--amber); }
 .fanout-meter.fault { --hue: var(--red); }

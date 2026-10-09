@@ -11,6 +11,7 @@ import { LiveLed, StatusDot } from "../components/StatusBadge";
 import { compactUrl, count, elapsed, milliseconds, monitorState, relativeTime } from "../format";
 import type { FleetOverview, MonitorOverview, PipelineSnapshot } from "../types";
 import { tour } from "../tour";
+import { regionCells } from "../regionMeter";
 import { drillPhase, isDrillMonitor, utcClock } from "../drill";
 import { useLiveData, useNow } from "../useLiveData";
 import { ErrorState, LiveIndicator } from "./MonitorsPage";
@@ -179,7 +180,7 @@ function Regions({ snapshot }: { snapshot: PipelineSnapshot | null }) {
       ) : (
         <ul className="regions">
           {snapshot.regions.map((region) => {
-            const share = region.jobsPublished ? Math.min(1, region.resultsReceived / region.jobsPublished) : 0;
+            const { cells, filled, tone } = regionCells(region.resultsReceived, region.jobsPublished);
             return (
               <li key={region.region}>
                 <div className="region-head">
@@ -189,7 +190,10 @@ function Regions({ snapshot }: { snapshot: PipelineSnapshot | null }) {
                 </div>
                 <span className="region-value">{milliseconds(region.p50LatencyMs)}</span>
                 <span className="region-caption">p50 · {count(region.resultsReceived)} of {count(region.jobsPublished)} results back</span>
-                <div className="meter" aria-hidden="true"><div className={`meter-fill${share < 0.9 ? " warn" : ""}`} style={{ width: `${share * 100}%` }} /></div>
+                {/* One cell per expected result; the caption above carries the exact counts. */}
+                <div className={`fanout-meter ${tone}`} style={{ ["--cells" as string]: cells }} aria-hidden="true">
+                  {Array.from({ length: cells }, (_, cell) => <i key={cell}>{cell < filled && <b style={{ width: "100%" }} />}</i>)}
+                </div>
               </li>
             );
           })}

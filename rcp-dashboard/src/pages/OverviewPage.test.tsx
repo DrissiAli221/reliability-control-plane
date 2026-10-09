@@ -77,4 +77,29 @@ describe("OverviewPage", () => {
     expect(screen.getByRole("timer")).toHaveTextContent(/^01:0\d$/);
     expect(screen.getByRole("button", { name: /Open SpectraTV/ })).toBeInTheDocument();
   });
+
+  it("draws one results cell per expected result in each region, amber under 90% back", async () => {
+    vi.mocked(fleetOverview).mockResolvedValue(overview([]));
+    vi.mocked(listMonitors).mockResolvedValue([monitor]);
+    vi.mocked(pipelineEvents).mockResolvedValue([]);
+    vi.mocked(pipelineSnapshot).mockResolvedValue({
+      windowSeconds: 300,
+      regions: [
+        { region: "eu-west-1", jobsPublished: 18, resultsReceived: 18, p50LatencyMs: 180 },
+        { region: "us-east-1", jobsPublished: 20, resultsReceived: 15, p50LatencyMs: 90 },
+        { region: "ap-south-1", jobsPublished: 90, resultsReceived: 90, p50LatencyMs: 210 },
+      ],
+    } as PipelineSnapshot);
+    render(<MemoryRouter><OverviewPage /></MemoryRouter>);
+
+    expect(await screen.findByText(/18 of 18 results back/)).toBeInTheDocument();
+    const [full, short, big] = [...document.querySelectorAll(".regions .fanout-meter")];
+    const cellsOf = (meter: Element) => ({ cells: meter.querySelectorAll("i").length, filled: meter.querySelectorAll("i b").length });
+    expect(cellsOf(full)).toEqual({ cells: 18, filled: 18 });
+    expect(full).toHaveClass("good");
+    expect(cellsOf(short)).toEqual({ cells: 20, filled: 15 });
+    expect(short).toHaveClass("warn");
+    expect(cellsOf(big)).toEqual({ cells: 24, filled: 24 }); // 90 expected, scaled down to the 24-cell cap
+    expect(document.querySelector(".regions .meter")).toBeNull(); // the plain bar is gone
+  });
 });
