@@ -59,14 +59,18 @@ public class IncidentRepository {
         );
     }
 
-    public MonitorRunState lockMonitorRun(UUID monitorId) {
-        return Objects.requireNonNull(jdbcTemplate.queryForObject(
-                "SELECT behavior_version, enabled FROM monitors WHERE monitor_id = ? FOR UPDATE",
+    /** Locks the live monitor row; empty when the monitor was deleted (soft delete) before the lock. */
+    public java.util.Optional<MonitorRunState> lockMonitorRun(UUID monitorId) {
+        return jdbcTemplate.query(
+                """
+                SELECT behavior_version, enabled FROM monitors
+                WHERE monitor_id = ? AND deleted_at IS NULL FOR UPDATE
+                """,
                 (resultSet, rowNumber) -> new MonitorRunState(
                         resultSet.getLong("behavior_version"), resultSet.getBoolean("enabled")
                 ),
                 monitorId
-        ));
+        ).stream().findFirst();
     }
 
     public long behaviorVersionAt(UUID monitorId, Instant scheduledAt) {
