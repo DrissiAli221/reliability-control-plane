@@ -60,7 +60,7 @@ class AcceptedHttpStatusesTest {
         record403(original);
         service.setAcceptedHttpStatuses(owner,id,List.of(403));
         UUID custom = schedule(id,0);
-        record403(custom);
+        record403(custom, "CLOUDFLARE_CHALLENGE");
         service.setAcceptedHttpStatuses(owner,id,null);
         assertThat(finalizer.finalizeBatch()).isEqualTo(2);
         assertThat(verdict(original)).isEqualTo("DOWN");
@@ -92,7 +92,7 @@ class AcceptedHttpStatusesTest {
         assertThat(jdbc.queryForObject("SELECT status FROM incidents WHERE monitor_id = ?",String.class,id)).isEqualTo("OPEN");
         service.setAcceptedHttpStatuses(owner,id,List.of(403));
         for (int age : List.of(120,60)) {
-            record403(schedule(id,age)); finalizer.finalizeBatch(); incidents.processBatch();
+            record403(schedule(id,age), "CLOUDFLARE_CHALLENGE"); finalizer.finalizeBatch(); incidents.processBatch();
         }
         assertThat(jdbc.queryForObject("SELECT status FROM incidents WHERE monitor_id = ?",String.class,id)).isEqualTo("RESOLVED");
         String from = Instant.now().minusSeconds(86400).toString(), to = Instant.now().plusSeconds(5).toString();
@@ -110,13 +110,28 @@ class AcceptedHttpStatusesTest {
         scheduler.scheduleBatch();
         return jdbc.queryForObject("SELECT execution_id FROM probe_executions WHERE monitor_id = ? ORDER BY scheduled_at DESC LIMIT 1",UUID.class,id);
     }
-    private void record403(UUID execution) {
+    @Test void challengedChecksAreNoDataAndNeverOpenIncidentsUnlessTheStatusIsAccepted() {
+        String owner = UUID.randomUUID().toString();
+        UUID id = service.create(owner,new CreateMonitorRequest("Challenged","https://1.1.1.1/",60,5000)).id();
+        List<UUID> executions = new ArrayList<>();
+        for (int age : List.of(240,180,120)) {
+            UUID execution = schedule(id,age);
+            executions.add(execution);
+            record403(execution, "CLOUDFLARE_CHALLENGE");
+            finalizer.finalizeBatch(); incidents.processBatch();
+        }
+        for (UUID execution : executions) assertThat(verdict(execution)).isEqualTo("NO_DATA");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM incidents WHERE monitor_id = ?",Integer.class,id)).isZero();
+    }
+
+    private void record403(UUID execution) { record403(execution, null); }
+    private void record403(UUID execution, String botProtection) {
         Instant at = jdbc.queryForObject("SELECT scheduled_at FROM probe_executions WHERE execution_id = ?",OffsetDateTime.class,execution).toInstant();
         UUID id = jdbc.queryForObject("SELECT monitor_id FROM probe_executions WHERE execution_id = ?",UUID.class,execution);
         int version = jdbc.queryForObject("SELECT monitor_behavior_version FROM probe_executions WHERE execution_id = ?",Integer.class,execution);
         jdbc.query("SELECT job_id,probe_region FROM probe_jobs WHERE execution_id = ?",rs -> {
             UUID job = rs.getObject("job_id",UUID.class);
-            ProbeResult result = new ProbeResult(job,execution,id,rs.getString("probe_region"),at,at,at.plusMillis(25),ProbeOutcome.HTTP_RESPONSE,403,25,0,null,version,"CLOUDFLARE_CHALLENGE");
+            ProbeResult result = new ProbeResult(job,execution,id,rs.getString("probe_region"),at,at,at.plusMillis(25),ProbeOutcome.HTTP_RESPONSE,403,25,0,null,version,botProtection);
             assertThat(ingestion.ingest("codes-"+job,codec.encodeResult(result))).isEqualTo(ProbeResultIngestion.STORED);
         },execution);
     }
