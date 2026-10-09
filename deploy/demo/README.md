@@ -236,6 +236,13 @@ commands are for the reviewed release on the VM, **not local validation**. Stop
 the old timer before updating the checkout so its running process cannot retain
 an obsolete plan. Use `git pull --ff-only`; resolve a divergent checkout separately.
 
+**Order matters: publish the rebuilt dashboard before enabling or restarting
+`rcp-demo-drill.timer`.** The timer starts faulting the drill endpoint on the new
+schedule; an old dashboard would still forecast the previous fixed two-hour
+outage, so viewers would see a countdown that disagrees with what is happening.
+The commands below therefore leave the timer disabled. Publish the dashboard (see
+"Publish the dashboard"), then enable the timer.
+
 ```sh
 set -e
 cd /opt/rcp
@@ -254,10 +261,15 @@ sudo systemctl enable --now rcp-demo-drill-restore.service
 cd deploy/demo
 docker compose pull drill
 docker compose up -d --no-deps --force-recreate --wait --wait-timeout 120 drill caddy
-sudo systemctl enable --now rcp-demo-drill.timer
-sudo systemctl list-timers rcp-demo-drill.timer
 curl -fsS https://rcp-ali.duckdns.org/healthz
 curl -sS -o /dev/null -w '%{http_code}\n' https://rcp-ali.duckdns.org/drill/status.html
+```
+
+Only after the rebuilt dashboard is published, enable the timer:
+
+```sh
+sudo systemctl enable --now rcp-demo-drill.timer
+sudo systemctl list-timers rcp-demo-drill.timer
 ```
 
 For a first installation, omit the first two stop commands when those units do
