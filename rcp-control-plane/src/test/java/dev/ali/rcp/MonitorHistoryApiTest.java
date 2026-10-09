@@ -182,7 +182,9 @@ class MonitorHistoryApiTest {
                 .andExpect(jsonPath("$.regions[0].p50Ms.length()").value(48))
                 .andExpect(jsonPath("$.regions[0].p50Ms[*]", hasItem(100)))
                 .andExpect(jsonPath("$.regions[0].p95Ms[*]", hasItem(200)))
-                .andExpect(jsonPath("$.regions[0].p50Ms[0]").value(nullValue()))
+                // Any empty column, not column 0: the samples sit just after today's UTC midnight, which falls in
+                // column 0 of the trailing 24 hours once the clock passes 23:30 UTC.
+                .andExpect(jsonPath("$.regions[0].p50Ms[*]", hasItem(nullValue())))
                 .andExpect(jsonPath("$.regions[1].p50Ms[*]", hasItem(300)))
                 .andExpect(jsonPath("$.regions[1].p95Ms[*]", hasItem(400)))
                 // The same nearest-rank percentiles over the whole window, per region.
