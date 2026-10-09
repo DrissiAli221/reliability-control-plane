@@ -1,8 +1,8 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { LatencyChart } from "./LatencyChart";
-import { latencyRows } from "./latencyRows";
+import { laneBounds, latencyRows } from "./latencyRows";
 import type { LatencyHeatmap } from "../types";
 
 afterEach(cleanup);
@@ -76,5 +76,86 @@ describe("LatencyChart", () => {
     const rows = latencyRows(heatmap, leading, false);
     expect(rows[0]).toMatchObject({ p50: 80, p95: 160, gap: true });
     expect(rows[2].gap).toBe(false);
+  });
+});
+
+describe("incident lane", () => {
+  // jsdom has no layout: give the chart a 900 x 220 box, so the plot is 900 - 36 - 12 = 852 px wide.
+  const sizes = {
+    width: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth"),
+    height: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientHeight"),
+  };
+  beforeAll(() => {
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, get: () => 900 });
+    Object.defineProperty(HTMLElement.prototype, "clientHeight", { configurable: true, get: () => 220 });
+  });
+  afterAll(() => {
+    if (sizes.width) Object.defineProperty(HTMLElement.prototype, "clientWidth", sizes.width);
+    else delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth;
+    if (sizes.height) Object.defineProperty(HTMLElement.prototype, "clientHeight", sizes.height);
+    else delete (HTMLElement.prototype as { clientHeight?: number }).clientHeight;
+  });
+
+  const spans = (container: HTMLElement) => [...container.querySelectorAll(".incident-lane-span")].map((rect) => ({
+    x: Number(rect.getAttribute("x")), width: Number(rect.getAttribute("width")), open: rect.classList.contains("open"),
+  }));
+
+  it("places each incident by its real time on the plot's x scale, not by bucket", () => {
+    // 48 columns of 30 min: column i is centred on from + (i + 0.5) * 30 min, so 12:00 sits halfway between columns 23 and 24.
+    const { container } = render(<LatencyChart heatmap={heatmap} range={24} onRangeChange={() => {}} now={now} incidents={[
+      { openedAt: "2026-09-29T12:00:00Z", resolvedAt: "2026-09-29T12:10:00Z" },
+    ]} />);
+    const [only] = spans(container);
+    expect(only.x).toBeCloseTo((23.5 * 852) / 47, 1);
+    expect(only.width).toBeCloseTo(((600 / 1800) * 852) / 47, 1); // ten minutes, a third of a bucket
+    expect(only.open).toBe(false);
+    expect(container.querySelector(".incident-lane-track")).toHaveAttribute("width", "852");
+  });
+
+  it("keeps a one-minute incident at least 2 px wide and runs an open one to now in solid red", () => {
+    const { container } = render(<LatencyChart heatmap={heatmap} range={24} onRangeChange={() => {}} now={now} incidents={[
+      { openedAt: "2026-09-29T12:00:00Z", resolvedAt: "2026-09-29T12:01:00Z" },
+      { openedAt: "2026-09-29T20:00:00Z", resolvedAt: null },
+    ]} />);
+    const [short, open] = spans(container);
+    expect(short.width).toBe(2);
+    expect(open.open).toBe(true);
+    expect(open.x + open.width).toBeCloseTo(852, 5); // now is the window's end
+    expect(open.width).toBeCloseTo((852 * (47 - 39.5)) / 47, 1); // 20:00 is column 39.5; the lane ends at the last column centre
+  });
+
+  it("draws no lane without incidents in the window, and never shades behind the data", () => {
+    const { container } = render(<LatencyChart heatmap={heatmap} range={24} onRangeChange={() => {}} now={now} incidents={[
+      { openedAt: "2026-09-20T10:00:00Z", resolvedAt: "2026-09-20T10:12:00Z" },
+    ]} />);
+    expect(container.querySelector(".incident-lane-track")).toBeNull();
+    expect(container.querySelector(".incident-band-fill")).toBeNull();
+  });
+
+  it("adds an Incident line with its time range to the tooltip of an overlapping column", () => {
+    const { container } = render(<LatencyChart heatmap={heatmap} range={24} onRangeChange={() => {}} now={now} incidents={[
+      { openedAt: "2026-09-29T00:00:00Z", resolvedAt: "2026-09-29T00:10:00Z" },
+    ]} />);
+    const chart = container.querySelector(".latency-chart-canvas > div") as HTMLElement;
+    const move = (clientX: number) => act(() => {
+      const event = new Event("pointermove", { bubbles: true });
+      Object.defineProperty(event, "clientX", { value: clientX });
+      chart.dispatchEvent(event);
+    });
+    move(36); // the first column, which the incident overlaps
+    expect(screen.getByText("Incident")).toBeInTheDocument();
+    expect(container.querySelector(".chart-tip-incident-times")?.textContent).toMatch(/^\d\d:\d\d–\d\d:\d\d$/);
+    move(36 + 852 / 2); // mid-day: nothing overlaps
+    expect(screen.queryByText("Incident")).toBeNull();
+  });
+});
+
+describe("laneBounds", () => {
+  it("clamps to the lane and keeps short spans visible", () => {
+    expect(laneBounds(10, 40, 100, 2)).toEqual([10, 30]);
+    expect(laneBounds(10, 10.4, 100, 2)).toEqual([10, 2]);
+    expect(laneBounds(99.5, 99.9, 100, 2)).toEqual([98, 2]);
+    expect(laneBounds(-20, 5, 100, 2)).toEqual([0, 5]);
+    expect(laneBounds(90, 400, 100, 2)).toEqual([90, 10]);
   });
 });

@@ -1,7 +1,7 @@
 "use client"
 
 import { AnimatePresence, motion } from "motion/react"
-import { useState } from "react"
+import { type ReactNode, useState } from "react"
 import { useCommonChart } from "./common-context"
 import { cn } from "./lib"
 import { rgb } from "./palette"
@@ -22,10 +22,13 @@ export function Tooltip({
   labelKey,
   valueFormatter,
   variant = "default",
+  footer,
 }: {
   labelKey?: string
   valueFormatter?: (value: number, name: string) => string
   variant?: TooltipVariant
+  /** RCP change: extra content under the series rows for the hovered index (null for none). */
+  footer?: (index: number) => ReactNode
 }) {
   const chart = useCommonChart()
   const show = chart.ready && chart.hoverIndex != null
@@ -96,6 +99,7 @@ export function Tooltip({
                 </span>
               </div>
             ))}
+            {footer?.(index)}
           </div>
         </motion.div>
       )}

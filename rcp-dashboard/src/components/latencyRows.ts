@@ -22,8 +22,19 @@ export function latencyRows(heatmap: LatencyHeatmap, region: Region, long: boole
   });
 }
 
-function slotLabel(value: number, long: boolean): string {
+export function slotLabel(value: number, long: boolean): string {
   return new Date(value).toLocaleString("en-GB", long
     ? { weekday: "short", hour: "2-digit", minute: "2-digit" }
     : { hour: "2-digit", minute: "2-digit" });
+}
+
+/**
+ * Where an incident span lands on a lane of `width` px, from its start and end x (already on the plot's scale): clamped
+ * to the lane, and never narrower than `minPx` so a short outage is still a visible tick. Returns [x, width].
+ */
+export function laneBounds(startX: number, endX: number, width: number, minPx: number): [number, number] {
+  const x1 = Math.max(0, Math.min(width, startX));
+  const x2 = Math.max(0, Math.min(width, endX));
+  const w = Math.min(width, Math.max(x2 - x1, minPx));
+  return [Math.min(x1, width - w), w];
 }

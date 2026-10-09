@@ -1596,11 +1596,18 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .chip i { width: 8px; height: 8px; flex: none; }
 .chip i.p50 { background: rgb(150 110 255); }
 .chip i.p95 { background: radial-gradient(circle, rgb(140 140 150 / 0.6) 0.9px, transparent 1.2px) 0 0 / 3px 3px; box-shadow: inset 0 0 0 1px rgb(140 140 150 / 0.3); }
-.chip i.incident { background: repeating-linear-gradient(135deg, var(--red) 0 1.5px, transparent 1.5px 3.5px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 50%, transparent); }
-/* Incident windows behind the latency data: hatched, with a solid edge where the incident opened. */
-.incident-band-fill { fill: color-mix(in srgb, var(--red) 8%, transparent); }
-.incident-band-hatch { stroke: color-mix(in srgb, var(--red) 30%, transparent); stroke-width: 1.5; }
-.incident-band-edge { stroke: color-mix(in srgb, var(--red) 75%, transparent); stroke-width: 1; }
+.chip i.incident { height: 6px; background: var(--red); }
+/* Incident lane above the latency plot: a track with one red span per incident, placed by real time. */
+.incident-lane-track { fill: var(--gray-bar); }
+.incident-lane-span { fill: var(--red); opacity: 0.72; }
+.incident-lane-span.open { opacity: 1; }
+/* The "Incident" line in the chart tooltip: label left, time range(s) right, never wrapped. */
+.chart-tip-incident { display: flex; align-items: baseline; gap: 6px; margin-top: 3px; padding-top: 4px; border-top: 1px solid var(--border); white-space: nowrap; font-family: var(--font-mono); font-size: 11px; }
+.chart-tip-incident i { width: 8px; height: 6px; flex: none; align-self: center; background: var(--red); }
+.chart-tip-incident > span:first-of-type { color: var(--text-3); }
+.chart-tip-incident-times { display: flex; flex-direction: column; align-items: flex-end; margin-left: auto; padding-left: 8px; font-variant-numeric: tabular-nums; }
+.chart-tip-incident-times b { font-weight: 400; color: var(--red-text); }
+.chart-tip-incident-times em { font-style: normal; color: var(--text-3); }
 /* Missing data on the latency chart: an opaque surface with a light diagonal hatch, so held values never show. */
 .gap-band-fill { fill: var(--surface); }
 .gap-band-hatch { stroke: var(--border-strong); stroke-width: 1; opacity: 0.7; }

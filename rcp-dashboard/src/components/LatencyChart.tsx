@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { Area } from "./dither-kit/area";
 import { AreaChart } from "./dither-kit/area-chart";
 import { useChartPart, type ChartContextValue } from "./dither-kit/chart-context";
@@ -7,12 +7,16 @@ import { Tooltip } from "./dither-kit/tooltip";
 import { XAxis } from "./dither-kit/x-axis";
 import { YAxis } from "./dither-kit/y-axis";
 import { milliseconds } from "../format";
-import { latencyRows, type Row } from "./latencyRows";
+import { laneBounds, latencyRows, slotLabel, type Row } from "./latencyRows";
 import type { LatencyHeatmap } from "../types";
 
 const ENTRANCE_MS = 900;
-const MIN_BAND_PX = 12;
 const LABEL_MIN_PX = 48;
+/** The incident lane: a thin track just above the plot, in the margin the chart reserves for it. */
+const LANE_PX = 6;
+const LANE_GAP = 6;
+const LANE_MIN_SPAN_PX = 2;
+const TOP_MARGIN = 10;
 
 function shortMs(value: number): string {
   return value >= 1000 ? `${Number((value / 1000).toFixed(1))}s` : `${Math.round(value)}ms`;
@@ -30,9 +34,12 @@ export type IncidentWindow = { openedAt: string | null; resolvedAt: string | nul
 
 /**
  * Response time for one region over the window: the backend's per-column p50 as a dithered area over a dotted p95
- * band: p50 in the accent, p95 in grey behind it, and red only for incident windows shaded behind the data. Chips carry
- * the window's p50 and p95 and switch each series on or off. Columns without an HTTP response keep their place on the
- * time axis and are covered by a hatched "No data" band, so a gap never looks fast and never compresses the scale.
+ * band: p50 in the accent, p95 in grey behind it. Incidents do not shade the data; they sit in a thin lane directly
+ * above the plot, on the plot's own x scale, one red span per incident placed by its real time (never snapped to a
+ * bucket, never narrower than 2 px; open incidents run to now in solid red, resolved ones are slightly softer). The
+ * tooltip adds an "Incident" line with the time range when the hovered column overlaps one. Chips carry the window's
+ * p50 and p95 and switch each series on or off. Columns without an HTTP response keep their place on the time axis
+ * and are covered by a hatched "No data" band, so a gap never looks fast and never compresses the scale.
  */
 export function LatencyChart({ heatmap, range, onRangeChange, incidents = [], now }: {
   heatmap: LatencyHeatmap;
@@ -58,18 +65,20 @@ export function LatencyChart({ heatmap, range, onRangeChange, incidents = [], no
   // A fresh array on every render made the chart restart its wave and jump to the end when `animate` flipped.
   const data = useMemo<Row[]>(() => (region ? latencyRows(heatmap, region, long) : []), [heatmap, region, long]);
 
-  // Nothing to draw (no responses, or a backend without percentiles): the heatmap below says why.
-  if (!region) return null;
-
   const windowStart = new Date(heatmap.from).getTime();
   const windowEnd = new Date(heatmap.to).getTime();
-  const spans = incidents
+  const spans = useMemo<Span[]>(() => incidents
     .map((incident) => ({
       start: incident.openedAt ? new Date(incident.openedAt).getTime() : windowStart,
       end: incident.resolvedAt ? new Date(incident.resolvedAt).getTime() : now,
+      open: !incident.resolvedAt,
     }))
-    .filter((span) => span.end > windowStart && span.start < windowEnd);
+    .filter((span) => span.end > windowStart && span.start < windowEnd), [incidents, now, windowStart, windowEnd]);
 
+  // Nothing to draw (no responses, or a backend without percentiles): the heatmap below says why.
+  if (!region) return null;
+
+  const bucketMs = heatmap.bucketSeconds * 1000;
   const toggle = (series: Series) => setShown((current) => {
     const next = { ...current, [series]: !current[series] };
     return next.p50 || next.p95 ? next : current; // keep at least one series on
@@ -107,14 +116,17 @@ export function LatencyChart({ heatmap, range, onRangeChange, incidents = [], no
       </header>
       <div className="section-body">
         <div className="latency-chart-canvas" role="img" aria-label={`Latency over the last ${long ? "7 days" : "24 hours"}, ${region.region}`}>
-          <AreaChart key={`${region.region}-${range}`} data={data} config={config} bloom="off" animate={animate} animationDuration={ENTRANCE_MS}>
+          <AreaChart
+            key={`${region.region}-${range}`} data={data} config={config} bloom="off" animate={animate} animationDuration={ENTRANCE_MS}
+            margins={incidents.length > 0 ? { top: TOP_MARGIN + LANE_PX + LANE_GAP } : undefined}
+          >
             <Grid />
-            <IncidentBands spans={spans} bucketMs={heatmap.bucketSeconds * 1000} />
             {/* Front layer (the chart's default SVG, above the canvas) so it hides the held values; axes draw over it. */}
-            <GapBands spans={spans} bucketMs={heatmap.bucketSeconds * 1000} />
+            <GapBands />
+            <IncidentLane spans={spans} bucketMs={bucketMs} />
             <XAxis dataKey="tick" maxTicks={6} />
             <YAxis tickFormatter={shortMs} />
-            <GapAwareTooltip />
+            <GapAwareTooltip spans={spans} bucketMs={bucketMs} long={long} />
             {/* p95 behind as a sparse dotted band, p50 in front as the solid dither. */}
             {shown.p95 && <Area dataKey="p95" variant="dotted" />}
             {shown.p50 && <Area dataKey="p50" variant="gradient" />}
@@ -135,7 +147,7 @@ function Chip({ series, value, on, onToggle }: { series: Series; value: number |
   );
 }
 
-type Span = { start: number; end: number };
+type Span = { start: number; end: number; open: boolean };
 
 /** Where a point in time sits on screen: rows cover every column, so interpolate directly between bucket centres. */
 function xAtTime(ctx: ChartContextValue, rows: Row[], bucketMs: number, time: number): number {
@@ -146,50 +158,26 @@ function xAtTime(ctx: ChartContextValue, rows: Row[], bucketMs: number, time: nu
   return ctx.xCenter(lo) + (index - lo) * (ctx.xCenter(hi) - ctx.xCenter(lo));
 }
 
-/** A ten-minute outage is under 1% of a day; keep it wide enough to read as a block, not a stray line. */
-function spanBounds(ctx: ChartContextValue, rows: Row[], bucketMs: number, span: Span): [number, number] {
-  const width = ctx.plot.width;
-  const a = xAtTime(ctx, rows, bucketMs, span.start);
-  const b = xAtTime(ctx, rows, bucketMs, span.end);
-  const half = Math.max((b - a) / 2, MIN_BAND_PX / 2);
-  const x1 = Math.max(0, Math.min(width - 2 * half, (a + b) / 2 - half));
-  return [x1, Math.min(width, x1 + 2 * half)];
-}
-
-function IncidentPattern({ id }: { id: string }) {
-  return (
-    <pattern id={id} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-      <rect width="6" height="6" className="incident-band-fill" />
-      <line x1="0" y1="0" x2="0" y2="6" className="incident-band-hatch" />
-    </pattern>
-  );
-}
-
-/** Incident windows, shaded behind the data and placed by time. */
-function IncidentBands({ spans, bucketMs }: { spans: Span[]; bucketMs: number }) {
-  const ctx = useChartPart("IncidentBands");
-  const pattern = `incident-hatch-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+/**
+ * Incidents on their own lane above the plot, aligned to the plot's x scale. Each span is placed by its real start
+ * and end, so a ten-minute drill is a few pixels in the 7-day view instead of a whole 80-minute bucket.
+ */
+function IncidentLane({ spans, bucketMs }: { spans: Span[]; bucketMs: number }) {
+  const ctx = useChartPart("IncidentLane");
   if (!ctx.ready || spans.length === 0 || ctx.dataLength === 0) return null;
 
   const rows = ctx.data as unknown as Row[];
+  const width = ctx.plot.width;
   return (
-    <g>
-      <defs><IncidentPattern id={pattern} /></defs>
-      {spans.map((span) => {
-        const [x1, x2] = spanBounds(ctx, rows, bucketMs, span);
-        return (
-          <g key={`${span.start}-${span.end}`}>
-            <rect x={x1} y={0} width={x2 - x1} height={ctx.plot.height} fill={`url(#${pattern})`} />
-            <line x1={x1} x2={x1} y1={0} y2={ctx.plot.height} className="incident-band-edge" />
-          </g>
-        );
+    <g pointerEvents="none" transform={`translate(0,${-(LANE_PX + LANE_GAP)})`}>
+      <rect className="incident-lane-track" x={0} y={0} width={width} height={LANE_PX} />
+      {spans.map((span, index) => {
+        const [x, w] = laneBounds(xAtTime(ctx, rows, bucketMs, span.start), xAtTime(ctx, rows, bucketMs, span.end), width, LANE_MIN_SPAN_PX);
+        return <rect key={`${span.start}-${index}`} className={span.open ? "incident-lane-span open" : "incident-lane-span"} x={x} y={0} width={w} height={LANE_PX} />;
       })}
     </g>
   );
 }
-
-// Render beneath the dither canvas, like the grid.
-IncidentBands.chartLayer = "back" as const;
 
 /** Runs of consecutive gap rows as inclusive [first, last] indices. */
 function gapRuns(rows: Row[]): Array<[number, number]> {
@@ -206,10 +194,9 @@ function gapRuns(rows: Row[]): Array<[number, number]> {
 /**
  * Columns with no HTTP response. Each run is covered, above the canvas, by an opaque surface with a light hatch
  * from the midpoint before it to the midpoint after (or the chart edge), so the held flat line underneath never
- * shows. An incident inside the run is redrawn on top of the cover, clipped to it, so an outage that produced no
- * responses is still visible. Runs wide enough carry a "No data" label.
+ * shows. Runs wide enough carry a "No data" label. Incidents live in the lane above the plot, not in here.
  */
-function GapBands({ spans, bucketMs }: { spans: Span[]; bucketMs: number }) {
+function GapBands() {
   const ctx = useChartPart("GapBands");
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   if (!ctx.ready || ctx.dataLength === 0) return null;
@@ -219,7 +206,6 @@ function GapBands({ spans, bucketMs }: { spans: Span[]; bucketMs: number }) {
   if (runs.length === 0) return null;
   const last = rows.length - 1;
   const hatch = `gap-hatch-${uid}`;
-  const incident = `gap-incident-${uid}`;
 
   return (
     <g pointerEvents="none">
@@ -228,24 +214,15 @@ function GapBands({ spans, bucketMs }: { spans: Span[]; bucketMs: number }) {
           <rect width="6" height="6" className="gap-band-fill" />
           <line x1="0" y1="0" x2="0" y2="6" className="gap-band-hatch" />
         </pattern>
-        <IncidentPattern id={incident} />
       </defs>
       {runs.map(([first, end]) => {
         const x1 = first === 0 ? 0 : (ctx.xCenter(first - 1) + ctx.xCenter(first)) / 2;
         const x2 = end === last ? ctx.plot.width : (ctx.xCenter(end) + ctx.xCenter(end + 1)) / 2;
         const width = x2 - x1;
-        const clip = `gap-clip-${uid}-${first}`;
         return (
           <g key={first}>
-            <clipPath id={clip}><rect x={x1} y={0} width={width} height={ctx.plot.height} /></clipPath>
             <rect x={x1} y={0} width={width} height={ctx.plot.height} className="gap-band-fill" />
             <rect x={x1} y={0} width={width} height={ctx.plot.height} fill={`url(#${hatch})`} />
-            <g clipPath={`url(#${clip})`}>
-              {spans.map((span) => {
-                const [a, b] = spanBounds(ctx, rows, bucketMs, span);
-                return <rect key={`${span.start}-${span.end}`} x={a} y={0} width={b - a} height={ctx.plot.height} fill={`url(#${incident})`} />;
-              })}
-            </g>
             {width >= LABEL_MIN_PX && (
               <g transform={`translate(${x1 + width / 2},${ctx.plot.height / 2})`}>
                 <rect x={-30} y={-9} width={60} height={18} className="gap-band-fill gap-band-tag" />
@@ -259,15 +236,40 @@ function GapBands({ spans, bucketMs }: { spans: Span[]; bucketMs: number }) {
   );
 }
 
-/** The stock tooltip, except that a column with no data says so instead of showing its held values. */
-function GapAwareTooltip() {
+/**
+ * The stock tooltip, except that a column with no data says so instead of showing its held values, and a column
+ * that overlaps an incident adds an "Incident" line with the incident's time range.
+ */
+function GapAwareTooltip({ spans, bucketMs, long }: { spans: Span[]; bucketMs: number; long: boolean }) {
   const ctx = useChartPart("GapAwareTooltip");
   // Keep the last hovered row so the card does not change its text while it fades out.
   const [lastIndex, setLastIndex] = useState(0);
   if (ctx.hoverIndex != null && ctx.hoverIndex !== lastIndex) setLastIndex(ctx.hoverIndex);
   const index = ctx.hoverIndex ?? lastIndex;
-  const gap = (ctx.data as unknown as Row[])[index]?.gap === true;
-  return <Tooltip labelKey="time" valueFormatter={(value) => (gap ? "No data" : milliseconds(value))} />;
+  const rows = ctx.data as unknown as Row[];
+  const gap = rows[index]?.gap === true;
+  const footer = (at: number): ReactNode => {
+    const row = rows[at];
+    if (!row) return null;
+    const hits = spans.filter((span) => span.start < row.start + bucketMs && span.end > row.start);
+    if (hits.length === 0) return null;
+    return (
+      <div className="chart-tip-incident">
+        <i />
+        <span>Incident</span>
+        <span className="chart-tip-incident-times">
+          {hits.slice(0, 2).map((span) => <b key={span.start}>{incidentRange(span, long)}</b>)}
+          {hits.length > 2 && <em>+{hits.length - 2} more</em>}
+        </span>
+      </div>
+    );
+  };
+  return <Tooltip labelKey="time" valueFormatter={(value) => (gap ? "No data" : milliseconds(value))} footer={footer} />;
+}
+
+/** "14:02–14:12", with the weekday on the start in the 7-day view, and "–now" while the incident is open. */
+function incidentRange(span: Span, long: boolean): string {
+  return `${slotLabel(span.start, long)}–${span.open ? "now" : slotLabel(span.end, false)}`;
 }
 
 // Same layer as the stock tooltip: DOM, above both SVG layers.
