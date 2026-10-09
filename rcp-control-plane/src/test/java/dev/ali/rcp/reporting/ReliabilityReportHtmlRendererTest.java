@@ -31,30 +31,61 @@ class ReliabilityReportHtmlRendererTest {
 
         assertThat(Files.readString(download)).isEqualTo(html);
         assertThat(html).contains("Demo API", "https://example.com/health", "99.72%", "title=\"99.72222\"", "Target 99.5%",
-                "title=\"3.20000 of 7.20000\" data-value=\"3.20000 of 7.20000\">3.2</span><span class=\"unit\">of 7.2 checks left", "class=\"figure\">142</span><span class=\"unit\">p50 ms",
-                "class=\"figure\">387</span><span class=\"unit\">p95 ms", "2480 HTTP samples", "<table>",
-                "@media print", "size: A4", "table-header-group", "break-inside: avoid",
+                "title=\"3.20000 of 7.20000\" data-value=\"3.20000 of 7.20000\">3.2</span><span class=\"unit\">left",
+                "Of 7.2 checks · 4 down", "class=\"figure\">142</span><span class=\"unit\">ms p50", "p95 387 ms · 2480 samples",
+                "<table>", "@media print", "size: A4", "table-header-group", "break-inside: avoid",
                 "6 Oct 2026, 00:00 → 7 Oct 2026, 00:00 UTC", "7 Oct 2026, 00:05 UTC",
                 "data-from=\"2026-10-06T00:00:00Z\"", "data-to=\"2026-10-07T00:00:00Z\"", "<span>1 day</span>", "Generated 7 Oct 2026, 00:05 UTC",
                 "Schema rcp-report-v1 · ", "Data up to 6 Oct 2026, 23:59 UTC", "6 Oct, 01:00:00", "6 Oct, 01:02:00",
-                "<span title=\"ae71250e-bd38-4ef3-83f7-812b4e1b9c30\">ae71250e</span>", "UP ÷ (UP + DOWN)",
-                "Counted as UP ÷ (UP + DOWN)", "3.2 of 7.2 checks left · conclusive checks");
+                "<span title=\"ae71250e-bd38-4ef3-83f7-812b4e1b9c30\">ae71250e</span>", "Counted as UP ÷ (UP + DOWN)",
+                "1440 conclusive × 0.5% = 7.2", "4 confirmed DOWN checks", "3.2 of 7.2 checks left");
         assertThat(html).doesNotContain("99.72222%", "100.00000", ">UP_PLUS_DOWN<");
-        assertThat(html).doesNotContain("<script", "<link", "<iframe", "src=", "href=", "@import", "99.9%");
+        assertThat(html).doesNotContain("<script", "<link", "<iframe", "src=", "href=", "@import");
         // The only url() allowed is an embedded font, so the file never fetches anything.
         assertThat(Pattern.compile("url\\((?!data:font/woff2;base64,)").matcher(html).find()).isFalse();
 
-        // Every meter is a labelled image of twenty cells with its share recorded, never an unlabelled bar.
-        var meters = Pattern.compile("<div class=\"cells fill-[a-z]+\" role=\"img\" aria-label=\"[^\"]+\" data-meter=\"[a-z-]+\" data-share=\"[0-9.]+\">((?:<i(?: class=\"full\")?>(?:<b style=\"width:[0-9.]+%\"></b>)?</i>){20})").matcher(html);
-        int count = 0;
-        while (meters.find()) {
-            count++;
-        }
-        assertThat(count).isEqualTo(4);
+        // Every meter is a labelled image with its share recorded, never an unlabelled bar.
+        assertThat(Pattern.compile("<div class=\"meter\" role=\"img\" aria-label=\"[^\"]+\" data-meter=\"[a-z-]+\" data-share=\"[0-9.]+\">")
+                .matcher(html).results().count()).isEqualTo(4);
+        assertThat(Pattern.compile("<div class=\"meter\" role=\"img\" aria-label=\"[^\"]+\"").matcher(html).results().count()).isEqualTo(6);
     }
 
     @Test
-    void usesExactlyTheFiveRoleTypeScaleWithoutUppercaseTransforms() {
+    void scalesAvailabilityInNinesSoTheTargetGapIsVisible() {
+        assertThat(renderer.nines(new BigDecimal("90"))).isEqualByComparingTo("0.25");
+        assertThat(renderer.nines(new BigDecimal("99"))).isEqualByComparingTo("0.5");
+        assertThat(renderer.nines(new BigDecimal("99.9"))).isEqualByComparingTo("0.75");
+        assertThat(renderer.nines(new BigDecimal("99.99"))).isEqualByComparingTo("1");
+        assertThat(renderer.nines(new BigDecimal("100"))).isEqualByComparingTo("1");
+        assertThat(renderer.nines(BigDecimal.ZERO)).isEqualByComparingTo("0");
+        assertThat(renderer.nines(null)).isEqualByComparingTo("0");
+        String html = renderer.render(sampleReport());
+        // 99.72% against 99.5%: the fill passes the target marker, and the ticks name the scale.
+        assertThat(html).contains("data-meter=\"availability\" data-share=\"0.639\"", "class=\"meter-mark\" style=\"left:57.5%\"",
+                "<span style=\"left:75%\">99.9%</span>", "Scaled in nines");
+    }
+
+    @Test
+    void pairsTransitionsIntoIncidentsWithDurations() {
+        Instant from = Instant.parse("2026-10-06T00:00:00Z");
+        UUID before = UUID.randomUUID();
+        List<ReliabilityReportHtmlRenderer.Incident> incidents = renderer.incidents(List.of(
+                new ReportIncidentEvent(before, "RESOLVED", from.plusSeconds(60)),
+                new ReportIncidentEvent(UUID.randomUUID(), "OPENED", from.plusSeconds(120))));
+        assertThat(incidents).hasSize(2);
+        assertThat(incidents.get(0).opened()).isNull();
+        assertThat(incidents.get(1).resolved()).isNull();
+        assertThat(renderer.duration(java.time.Duration.ofSeconds(45))).isEqualTo("45s");
+        assertThat(renderer.duration(java.time.Duration.ofSeconds(750))).isEqualTo("12m 30s");
+        assertThat(renderer.duration(java.time.Duration.ofMinutes(185))).isEqualTo("3h 05m");
+        assertThat(renderer.duration(java.time.Duration.ofHours(52))).isEqualTo("2d 4h");
+        String html = renderer.render(sampleReport());
+        assertThat(html).contains("2 incidents · longest resolved 2m 0s · UTC", "1 resolved · 1 ongoing", "Still open",
+                "<td class=\"mono num\">2m 0s</td>", "3m 0s<span class=\"hint\">so far</span>");
+    }
+
+    @Test
+    void usesExactlyTheSixRoleTypeScaleWithoutUppercaseTransforms() {
         String html = renderer.render(sampleReport());
         String css = html.substring(html.indexOf("<style>"), html.indexOf("</style>"));
         Set<String> sizes = new TreeSet<>();
@@ -62,14 +93,15 @@ class ReliabilityReportHtmlRendererTest {
         while (matcher.find()) {
             sizes.add(matcher.group(1));
         }
-        assertThat(sizes).containsExactlyInAnyOrder("32px", "28px", "15px", "13px", "11px",
-                "22pt", "18pt", "10.5pt", "9pt", "7.5pt");
+        // Title, figure, heading, body, hint and label, and their print equivalents.
+        assertThat(sizes).containsExactlyInAnyOrder("32px", "30px", "15px", "13px", "12px", "11px",
+                "22pt", "19pt", "10.5pt", "9pt", "8pt", "7.5pt");
         assertThat(css).doesNotContain("text-transform", "font: ", "border-radius: 4", "border-radius: 6");
         assertThat(css).contains("\"Geist\"", "\"Geist Mono\"", "\"Doto\"", "#0a0a0a", "#111111", "#242424",
                 "#30a46c", "#e5484d", "#f5a524", "#ededf0", "#1a7f4b", "#d1342f", "#b86e00", "#dcdce1");
-        assertThat(html).contains("<h1 id=\"report-title\">Demo API</h1>", "<div class=\"edition\">Reliability report</div>", "Measured availability",
-                "Error budget", "Observed down", "Occurred at · UTC");
-        assertThat(html).doesNotContain("section-index", "Monitor reliability", "Denominator policy");
+        assertThat(html).contains("<h1 id=\"report-title\">Demo API</h1>", "<div class=\"edition\">Reliability report</div>",
+                "<div class=\"label\">Availability</div>", "<div class=\"label\">Error budget</div>", "Opened · UTC", "Duration");
+        assertThat(html).doesNotContain("section-index", "Monitor reliability", "Denominator policy", "class=\"cells");
     }
 
     @Test
@@ -99,15 +131,15 @@ class ReliabilityReportHtmlRendererTest {
         ReliabilityReport report = reportWithEvidence(new BigDecimal("100"), null,
                 new BigDecimal("0.00500"), 0, new BigDecimal("0.00500"));
         String html = renderer.render(report);
-        assertThat(html).contains("NO VERDICT", "Insufficient evidence to judge this SLO",
-                "Observed availability is not an SLO pass", "not enough to compute (minimum 20)");
-        assertThat(html).doesNotContain("The observed SLO target was met.");
+        assertThat(html).contains("NO VERDICT", "Not enough evidence to judge this SLO",
+                "Observed availability is not an SLO pass", "2 of 20 samples needed");
+        assertThat(html).doesNotContain("The SLO target was met.");
     }
 
     @Test
     void noEvidenceAndZeroAllowanceRenderWithoutInventingAvailability() {
         String html = renderer.render(reportWithEvidence(null, null, BigDecimal.ZERO, 0, BigDecimal.ZERO));
-        assertThat(html).contains("not available", "No source data", "No failed executions allowed",
+        assertThat(html).contains("not available", "No source data", "No failed checks are allowed at this target",
                 "No incident transitions recorded", "does not rule out an incident opened earlier");
         assertThat(html).doesNotContain("NaN", "Infinity", "width=\"-");
     }
@@ -116,9 +148,9 @@ class ReliabilityReportHtmlRendererTest {
     void overspentBudgetsReadAsChecksOverAndBoundTheChart() {
         String html = renderer.render(reportWithEvidence(new BigDecimal("50.00000"), false,
                 BigDecimal.ZERO, 1, new BigDecimal("-1.00000")));
-        assertThat(html).contains("MISSED", "Budget exceeded", "title=\"-1.00000 of 0\"", ">1</span>", "1 check over a budget of 0", "check over budget");
-        assertThat(html).contains("class=\"cells fill-bad\" role=\"img\" aria-label=\"Observed bad executions 1\" data-meter=\"budget-observed\" data-share=\"1.000\">"
-                + "<i class=\"full\"></i>".repeat(20));
+        assertThat(html).contains("MISSED", "Error budget exceeded", "title=\"-1.00000 of 0\"", ">1</span><span class=\"unit\">over",
+                "1 check over a budget of 0", "Allowed 0 checks · 1 down");
+        assertThat(html).contains("data-meter=\"budget\" data-share=\"1\"><span class=\"meter-fill bad\" style=\"width:100%\"></span></div>");
         assertThat(html).doesNotContain("NaN", "Infinity", "width=\"-");
     }
 
@@ -126,7 +158,7 @@ class ReliabilityReportHtmlRendererTest {
     void countsDistinctIncidentsRatherThanTransitionsAndLabelsTruncation() {
         ReliabilityReport sample = sampleReport();
         String html = renderer.render(sample);
-        assertThat(html).contains("class=\"figure\">2</span>", "3 transitions · UTC", "Distinct IDs in shown transitions");
+        assertThat(html).contains("class=\"figure\">2</span>", "2 incidents");
         ReliabilityReport truncated = new ReliabilityReport(sample.schemaVersion(), sample.generatedAt(),
                 sample.sourceDataWatermark(), sample.monitorName(), sample.targetUrl(), sample.availability(),
                 sample.errorBudget(), sample.latency(), sample.incidentTimeline(), true, sample.limitations());
@@ -138,16 +170,17 @@ class ReliabilityReportHtmlRendererTest {
     void marksStatusWithDotMatrixBlocksAndTouchingModules() {
         String html = renderer.render(sampleReport());
         String nine = "<i></i>".repeat(9);
-        // MET strip, two OPENED and one RESOLVED transition.
+        // MET chip, one resolved and one open incident.
         assertThat(html).contains("<span class=\"status-dot good\" aria-hidden=\"true\">" + nine + "</span>MET",
-                "<span class=\"status-dot bad\" aria-hidden=\"true\">" + nine + "</span>OPENED",
+                "<span class=\"status-dot bad\" aria-hidden=\"true\">" + nine + "</span>OPEN<",
                 "<span class=\"status-dot good\" aria-hidden=\"true\">" + nine + "</span>RESOLVED");
-        assertThat(Pattern.compile("class=\"status-dot ").matcher(html).results().count()).isEqualTo(4);
+        assertThat(Pattern.compile("class=\"status-dot ").matcher(html).results().count()).isEqualTo(3);
         assertThat(html).doesNotContain("●").doesNotContain("::before");
-        assertThat(html).contains("class=\"decision lit\" data-tone=\"good\"", "class=\"metric lit\" data-tone=\"good\"",
+        assertThat(html).contains("class=\"decision lit\" data-tone=\"good\"",
                 "gap: 1px", "linear-gradient(180deg, color-mix(in srgb, var(--hue) var(--light-fall), transparent) 0%",
                 "print-color-adjust: exact");
         String css = html.substring(html.indexOf("<style>"), html.indexOf("</style>"));
+        assertThat(html).doesNotContain("class=\"metric lit");
         assertThat(css).doesNotContain("border-left", "border-radius: 2", "box-shadow");
         // The only rounding left is the dot itself.
         assertThat(Pattern.compile("border-radius:\\s*([^;}]+)").matcher(css).results().map(m -> m.group(1)).distinct().toList())

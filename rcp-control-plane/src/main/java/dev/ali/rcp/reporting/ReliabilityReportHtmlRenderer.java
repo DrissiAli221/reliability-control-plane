@@ -5,10 +5,15 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 @Component
@@ -40,13 +45,16 @@ public class ReliabilityReportHtmlRenderer {
               -webkit-font-smoothing: antialiased; font-synthesis: none; }
             h1, h2, h3, p, dl, dd { margin: 0; }
             .report { max-width: 880px; margin: 0 auto; padding: 48px 40px 32px; }
-            .mono, .eyebrow, dt, th, .tag, .chip, .unit, .readout-row, .summary, .meta-line, .edition, footer { font-family: var(--font-mono); }
+            .mono, .label, dt, th, .tag, .chip, .ticks, .meta-line, .edition, footer { font-family: var(--font-mono); }
             h1 { font-size: 32px; font-weight: 600; line-height: 1.15; letter-spacing: -.02em; overflow-wrap: anywhere; }
-            .figure, .empty-value { font-family: var(--font-dots); font-size: 28px; font-weight: 800; line-height: 1;
+            .figure { font-family: var(--font-dots); font-size: 30px; font-weight: 800; line-height: 1;
               letter-spacing: 0; color: var(--text); font-variant-numeric: tabular-nums; }
             h2, h3, .brand { font-size: 15px; font-weight: 500; line-height: 1.3; letter-spacing: -.01em; }
-            .eyebrow, dt, th, .section-note, .unit, .readout-row, .summary, .chip, .edition, footer {
+            /* The label role: mono, quiet, sentence case. Abbreviations (SLO, UTC, HTTP) keep their capitals. */
+            .label, dt, th, .section-note, .ticks, .chip, .edition, footer {
               font-size: 11px; font-weight: 400; letter-spacing: .04em; color: var(--text-3); }
+            /* The hint role: one step under body, quieter, in the reading face so it never competes with a label. */
+            .hint, .unit, .note { font-size: 12px; color: var(--text-3); }
             .masthead { display: flex; align-items: center; justify-content: space-between; gap: 16px;
               padding-bottom: 22px; border-bottom: 1px solid var(--border); }
             .brand { display: flex; align-items: center; gap: 10px; }
@@ -60,61 +68,82 @@ public class ReliabilityReportHtmlRenderer {
             .chip.bad { color: var(--red-text); border-color: color-mix(in srgb, var(--red) 35%, var(--border)); }
             .chip.warn { color: var(--amber-text); border-color: color-mix(in srgb, var(--amber) 35%, var(--border)); }
             .target { color: var(--text-2); margin: 8px 0 6px; overflow-wrap: anywhere; }
-            .meta-line { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--text-2); }
-            .meta-line .sep { color: var(--text-3); }
-            dt { margin-bottom: 4px; } dd { overflow-wrap: anywhere; }
+            .meta-line { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; letter-spacing: .04em; color: var(--text-3); }
+            dd { overflow-wrap: anywhere; }
             /* Every module below the intro touches the next and shares its hairline, like the dashboard's stack. */
             .stack > * + * { margin-top: -1px; }
             .decision { padding: 14px 16px; border: 1px solid var(--border); background: var(--surface); }
             .decision p { color: var(--text-2); }
-            .tag { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; color: var(--text); }
+            .decision b { font-weight: 500; color: var(--text); }
+            .tag { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; font-size: 11px; letter-spacing: .04em; color: var(--text); }
             /* Status marker: a 3x3 dot-matrix block, the same shape as the dashboard's StatusDot (9px). */
             .status-dot { --dot-size: 2px; --dot-gap: 1.5px; --dot-color: var(--text-3); display: inline-grid;
               grid-template-columns: repeat(3, var(--dot-size)); gap: var(--dot-gap); flex: none; }
             .status-dot i { width: var(--dot-size); height: var(--dot-size); border-radius: 50%; background: var(--dot-color); }
             .status-dot.good { --dot-color: var(--green); } .status-dot.bad { --dot-color: var(--red); }
             .status-dot.warn { --dot-color: var(--amber); }
-            /* A faint status light falling from the top edge; neutral modules get none. */
+            /* A faint status light falling from the top edge. Only the verdict strip carries it; tiles stay neutral
+               and let their meters carry the colour, so the row reads as one instrument. */
             .lit[data-tone="good"] { --hue: var(--green); } .lit[data-tone="bad"] { --hue: var(--red); }
             .lit[data-tone="warn"] { --hue: var(--amber); }
             .lit[data-tone] { background: linear-gradient(180deg, color-mix(in srgb, var(--hue) var(--light-fall), transparent) 0%,
               transparent 55%), var(--surface); }
             .good { color: var(--green-text); } .bad { color: var(--red-text); } .warn { color: var(--amber-text); }
-            .figure.good, .figure.bad, .figure.warn { color: var(--text); }
             /* Modules touch: the 1px grid gap shows the container's hairline colour, so dividers survive any wrap. */
             .metrics, .visuals, .facts { display: grid; gap: 1px; border: 1px solid var(--border); background: var(--border); }
             .metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-            .metric { padding: 18px; min-width: 0; background: var(--surface); }
-            .readout { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 18px; margin: 12px 0 10px; }
-            .readout span.pair { display: inline-flex; align-items: baseline; gap: 7px; }
-            .metric p { color: var(--text-3); }
+            /* A tile, as on the dashboard: label, one figure with a short unit, a 22px visual row, then a hint. */
+            .metric { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 14px 16px; background: var(--surface); }
+            .metric > .label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+            .metric-value { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; white-space: nowrap; }
+            .metric-value .unit { font-size: 13px; }
+            .metric-visual { display: flex; align-items: center; height: 22px; }
+            .metric-visual > * { flex: 1; }
             .panel { border: 1px solid var(--border); background: var(--surface); }
             .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 49px;
               padding: 10px 16px; border-bottom: 1px solid var(--border); }
             .panel .visuals, .panel .facts { border: 0; margin: 0; }
             .visuals { grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border) !important; }
-            .visual { min-width: 0; padding: 18px 16px; background: var(--surface); }
-            .visual h3 { margin-bottom: 4px; }
-            .visual p { color: var(--text-2); }
-            /* Readouts: quiet label, bright value, the reference on the right; then a segmented meter. */
-            .readout-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 18px; }
+            .visual { min-width: 0; padding: 18px 16px 20px; background: var(--surface); }
+            .visual > p { color: var(--text-2); margin-top: 4px; }
+            /* Readouts: quiet label, bright value, the reference on the right, above a slim meter. */
+            .readout-row { display: flex; justify-content: space-between; gap: 10px; margin: 22px 0 10px; font-family: var(--font-mono);
+              font-size: 11px; letter-spacing: .04em; color: var(--text-3); }
             .readout-row b { font-weight: 400; color: var(--text); }
-            .cells { position: relative; display: grid; grid-template-columns: repeat(20, minmax(0, 1fr)); gap: 1px;
-              height: 12px; margin-top: 8px; }
-            .cells i { position: relative; overflow: hidden; background: var(--track); }
-            .cells i b { position: absolute; top: 0; bottom: 0; left: 0; background: var(--fill); }
-            .cells i.full { background: var(--fill); }
-            .cells.fill-good { --fill: var(--green); } .cells.fill-bad { --fill: var(--red); }
-            .cells.fill-warn { --fill: var(--amber); } .cells.fill-neutral { --fill: var(--text-2); }
-            .cells-mark { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text); }
-            .summary { margin-top: 16px; } .summary + .summary { margin-top: 4px; }
+            /* The dashboard's meter: a 6px track, a fill, and a 2px marker line that overhangs the track. */
+            .meter { position: relative; height: 6px; background: var(--track); }
+            .meter-fill { position: absolute; inset: 0 auto 0 0; min-width: 3px; background: var(--text-2); }
+            .meter-fill.good { background: var(--green); } .meter-fill.bad { background: var(--red); }
+            .meter-fill.warn { background: var(--amber); }
+            .meter-mark { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text); }
+            /* Latency: the p50..p95 spread on a scale from zero, a dot at p50 and a tick at p95. */
+            .range-span { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--text-3) 55%, transparent); }
+            .range-dot { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%;
+              background: var(--text-2); outline: 2px solid var(--surface); }
+            .range-tick { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text); }
+            /* Incidents: each one drawn where it happened in the window, from opened to resolved. */
+            .meter-span { position: absolute; top: -3px; bottom: -3px; min-width: 2px; background: var(--red); }
+            .meter-span.resolved { background: color-mix(in srgb, var(--red) 55%, var(--track)); }
+            .ticks { position: relative; height: 14px; margin-top: 8px; }
+            .ticks span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+            .ticks span:first-child { transform: none; } .ticks span:last-child { transform: translateX(-100%); }
+            .ticks span.on { color: var(--text-2); }
+            /* Explain lines, as in the dashboard's explain card: label, value, and the result in bright text. */
+            .lines { margin-top: 18px; border-top: 1px solid var(--border); }
+            .lines > div { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+            .lines dd { color: var(--text-2); font-family: var(--font-mono); font-size: 12px; }
+            .lines .result dd { color: var(--text); }
+            .note { margin-top: 12px; }
             .facts { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: -1px 0 0; }
             .facts > div { padding: 12px 16px; background: var(--surface); }
+            .facts dt { margin-bottom: 4px; }
             .facts dd { font-family: var(--font-mono); }
             table { border-collapse: collapse; width: 100%; }
             th { text-align: left; background: var(--surface-2); }
             th, td { border-bottom: 1px solid var(--border); padding: 10px 16px; vertical-align: middle; }
+            th.num, td.num { text-align: right; }
             tbody tr:last-child td { border-bottom: 0; } td.mono { overflow-wrap: anywhere; }
+            td.num .hint { margin-left: 6px; }
             .table-wrap { overflow-x: auto; }
             .empty { padding: 18px 16px; color: var(--text-2); }
             .notice { color: var(--amber-text); padding: 10px 16px; border-top: 1px solid var(--border); }
@@ -126,7 +155,7 @@ public class ReliabilityReportHtmlRenderer {
               .report { padding: 24px 20px; } .metrics { grid-template-columns: 1fr 1fr; }
               .visuals { grid-template-columns: 1fr; }
               .facts { grid-template-columns: 1fr 1fr; }
-              .section-note { display: none; } footer { flex-wrap: wrap; } .edition { text-align: right; }
+              .section-note, .edition { display: none; } footer { flex-wrap: wrap; }
             }
             @page { size: A4; margin: 12mm; }
             @media print {
@@ -135,19 +164,20 @@ public class ReliabilityReportHtmlRenderer {
               body { font-size: 9pt; } .report { max-width: none; padding: 0; }
               .masthead { padding-bottom: 3mm; } .brand svg { width: 20px; height: 20px; }
               .intro { margin: 6mm 0 4mm; } h1 { font-size: 22pt; }
-              .figure, .empty-value { font-size: 18pt; }
+              .figure { font-size: 19pt; }
               h2, h3, .brand { font-size: 10.5pt; }
-              .eyebrow, dt, th, .section-note, .unit, .readout-row, .summary, .chip, .edition, footer { font-size: 7.5pt; }
+              .label, dt, th, .section-note, .ticks, .chip, .tag, .edition, .meta-line, .readout-row, footer { font-size: 7.5pt; }
+              .hint, .unit, .note, .metric-value .unit, .lines dd { font-size: 8pt; }
               .target { margin: 2mm 0 1mm; }
               .decision { padding: 3mm; } .panel-header { min-height: 0; padding: 2mm 3mm; } .stack { margin-top: 4mm; }
-              .metric { padding: 3mm; } .readout { margin: 3mm 0 2mm; }
-              .visual { padding: 3mm; }
-              .readout-row { margin-top: 3mm; } .cells { height: 2.5mm; margin-top: 1.5mm; } .summary { margin-top: 3mm; }
+              .metric { gap: 1.5mm; padding: 3mm; } .metric-visual { height: 4mm; }
+              .visual { padding: 3mm; } .readout-row { margin: 3mm 0 2mm; } .lines { margin-top: 3mm; }
+              .lines > div { padding: 1.5mm 0; }
               .panel-header { break-after: avoid; } .limitations { padding: 3mm 3mm 3mm 7mm; }
               .facts > div { padding: 2mm 3mm; }
               .table-wrap { overflow: visible; }
-              th, td { padding: 1.5mm; } thead { display: table-header-group; } tr { break-inside: avoid; }
-              .masthead, .intro, .decision, .metric, .metrics, .visual, .visuals, .facts, .facts > div, .cells { break-inside: avoid; }
+              th, td { padding: 1.5mm 3mm; } thead { display: table-header-group; } tr { break-inside: avoid; }
+              .masthead, .intro, .decision, .metric, .metrics, .visual, .visuals, .facts, .facts > div { break-inside: avoid; }
               .limitations li { margin: 1mm 0; } footer { margin-top: 3mm; padding-top: 2mm; }
               p, li { orphans: 3; widows: 3; }
             }
@@ -157,6 +187,7 @@ public class ReliabilityReportHtmlRenderer {
         AvailabilityReport a = report.availability();
         String tone = a.sloMet() == null ? "warn" : a.sloMet() ? "good" : "bad";
         String decision = a.sloMet() == null ? "NO VERDICT" : a.sloMet() ? "MET" : "MISSED";
+        List<Incident> incidents = incidents(report.incidentTimeline());
         StringBuilder html = new StringBuilder(96000);
         html.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
@@ -174,64 +205,90 @@ public class ReliabilityReportHtmlRenderer {
         html.append(decision).append("</span></div><p class=\"target mono\">").append(escape(report.targetUrl()))
                 .append("</p><p class=\"meta-line\"><span data-from=\"").append(a.from()).append("\" data-to=\"").append(a.to())
                 .append("\" title=\"").append(a.from()).append(" → ").append(a.to()).append("\">").append(window(a.from(), a.to()))
-                .append("</span><span class=\"sep\">·</span><span>").append(span(a.from(), a.to()))
-                .append("</span><span class=\"sep\">·</span><span data-value=\"").append(report.generatedAt()).append("\" title=\"")
+                .append("</span><span>·</span><span>").append(span(a.from(), a.to()))
+                .append("</span><span>·</span><span data-value=\"").append(report.generatedAt()).append("\" title=\"")
                 .append(report.generatedAt()).append("\">Generated ").append(dateTime(report.generatedAt())).append("</span></p></section>")
                 .append("<div class=\"stack\"><div class=\"decision lit\" data-tone=\"").append(tone).append("\"><p>");
         if (a.sloMet() == null) {
-            html.append("Insufficient evidence to judge this SLO. Observed availability is not an SLO pass.");
+            html.append("<b>Not enough evidence to judge this SLO.</b> Observed availability is not an SLO pass.");
         } else {
-            html.append(a.sloMet() ? "The observed SLO target was met." : "The observed SLO target was missed.");
+            html.append(a.sloMet() ? "<b>The SLO target was met.</b>" : "<b>The SLO target was missed.</b>");
         }
-        html.append(" Coverage: ").append(percent(a.evidenceCoveragePercent())).append("; minimum: ")
+        html.append(" Coverage ").append(percent(a.evidenceCoveragePercent())).append(" of a required ")
                 .append(given(a.minimumEvidenceCoveragePercent())).append(".</p></div><section class=\"metrics\" aria-label=\"Headline metrics\">");
-        metric(html, "Measured availability", fixed(a.measuredAvailabilityPercent(), 2), "%",
-                "Target " + given(a.sloTargetPercent()) + " · conclusive checks only", tone,
-                a.measuredAvailabilityPercent() == null ? null : a.measuredAvailabilityPercent().toPlainString());
+
+        String availabilityTone = a.sloMet() == null ? "" : tone;
+        StringBuilder visual = new StringBuilder();
+        meter(visual, "availability", "Measured availability " + percent(a.measuredAvailabilityPercent()) + " against a target of "
+                + given(a.sloTargetPercent()) + ", on a nines scale", nines(a.measuredAvailabilityPercent()), availabilityTone,
+                nines(a.sloTargetPercent()));
+        metric(html, "Availability", fixed(a.measuredAvailabilityPercent(), 2), "%",
+                a.measuredAvailabilityPercent() == null ? null : a.measuredAvailabilityPercent().toPlainString(),
+                visual.toString(), "Target " + given(a.sloTargetPercent()));
+
         ReportErrorBudget budget = report.errorBudget();
         boolean overspent = budget.remainingExecutions().signum() < 0;
+        visual.setLength(0);
+        budgetMeter(visual, budget);
         // An overspent budget reads as how far over it is, never as a negative count of checks left.
         metric(html, "Error budget",
                 oneDecimal(overspent ? budget.remainingExecutions().negate() : budget.remainingExecutions()),
-                overspent ? checks(budget.remainingExecutions().negate()) + " over budget"
-                        : "of " + oneDecimal(budget.allowedBadExecutions()) + " checks left",
-                overspent ? "Budget exceeded · " + oneDecimal(budget.allowedBadExecutions()) + " allowed"
-                        : "Observed checks · fractional allowance",
-                a.sloMet() == null ? "warn" : overspent ? "bad" : "good",
-                budget.remainingExecutions().toPlainString() + " of " + budget.allowedBadExecutions().toPlainString());
-        html.append("<div class=\"metric latency\"><div class=\"eyebrow\">HTTP response latency</div><div class=\"readout\">");
-        pair(html, report.latency().p50Ms() == null ? null : report.latency().p50Ms().toString(), "p50 ms", null);
-        pair(html, report.latency().p95Ms() == null ? null : report.latency().p95Ms().toString(), "p95 ms", null);
-        html.append("</div><p>").append(report.latency().sampleCount()).append(" HTTP samples");
-        if (report.latency().p50Ms() == null) {
-            html.append(" · not enough to compute (minimum ").append(report.latency().minimumSamples()).append(")");
-        }
-        html.append("</p></div>");
-        long incidents = report.incidentTimeline().stream().map(ReportIncidentEvent::incidentId).distinct().count();
-        metric(html, "Incidents in timeline", incidents + (report.incidentTimelineTruncated() ? "+" : ""), "",
-                report.incidentTimelineTruncated() ? "Lower bound · timeline truncated" : "Distinct IDs in shown transitions", "", null);
+                overspent ? "over" : "left",
+                budget.remainingExecutions().toPlainString() + " of " + budget.allowedBadExecutions().toPlainString(),
+                visual.toString(),
+                (overspent ? "Allowed " : "Of ") + oneDecimal(budget.allowedBadExecutions()) + " "
+                        + checks(budget.allowedBadExecutions()) + " · " + budget.observedBadExecutions() + " down");
+
+        ReportLatency latency = report.latency();
+        visual.setLength(0);
+        latencyRange(visual, latency);
+        metric(html, "HTTP latency", latency.p50Ms() == null ? null : latency.p50Ms().toString(), "ms p50",
+                null, visual.toString(), latency.p95Ms() == null
+                        ? latency.sampleCount() + " of " + latency.minimumSamples() + " samples needed"
+                        : "p95 " + latency.p95Ms() + " ms · " + latency.sampleCount() + " samples");
+
+        visual.setLength(0);
+        incidentStrip(visual, incidents, a.from(), a.to());
+        long ongoing = incidents.stream().filter(incident -> incident.resolved() == null).count();
+        metric(html, "Incidents", incidents.size() + (report.incidentTimelineTruncated() ? "+" : ""), "", null, visual.toString(),
+                report.incidentTimelineTruncated() ? "Lower bound · timeline truncated"
+                        : incidents.isEmpty() ? "None in this window"
+                        : (incidents.size() - ongoing) + " resolved · " + ongoing + " ongoing");
         html.append("</section>");
 
-        panel(html, "Availability and error budget", "Aggregates for this window");
-        String availabilityFill = a.sloMet() == null ? "neutral" : tone;
-        html.append("<div class=\"visuals\"><div class=\"visual\"><h3>Measured availability</h3>")
+        panel(html, "How the numbers were reached", "Aggregates for this window");
+        html.append("<div class=\"visuals\"><div class=\"visual\"><h3>Availability</h3>")
                 .append("<p title=\"").append(escape(a.denominatorPolicy())).append("\">Counted as ")
                 .append(escape(denominator(a.denominatorPolicy()))).append(". Inconclusive checks are excluded.</p>");
         readout(html, "Observed", percent(a.measuredAvailabilityPercent()), "Target", given(a.sloTargetPercent()));
-        cells(html, "availability", "Measured availability " + percent(a.measuredAvailabilityPercent())
-                + "; SLO target " + given(a.sloTargetPercent()), a.measuredAvailabilityPercent(), HUNDRED, availabilityFill,
-                a.sloTargetPercent());
+        meter(html, "availability-scale", "Measured availability " + percent(a.measuredAvailabilityPercent())
+                + " on a nines scale, target " + given(a.sloTargetPercent()), nines(a.measuredAvailabilityPercent()),
+                availabilityTone, nines(a.sloTargetPercent()));
+        // Each step is ten times less downtime, so the last few tenths of a percent get the room they matter for.
+        html.append("<div class=\"ticks\" aria-hidden=\"true\">");
+        List<String> ticks = List.of("0%", "90%", "99%", "99.9%", "99.99%");
+        for (int i = 0; i < ticks.size(); i++) {
+            html.append("<span").append(ticks.get(i).equals(given(a.sloTargetPercent())) ? " class=\"on\"" : "")
+                    .append(" style=\"left:").append(i * 25).append("%\">").append(ticks.get(i)).append("</span>");
+        }
+        html.append("</div><p class=\"note\">Scaled in nines: each step is ten times less downtime.</p>");
         readout(html, "Coverage", percent(a.evidenceCoveragePercent()), "Required", given(a.minimumEvidenceCoveragePercent()));
-        cells(html, "coverage", "Evidence coverage " + percent(a.evidenceCoveragePercent())
-                + "; minimum " + given(a.minimumEvidenceCoveragePercent()), a.evidenceCoveragePercent(), HUNDRED,
-                a.sloMet() == null ? "warn" : "neutral", a.minimumEvidenceCoveragePercent());
-        html.append("</div><div class=\"visual\"><h3>Observed error budget</h3>")
-                .append("<p>Allowance is based on conclusive executions, not elapsed downtime.</p>");
-        budgetMeters(html, budget);
-        html.append("<p class=\"summary\" title=\"").append(budget.remainingExecutions().toPlainString())
-                .append("\">").append(budgetSentence(budget)).append(" · conclusive checks</p>");
+        BigDecimal coverage = a.evidenceCoveragePercent();
+        boolean sufficient = coverage != null && a.minimumEvidenceCoveragePercent() != null
+                && coverage.compareTo(a.minimumEvidenceCoveragePercent()) >= 0;
+        meter(html, "coverage", "Evidence coverage " + percent(coverage) + "; minimum " + given(a.minimumEvidenceCoveragePercent()),
+                share(coverage, HUNDRED), sufficient ? "good" : "warn", share(a.minimumEvidenceCoveragePercent(), HUNDRED));
+
+        html.append("</div><div class=\"visual\"><h3>Error budget</h3>")
+                .append("<p>Allowance comes from conclusive checks, not from elapsed downtime.</p><dl class=\"lines\">");
+        BigDecimal unreliability = a.sloTargetPercent() == null ? null : HUNDRED.subtract(a.sloTargetPercent());
+        line(html, "Allowed", a.conclusiveExecutions() + " conclusive × " + given(unreliability) + " = "
+                + oneDecimal(budget.allowedBadExecutions()), "");
+        line(html, "Spent", budget.observedBadExecutions() + " confirmed DOWN " + checks(BigDecimal.valueOf(budget.observedBadExecutions())), "");
+        line(html, "Result", budgetSentence(budget), " class=\"result\" title=\"" + budget.remainingExecutions().toPlainString() + "\"");
+        html.append("</dl><p class=\"note\">Only DOWN counts against the budget. Disagreement and no-data checks are inconclusive, not failures.</p>");
         if (budget.allowedBadExecutions().signum() == 0) {
-            html.append("<p class=\"summary\">No failed executions allowed in the observed budget.</p>");
+            html.append("<p class=\"note\">No failed checks are allowed at this target.</p>");
         }
         html.append("</div></div><dl class=\"facts\">");
         item(html, "UP / DOWN", a.upExecutions() + " / " + a.downExecutions());
@@ -240,22 +297,32 @@ public class ReliabilityReportHtmlRenderer {
         item(html, "Conclusive / finalized", a.conclusiveExecutions() + " / " + a.totalFinalizedExecutions());
         html.append("</dl></section>");
 
-        panel(html, "Incident timeline", report.incidentTimeline().size() + " transitions · UTC");
-        if (report.incidentTimeline().isEmpty()) {
+        panel(html, "Incidents", incidentNote(incidents));
+        if (incidents.isEmpty()) {
             html.append("<p class=\"empty\">No incident transitions recorded in this window. This does not rule out an incident opened earlier.</p>");
         } else {
-            html.append("<div class=\"table-wrap\"><table><thead><tr><th scope=\"col\">Occurred at · UTC</th>")
-                    .append("<th scope=\"col\">Transition</th><th scope=\"col\">Incident ID</th></tr></thead><tbody>");
-            for (ReportIncidentEvent event : report.incidentTimeline()) {
-                String eventTone = "OPENED".equals(event.eventType()) ? "bad" : "RESOLVED".equals(event.eventType()) ? "good" : "";
-                html.append("<tr><td class=\"mono\"><time datetime=\"").append(event.occurredAt()).append("\" title=\"")
-                        .append(event.occurredAt()).append("\">").append(timelineTime(event.occurredAt()))
-                        .append("</time>")
-                        .append("</td><td><span class=\"tag ").append(eventTone).append("\">");
-                dot(html, eventTone);
-                html.append(escape(event.eventType()))
-                        .append("</span></td><td class=\"mono\"><span title=\"").append(event.incidentId()).append("\">")
-                        .append(shortId(event.incidentId())).append("</span></td></tr>");
+            html.append("<div class=\"table-wrap\"><table><thead><tr><th scope=\"col\">Incident</th>")
+                    .append("<th scope=\"col\">State</th><th scope=\"col\">Opened · UTC</th><th scope=\"col\">Resolved · UTC</th>")
+                    .append("<th scope=\"col\" class=\"num\">Duration</th></tr></thead><tbody>");
+            for (Incident incident : incidents) {
+                boolean resolved = incident.resolved() != null;
+                html.append("<tr><td class=\"mono\"><span title=\"").append(incident.id()).append("\">").append(shortId(incident.id()))
+                        .append("</span></td><td><span class=\"tag\">");
+                dot(html, resolved ? "good" : "bad");
+                html.append(resolved ? "RESOLVED" : "OPEN").append("</span></td><td class=\"mono\">");
+                time(html, incident.opened(), "Before window");
+                html.append("</td><td class=\"mono\">");
+                time(html, incident.resolved(), "Still open");
+                html.append("</td><td class=\"mono num\">");
+                if (incident.opened() == null) {
+                    html.append("<span class=\"hint\">unknown</span>");
+                } else {
+                    html.append(duration(Duration.between(incident.opened(), resolved ? incident.resolved() : a.to())));
+                    if (!resolved) {
+                        html.append("<span class=\"hint\">so far</span>");
+                    }
+                }
+                html.append("</td></tr>");
             }
             html.append("</tbody></table></div>");
         }
@@ -307,70 +374,153 @@ public class ReliabilityReportHtmlRenderer {
                 .append("</b></span><span>").append(escape(refLabel)).append(" <b>").append(escape(refValue)).append("</b></span></div>");
     }
 
-    private void metric(StringBuilder html, String label, String value, String unit, String note, String tone, String raw) {
-        html.append(tone.isEmpty() ? "<div class=\"metric\">" : "<div class=\"metric lit\" data-tone=\"" + tone + "\">")
-                .append("<div class=\"eyebrow\">").append(escape(label)).append("</div><div class=\"readout\">");
-        pair(html, value, unit, raw);
-        html.append("</div><p>").append(escape(note)).append("</p></div>");
-    }
-
-    /** One headline figure in the dot font, with its unit beside it in small mono. */
-    private void pair(StringBuilder html, String value, String unit, String raw) {
-        html.append("<span class=\"pair\">");
+    /** A headline tile: label, one dot-matrix figure with a short unit, a visual row, then a quiet hint. */
+    private void metric(StringBuilder html, String label, String value, String unit, String raw, String visual, String hint) {
+        html.append("<div class=\"metric\"><div class=\"label\">").append(escape(label)).append("</div><div class=\"metric-value\">");
         if (value == null) {
-            html.append("<span class=\"empty-value\">—</span>");
+            html.append("<span class=\"figure\">—</span>");
         } else {
             html.append("<span class=\"figure\"").append(raw == null ? "" : " title=\"" + escape(raw) + "\" data-value=\"" + escape(raw) + "\"")
                     .append(">").append(escape(value)).append("</span>");
-        }
-        if (!unit.isEmpty()) {
-            html.append("<span class=\"unit\">").append(escape(unit)).append("</span>");
-        }
-        html.append("</span>");
-    }
-
-    private static final int CELLS = 20;
-
-    /**
-     * A segmented meter: twenty touching cells filled to the value's share of the scale, the last one partly,
-     * with an optional marker line, the same instrument as the dashboard's drill track and latency meter.
-     */
-    private void cells(StringBuilder html, String id, String label, BigDecimal value, BigDecimal scale, String fill,
-                       BigDecimal markerPercent) {
-        BigDecimal share = share(value, scale);
-        html.append("<div class=\"cells fill-").append(fill).append("\" role=\"img\" aria-label=\"").append(escape(label))
-                .append("\" data-meter=\"").append(id).append("\" data-share=\"").append(share.toPlainString()).append("\">");
-        BigDecimal filled = share.multiply(BigDecimal.valueOf(CELLS));
-        for (int i = 0; i < CELLS; i++) {
-            BigDecimal cell = filled.subtract(BigDecimal.valueOf(i)).max(BigDecimal.ZERO).min(BigDecimal.ONE);
-            if (cell.signum() == 0) {
-                html.append("<i></i>");
-            } else if (cell.compareTo(BigDecimal.ONE) == 0) {
-                html.append("<i class=\"full\"></i>");
-            } else {
-                html.append("<i><b style=\"width:").append(cell.multiply(HUNDRED).setScale(1, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString())
-                        .append("%\"></b></i>");
+            if (!unit.isEmpty()) {
+                html.append("<span class=\"unit\">").append(escape(unit)).append("</span>");
             }
         }
-        if (markerPercent != null) {
-            html.append("<span class=\"cells-mark\" style=\"left:").append(share(markerPercent, HUNDRED).multiply(HUNDRED)
-                    .setScale(1, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()).append("%\"></span>");
+        html.append("</div><div class=\"metric-visual\">").append(visual).append("</div><p class=\"hint\">").append(escape(hint))
+                .append("</p></div>");
+    }
+
+    /** The dashboard's slim meter: a fill to the share (0..1) and an optional marker line; no fill when the share is zero. */
+    private void meter(StringBuilder html, String id, String label, BigDecimal share, String tone, BigDecimal mark) {
+        html.append("<div class=\"meter\" role=\"img\" aria-label=\"").append(escape(label)).append("\" data-meter=\"").append(id)
+                .append("\" data-share=\"").append(share.toPlainString()).append("\">");
+        if (share.signum() > 0) {
+            html.append("<span class=\"meter-fill").append(tone.isEmpty() ? "" : " " + tone).append("\" style=\"width:")
+                    .append(cssPercent(share)).append("\"></span>");
+        }
+        if (mark != null) {
+            html.append("<span class=\"meter-mark\" style=\"left:").append(cssPercent(mark)).append("\"></span>");
         }
         html.append("</div>");
     }
 
-    private void budgetMeters(StringBuilder html, ReportErrorBudget budget) {
+    /** Down checks against the allowance, like the dashboard's budget meter: amber past 75%, red and full once spent. */
+    private void budgetMeter(StringBuilder html, ReportErrorBudget budget) {
         BigDecimal observed = BigDecimal.valueOf(budget.observedBadExecutions());
         BigDecimal allowed = budget.allowedBadExecutions();
-        BigDecimal scale = allowed.max(observed);
         boolean exceeded = budget.remainingExecutions().signum() < 0;
-        boolean nearly = !exceeded && allowed.signum() > 0 && observed.multiply(BigDecimal.valueOf(4)).compareTo(allowed.multiply(BigDecimal.valueOf(3))) >= 0;
-        html.append("<div class=\"readout-row\"><span>Allowed</span><b title=\"").append(allowed.toPlainString()).append("\">")
-                .append(oneDecimal(allowed)).append("</b></div>");
-        cells(html, "budget-allowed", "Allowed bad executions " + oneDecimal(allowed), allowed, scale, "neutral", null);
-        html.append("<div class=\"readout-row\"><span>Observed down</span><b>").append(budget.observedBadExecutions()).append("</b></div>");
-        cells(html, "budget-observed", "Observed bad executions " + budget.observedBadExecutions(), observed, scale,
-                exceeded ? "bad" : nearly ? "warn" : "neutral", null);
+        BigDecimal used = allowed.signum() > 0 ? share(observed, allowed) : observed.signum() > 0 ? BigDecimal.ONE : BigDecimal.ZERO;
+        String tone = exceeded ? "bad" : used.compareTo(new BigDecimal("0.75")) > 0 ? "warn" : "good";
+        meter(html, "budget", exceeded ? "Error budget exceeded: " + budget.observedBadExecutions() + " down against "
+                + oneDecimal(allowed) + " allowed" : budget.observedBadExecutions() + " of " + oneDecimal(allowed)
+                + " allowed down checks used", used, tone, null);
+    }
+
+    /** The p50..p95 spread on a scale from zero; an empty track when there are too few samples. */
+    private void latencyRange(StringBuilder html, ReportLatency latency) {
+        if (latency.p50Ms() == null || latency.p95Ms() == null) {
+            html.append("<div class=\"meter\" role=\"img\" aria-label=\"Not enough samples for latency percentiles\"></div>");
+            return;
+        }
+        double scale = Math.max(latency.p95Ms() * 1.1, 1);
+        double p50 = latency.p50Ms() / scale;
+        double p95 = latency.p95Ms() / scale;
+        html.append("<div class=\"meter\" role=\"img\" aria-label=\"p50 ").append(latency.p50Ms()).append(" ms, p95 ")
+                .append(latency.p95Ms()).append(" ms\"><span class=\"range-span\" style=\"left:").append(cssPercent(p50))
+                .append(";width:").append(cssPercent(p95 - p50)).append("\"></span><span class=\"range-dot\" style=\"left:")
+                .append(cssPercent(p50)).append("\"></span><span class=\"range-tick\" style=\"left:").append(cssPercent(p95))
+                .append("\"></span></div>");
+    }
+
+    /** The window as a track with each incident drawn where it happened, from opened (or the window start) to resolved. */
+    private void incidentStrip(StringBuilder html, List<Incident> incidents, Instant from, Instant to) {
+        double window = Math.max(Duration.between(from, to).toMillis(), 1);
+        html.append("<div class=\"meter\" role=\"img\" aria-label=\"").append(incidents.size())
+                .append(incidents.size() == 1 ? " incident" : " incidents").append(" across the window\">");
+        for (Incident incident : incidents) {
+            double start = incident.opened() == null ? 0 : Duration.between(from, incident.opened()).toMillis() / window;
+            double end = incident.resolved() == null ? 1 : Duration.between(from, incident.resolved()).toMillis() / window;
+            html.append("<span class=\"meter-span").append(incident.resolved() == null ? "" : " resolved").append("\" style=\"left:")
+                    .append(cssPercent(start)).append(";width:").append(cssPercent(Math.max(end - start, 0))).append("\"></span>");
+        }
+        html.append("</div>");
+    }
+
+    /**
+     * Availability on a nines scale, as a share of four nines: 90% sits at a quarter, 99% at half, 99.9% at three
+     * quarters and 99.99% or better at the end. Linear, a 92% and a 99.9% bar look almost the same.
+     */
+    BigDecimal nines(BigDecimal percent) {
+        if (percent == null) {
+            return BigDecimal.ZERO;
+        }
+        double downtime = 1 - percent.doubleValue() / 100;
+        double nines = downtime <= 0.0001 ? 4 : Math.max(-Math.log10(downtime), 0);
+        return BigDecimal.valueOf(Math.min(nines, 4) / 4).setScale(3, RoundingMode.HALF_UP);
+    }
+
+    private void line(StringBuilder html, String label, String value, String attributes) {
+        html.append("<div").append(attributes).append("><dt>").append(escape(label)).append("</dt><dd>").append(escape(value))
+                .append("</dd></div>");
+    }
+
+    private void time(StringBuilder html, Instant instant, String missing) {
+        if (instant == null) {
+            html.append("<span class=\"hint\">").append(escape(missing)).append("</span>");
+        } else {
+            html.append("<time datetime=\"").append(instant).append("\" title=\"").append(instant).append("\">")
+                    .append(timelineTime(instant)).append("</time>");
+        }
+    }
+
+    /** One incident from its transitions in the window; either end can be outside it and is then null. */
+    record Incident(UUID id, Instant opened, Instant resolved) {
+    }
+
+    /** Pairs the timeline's transitions into incidents, in the order they first appear. */
+    List<Incident> incidents(List<ReportIncidentEvent> timeline) {
+        Map<UUID, Instant[]> byId = new LinkedHashMap<>();
+        for (ReportIncidentEvent event : timeline) {
+            Instant[] ends = byId.computeIfAbsent(event.incidentId(), id -> new Instant[2]);
+            if ("OPENED".equals(event.eventType())) {
+                ends[0] = event.occurredAt();
+            } else if ("RESOLVED".equals(event.eventType())) {
+                ends[1] = event.occurredAt();
+            }
+        }
+        List<Incident> incidents = new ArrayList<>();
+        byId.forEach((id, ends) -> incidents.add(new Incident(id, ends[0], ends[1])));
+        return incidents;
+    }
+
+    private String incidentNote(List<Incident> incidents) {
+        Duration longest = incidents.stream().filter(i -> i.opened() != null && i.resolved() != null)
+                .map(i -> Duration.between(i.opened(), i.resolved())).max(Duration::compareTo).orElse(null);
+        return incidents.size() + (incidents.size() == 1 ? " incident" : " incidents")
+                + (longest == null ? "" : " · longest resolved " + duration(longest)) + " · UTC";
+    }
+
+    /** A duration in its two largest units: 45s, 12m 30s, 3h 05m, 2d 4h. */
+    String duration(Duration d) {
+        long s = Math.max(d.toSeconds(), 0);
+        if (s < 60) {
+            return s + "s";
+        }
+        if (s < 3600) {
+            return s / 60 + "m " + s % 60 + "s";
+        }
+        if (s < 86400) {
+            return s / 3600 + "h " + String.format(Locale.ROOT, "%02d", s % 3600 / 60) + "m";
+        }
+        return s / 86400 + "d " + s % 86400 / 3600 + "h";
+    }
+
+    private String cssPercent(BigDecimal share) {
+        return share.multiply(HUNDRED).setScale(1, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString() + "%";
+    }
+
+    private String cssPercent(double share) {
+        return cssPercent(BigDecimal.valueOf(Math.min(Math.max(share, 0), 1)));
     }
 
     /** The value's share of the scale, clamped to 0..1 with three decimals; 0 when either is missing. */
