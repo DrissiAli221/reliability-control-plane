@@ -176,6 +176,7 @@ describe("account creation and recovery", () => {
 
 describe("social sign-in", () => {
   it("offers only the configured providers it knows how to draw", () => {
+    vi.stubEnv("VITE_SOCIAL_PROVIDERS", "");
     expect(auth.socialProviders()).toEqual([]);
     vi.stubEnv("VITE_SOCIAL_PROVIDERS", " google , GitHub,Facebook");
     expect(auth.socialProviders()).toEqual(["Google", "GitHub"]);
