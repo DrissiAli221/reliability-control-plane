@@ -1,5 +1,5 @@
 import { AlertTriangle, ChevronLeft, ExternalLink, PauseCircle, RefreshCw } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { FALLBACK_CAVEATS } from "../caveats";
 import {
@@ -28,7 +28,7 @@ import {
   absoluteTime, compactUrl, count, interval, milliseconds, monitorState, outcomeLabel, outcomeTone, percent,
   relativeTime,
 } from "../format";
-import type { AvailabilityReport, IncidentStateView, LatencyHeatmap as Heatmap, MonitorDetail, MonitorHistory, MonitorOverview, RecentCheck, ReliabilityReport } from "../types";
+import type { AvailabilityReport, IncidentStateView, MonitorDetail, MonitorHistory, MonitorOverview, RecentCheck, ReliabilityReport } from "../types";
 import { isDrillMonitor } from "../drill";
 import { machineNode } from "../machine";
 import { useReadOnly } from "../session";
@@ -45,7 +45,6 @@ type DetailData = {
   availability?: AvailabilityReport;
   report?: ReliabilityReport;
   incident?: IncidentStateView;
-  heatmap?: Heatmap;
 };
 
 export function MonitorDetailPage() {
@@ -53,13 +52,12 @@ export function MonitorDetailPage() {
   const [latencyRange, setLatencyRange] = useState<LatencyWindow>(24);
   const load = useCallback(async (): Promise<DetailData> => {
     const monitor = await getMonitor(monitorId);
-    const [overviews, history, report7d, report, incident, heatmap] = await Promise.allSettled([
+    const [overviews, history, report7d, report, incident] = await Promise.allSettled([
       listMonitors(),
       monitorHistory(monitorId, HISTORY_DAYS),
       availability(monitorId),
       reliabilityReport(monitorId),
       incidentState(monitorId),
-      latencyHeatmap(monitorId, latencyRange),
     ]);
     return {
       monitor,
@@ -68,11 +66,18 @@ export function MonitorDetailPage() {
       availability: report7d.status === "fulfilled" ? report7d.value : undefined,
       report: report.status === "fulfilled" ? report.value : undefined,
       incident: incident.status === "fulfilled" ? incident.value : undefined,
-      heatmap: heatmap.status === "fulfilled" ? heatmap.value : undefined,
     };
-  }, [monitorId, latencyRange]);
+  }, [monitorId]);
   const detail = useLiveData(load, 10_000);
+  // Its own loader: switching 24 h / 7 d refetches only the latency window, not the whole page, and the chart keeps
+  // showing the previous window (dimmed) until the new one arrives instead of mixing the two.
+  const loadHeatmap = useCallback(() => latencyHeatmap(monitorId, latencyRange), [monitorId, latencyRange]);
+  const heat = useLiveData(loadHeatmap, 10_000);
+  const heatmap = heat.data ?? undefined;
   const now = useNow();
+  // Rebuilt only when the report changes (every 10 s), not on each one-second tick, so the chart's incident spans stay stable.
+  const report = detail.data?.report;
+  const incidents = useMemo(() => pairIncidents(report), [report]);
   const [params, setParams] = useSearchParams();
   const readOnly = useReadOnly();
   // The full state machine opens by itself whenever the monitor leaves Healthy; a manual toggle overrides that.
@@ -87,11 +92,10 @@ export function MonitorDetailPage() {
     );
   }
 
-  const { monitor, overview, history, availability: evidence, report, incident, heatmap } = detail.data;
+  const { monitor, overview, history, availability: evidence, incident } = detail.data;
   const selectedCheck = params.get("check") ?? history?.recentChecks[0]?.executionId ?? null;
   const selectCheck = (executionId: string) => setParams({ check: executionId }, { replace: true });
   const state = overview ? monitorState(overview) : { label: monitor.enabled ? "Awaiting evidence" : "Paused", tone: "muted" as const };
-  const incidents = pairIncidents(report);
   const ongoing = incidents.find((incident) => !incident.resolvedAt);
   const machineOpen = machineToggle ?? (incident ? machineNode(incident) !== "healthy" : false);
   const setMachineOpen = (open: boolean) => setMachineToggle(open);
@@ -262,7 +266,7 @@ export function MonitorDetailPage() {
               <div className="section-body"><LatencyHeatmap heatmap={heatmap} /></div>
             </div>
           </>
-        ) : <div className="panel-body"><p className="subtle">Latency unavailable.</p></div>}
+        ) : <div className="panel-body"><p className="subtle">{heat.error ? "Latency unavailable." : "Loading latency…"}</p></div>}
       </section>
 
       <section className="panel decisions" data-tour="machine">

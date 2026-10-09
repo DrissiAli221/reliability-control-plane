@@ -52,6 +52,18 @@ describe("LatencyChart", () => {
     expect(onRangeChange).toHaveBeenCalledWith(168);
   });
 
+  it("keeps drawing the window in hand, marked busy, until the requested one arrives", () => {
+    const { rerender } = render(<LatencyChart heatmap={heatmap} range={168} onRangeChange={() => {}} now={now} />);
+    // 7 d was clicked but the heatmap is still the 24 h one: the chart must not relabel it as 7 days.
+    const chart = screen.getByRole("img", { name: "Latency over the last 24 hours, eu-west-1" });
+    expect(chart).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("button", { name: "7 d" })).toHaveAttribute("aria-pressed", "true");
+
+    const week = { ...heatmap, from: "2026-09-23T00:00:00Z", bucketSeconds: 12600 };
+    rerender(<LatencyChart heatmap={week} range={168} onRangeChange={() => {}} now={now} />);
+    expect(screen.getByRole("img", { name: "Latency over the last 7 days, eu-west-1" })).toHaveAttribute("aria-busy", "false");
+  });
+
   it("draws nothing when the backend sent no percentiles", () => {
     const { container } = render(<LatencyChart heatmap={{
       ...heatmap,

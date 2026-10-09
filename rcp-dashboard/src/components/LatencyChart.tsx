@@ -60,13 +60,16 @@ export function LatencyChart({ heatmap, range, onRangeChange, incidents = [], no
     return () => window.clearTimeout(timer);
   }, []);
 
-  const long = range > 24;
+  const windowStart = new Date(heatmap.from).getTime();
+  const windowEnd = new Date(heatmap.to).getTime();
+  // What is drawn follows the heatmap in hand, not the requested `range`: after a click on 7 d the old 24 h window
+  // stays (dimmed) until the new one arrives, so the labels, scale and rows never describe two different windows and
+  // the chart is rebuilt once, when the data lands, not on the click and again on the response.
+  const long = windowEnd - windowStart > 36 * 3_600_000;
+  const pending = long !== range > 24;
   // dither-kit replays its entrance whenever `data` changes identity, so rebuild it only when the data does.
   // A fresh array on every render made the chart restart its wave and jump to the end when `animate` flipped.
   const data = useMemo<Row[]>(() => (region ? latencyRows(heatmap, region, long) : []), [heatmap, region, long]);
-
-  const windowStart = new Date(heatmap.from).getTime();
-  const windowEnd = new Date(heatmap.to).getTime();
   const spans = useMemo<Span[]>(() => incidents
     .map((incident) => ({
       start: incident.openedAt ? new Date(incident.openedAt).getTime() : windowStart,
@@ -115,9 +118,9 @@ export function LatencyChart({ heatmap, range, onRangeChange, incidents = [], no
         </div>
       </header>
       <div className="section-body">
-        <div className="latency-chart-canvas" role="img" aria-label={`Latency over the last ${long ? "7 days" : "24 hours"}, ${region.region}`}>
+        <div className={pending ? "latency-chart-canvas pending" : "latency-chart-canvas"} aria-busy={pending} role="img" aria-label={`Latency over the last ${long ? "7 days" : "24 hours"}, ${region.region}`}>
           <AreaChart
-            key={`${region.region}-${range}`} data={data} config={config} bloom="off" animate={animate} animationDuration={ENTRANCE_MS}
+            key={`${region.region}-${long ? 168 : 24}`} data={data} config={config} bloom="off" animate={animate} animationDuration={ENTRANCE_MS}
             margins={incidents.length > 0 ? { top: TOP_MARGIN + LANE_PX + LANE_GAP } : undefined}
           >
             <Grid />
