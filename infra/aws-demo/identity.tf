@@ -28,6 +28,9 @@ resource "aws_cognito_user_pool" "demo" {
   }
   verification_message_template {
     default_email_option = "CONFIRM_WITH_CODE"
+    email_subject        = "Your RCP verification code"
+    # Cognito uses this one template for sign-up confirmation and forgot-password codes.
+    email_message = file("${path.module}/email/verification.html")
   }
   user_attribute_update_settings {
     attributes_require_verification_before_update = ["email"]

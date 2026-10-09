@@ -50,9 +50,22 @@ def check_social_iam(root):
     require(statements[0]["resources"].get("references", [])[0] == "aws_cloudwatch_log_group.github_oidc[0].arn", "Adapter log scope widened")
 
 
+def check_verification_email(managed):
+    """Cognito requires {####} once in the message and caps it at 20,000 characters."""
+    pool = next(r["change"]["after"] for r in managed.values() if r["type"] == "aws_cognito_user_pool")
+    template = pool["verification_message_template"][0]
+    message = template["email_message"]
+    require(message.count("{####}") == 1, "Verification email must contain {####} exactly once")
+    require(len(message) < 20000, "Verification email exceeds Cognito's 20,000 character limit")
+    require(template["email_subject"], "Verification email needs a subject")
+    require(template["default_email_option"] == "CONFIRM_WITH_CODE", "Verification must use a code")
+    require("<script" not in message.lower() and "http" not in message.lower(), "Verification email must be self-contained")
+
+
 def check(plan):
     changes = plan["resource_changes"]
     managed = {r["address"]: r for r in changes if r["mode"] == "managed"}
+    check_verification_email(managed)
     allowed = {
         "aws_budgets_budget", "aws_cognito_user_pool", "aws_cognito_user_pool_client",
         "aws_cognito_user_pool_domain", "aws_cognito_user_group", "aws_iam_user",

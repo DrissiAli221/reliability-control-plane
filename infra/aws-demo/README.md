@@ -77,6 +77,12 @@ costs. Local validation proves configuration, not AWS deployment or availability
 
 ## Optional Google and GitHub sign-in
 
+Sign-up and password-reset codes use the branded HTML in `email/verification.html`
+(one `{####}` placeholder, under Cognito's 20,000 character limit; `check_plan.py`
+verifies both). They are still sent by Cognito's default sender, which some providers
+file under spam. The fix is Amazon SES with a verified domain and DKIM; it is a later
+step because there is no domain yet.
+
 Off by default: with `social_providers = []` nothing below exists and no secrets are
 needed. Turning it on adds identity providers to the Cognito pool and lists them on
 the dashboard app client. The dashboard starts sign-in through Cognito's
