@@ -75,6 +75,42 @@ costs. Local validation proves configuration, not AWS deployment or availability
   `/assets/` objects keep their error instead of returning HTML. Private S3 access
   uses OAC; a zero minimum cache TTL allows `index.html` to be uploaded uncached.
 
+## Optional Google and GitHub sign-in
+
+Off by default: with `social_providers = []` nothing below exists and no secrets are
+needed. Turning it on adds identity providers to the Cognito pool and lists them on
+the dashboard app client. The dashboard starts sign-in through Cognito's
+`/oauth2/authorize` with `identity_provider=Google` or `identity_provider=GitHub`;
+the `VITE_SOCIAL_PROVIDERS` build variable lists the enabled names.
+
+1. Get the redirect URI from `terraform output social_sign_in`. It is
+   `https://<domain>.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`, built from
+   the pool domain (`rcp-demo-<account id>` by default), so you can also write it down
+   before the first apply.
+2. **Google:** in Google Cloud Console create an OAuth client of type *Web application*.
+   Add the redirect URI above as an authorized redirect URI and the dashboard origin
+   (`dashboard.origin`, the CloudFront URL) as an authorized JavaScript origin.
+3. **GitHub:** in Developer settings create an *OAuth App*. Set its callback URL to the
+   same redirect URI. Cognito never talks to GitHub directly: GitHub OAuth is not OIDC,
+   so a small Node.js 22 Lambda in `github-oidc/` (function URL, no npm dependencies)
+   adds the missing discovery document, `id_token` and JWKS. Its RS256 signing key is a
+   Terraform `tls_private_key` kept in an SSM SecureString; the Lambda may only read that
+   one parameter. Only a GitHub account with a primary **verified** email can sign in.
+4. Put the four values in the ignored `terraform.tfvars` (see the example file):
+   `google_client_id`, `google_client_secret`, `github_client_id`,
+   `github_client_secret`, and set `social_providers = ["Google", "GitHub"]` (or one).
+5. Review the plan with the operator and apply. Rebuild the dashboard with the new
+   `VITE_SOCIAL_PROVIDERS` value.
+
+The signing key is the one generated secret that does enter Terraform state, so the
+protected state store described below matters. The adapter function URL is public by
+design (it is the OIDC issuer Cognito reads), is capped at 256 MiB and a 10-second
+timeout, and reserves 5 concurrent slots only when `reserve_probe_concurrency=true`.
+Its logs keep 14 days and never include codes or tokens. People who sign in with a
+provider are separate Cognito users from password users, even with the same email.
+Cost is a few Lambda invocations per sign-in plus one standard SSM parameter (free);
+it is not part of `cost-estimate.py`.
+
 ## Validate without AWS credentials or resources
 
 Run from the repository root:
@@ -87,6 +123,8 @@ This runs format checks, provider initialization with the committed lockfile,
 validation, and a plan using fake variables and fake credentials. It isolates the
 plan from deployed state, disables provider identity lookups, and checks the plan
 for excluded resource types, region placement, IAM actions, and runtime settings.
+It then plans again with both social providers enabled (fake client IDs and secrets),
+applies the same checks, and runs the sign-in adapter's `node --test` suite (Node 22).
 Provider downloads contact the Terraform registry; AWS APIs are not needed.
 Never apply a plan made with `offline_mode=true`.
 
