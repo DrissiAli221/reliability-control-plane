@@ -32,6 +32,12 @@ The result-message schema stays at version 1. New receivers accept messages with
 
 ## Release order after review
 
+Incident evaluation locks an execution with `FOR NO KEY UPDATE`, then locks its live monitor.
+The weaker execution lock still serializes evaluators but permits the foreign-key key-share
+lock taken when a late probe result is inserted. Result ingestion can therefore finish and
+release its monitor share lock instead of deadlocking with incident evaluation. A concurrent
+integration test exercises both real repository paths and keeps finalized verdicts unchanged.
+
 These are operator instructions, not actions performed by this PR. Back up first, then deploy the backend before updated probes or dashboard assets. Do not roll back to a pre-migration binary after deletion: it cannot recognize tombstones. A rollback needs a compatible binary or an intentional database restore.
 
 On the VM, for the deployment with Grafana enabled:

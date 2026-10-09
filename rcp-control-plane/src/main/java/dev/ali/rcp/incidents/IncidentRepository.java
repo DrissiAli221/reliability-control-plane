@@ -46,7 +46,9 @@ public class IncidentRepository {
                   )
                 ORDER BY scheduled_at, execution_id
                 LIMIT ?
-                FOR UPDATE SKIP LOCKED
+                -- Serialize evaluation without blocking the key-share lock needed by late-result FKs.
+                -- Ingestion holds a monitor share lock; FOR UPDATE here would invert that lock order.
+                FOR NO KEY UPDATE SKIP LOCKED
                 """,
                 (resultSet, rowNumber) -> new FinalizedExecution(
                         resultSet.getObject("execution_id", UUID.class),
