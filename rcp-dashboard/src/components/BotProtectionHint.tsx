@@ -11,8 +11,8 @@ export function BotProtectionHint({ results }: { results: Array<{ region: string
         <strong>Bot protection detected</strong>
         <span className="panel-note-tag mono">Cloudflare challenge · {regions.join(", ")}</span>
         <p>
-          The site may work in a browser; the probe was challenged before reaching it. Monitor a health endpoint, or accept 403
-          for this monitor. Accepting 403 counts the challenge as UP, not proof the page works. This note does not change the verdict.
+          The probe was challenged before reaching the site, so these checks are not counted against uptime. To measure the page anyway,
+          monitor a health endpoint or accept 403 for this monitor. Accepting 403 counts the challenge response as UP, not proof the page works.
         </p>
       </div>
     </div>

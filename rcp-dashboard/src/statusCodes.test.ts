@@ -15,4 +15,6 @@ it("colours each HTTP result with its check's snapshot, including accepted 403",
   expect(outcomeTone("HTTP_RESPONSE",403,[403])).toBe("good");
   expect(outcomeTone("HTTP_RESPONSE",200,[403])).toBe("fault");
   expect(outcomeTone("REQUEST_TIMEOUT",null,[403])).toBe("fault");
+  expect(outcomeTone("HTTP_RESPONSE",403,null,"CLOUDFLARE_CHALLENGE")).toBe("muted");
+  expect(outcomeTone("HTTP_RESPONSE",403,[403],"CLOUDFLARE_CHALLENGE")).toBe("good");
 });

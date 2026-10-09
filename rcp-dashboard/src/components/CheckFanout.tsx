@@ -20,13 +20,17 @@ const VERDICT_WORD: Record<Verdict, string> = { UP: "UP", DOWN: "DOWN", DISAGREE
  * Explains a verdict the backend already reached; it never re-derives one. A verdict of UP or DOWN means every
  * region agreed by definition, so the sentence only has to say how many regions that was.
  */
-function verdictSentence(verdict: Verdict, regions: number): string {
+function verdictSentence(verdict: Verdict, regions: number, challenged: string[] = []): string {
   const all = regions === 2 ? "Both regions" : `All ${regions} regions`;
   switch (verdict) {
     case "UP": return `${all} agreed it was up.`;
     case "DOWN": return `${all} agreed it was down.`;
-    case "DISAGREEMENT": return "The regions disagreed, so it counts as neither up nor down.";
-    case "NO_DATA": return "Not every region answered in time, so it proves nothing.";
+    case "DISAGREEMENT":
+      if (challenged.length) return `Blocked by bot protection in ${challenged.join(", ")}; not counted as down.`;
+      return "The regions disagreed, so it counts as neither up nor down.";
+    case "NO_DATA":
+      if (challenged.length) return `Blocked by bot protection in ${challenged.length === regions ? "both regions" : challenged.join(", ")}; not counted.`;
+      return "Not every region answered in time, so it proves nothing.";
   }
 }
 
@@ -75,7 +79,7 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
 
         <ol className="fanout-regions" aria-label="What each region saw">
           {results.map((result) => {
-            const resultTone = outcomeTone(result.outcome, result.httpStatus, check.acceptedHttpStatuses);
+            const resultTone = outcomeTone(result.outcome, result.httpStatus, check.acceptedHttpStatuses, result.botProtection);
             const share = Math.min(1, result.latencyMs / Math.max(timeoutMs, 1));
             const meterTone = resultTone === "fault" ? "fault" : resultTone === "muted" ? "muted" : share > 0.5 ? "warn" : "good";
             return (
@@ -108,14 +112,14 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
 
         <svg key={`out-${check.executionId}`} className="fanout-links out" width={LINK_WIDTH} height={height} aria-hidden="true">
           {results.map((result, i) => (
-            <path key={result.region} d={curve(center(i), mid)} pathLength={1} className={`fanout-link ${outcomeTone(result.outcome, result.httpStatus, check.acceptedHttpStatuses)}`} />
+            <path key={result.region} d={curve(center(i), mid)} pathLength={1} className={`fanout-link ${outcomeTone(result.outcome, result.httpStatus, check.acceptedHttpStatuses, result.botProtection)}`} />
           ))}
         </svg>
 
         <div className={`fanout-node fanout-verdict lit ${tone}`}>
           <span className="fanout-label">Verdict</span>
           <strong className="fanout-verdict-word">{VERDICT_WORD[check.verdict]}</strong>
-          <span className="fanout-sentence">{verdictSentence(check.verdict, results.length)}</span>
+          <span className="fanout-sentence">{verdictSentence(check.verdict, results.length, results.filter((result) => result.botProtection === "CLOUDFLARE_CHALLENGE" && outcomeTone(result.outcome, result.httpStatus, check.acceptedHttpStatuses, result.botProtection) === "muted").map((result) => result.region))}</span>
         </div>
       </div>
       {check.acceptedHttpStatuses && <p className="trace-note">Accepted statuses for this check: {formatStatusCodes(check.acceptedHttpStatuses)}.</p>}

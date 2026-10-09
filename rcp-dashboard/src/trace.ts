@@ -22,8 +22,8 @@ export type TraceRow = { label: string; mono?: boolean; spans: TraceSpan[] };
 export const verdictRule: Record<Verdict, string> = {
   UP: "every region returned a status accepted by this check’s saved rule",
   DOWN: "every region reported a target failure",
-  DISAGREEMENT: "regions disagreed, or a region had no target evidence",
-  NO_DATA: "no region produced evidence about the target",
+  DISAGREEMENT: "regions disagreed, or a region had no target evidence (a bot-protection challenge is no evidence unless its status is accepted)",
+  NO_DATA: "no region produced evidence about the target (regions blocked by a bot-protection challenge count as no evidence)",
 };
 
 const ms = (value: string) => new Date(value).getTime();
@@ -69,7 +69,7 @@ export function traceEvents(trace: ExecutionTrace): TraceEvent[] {
       if (job.errorType) details.push(["error", job.errorType]);
       add({
         at: job.completedAt, type: "ProbeCompleted", category: "probe", region: job.region,
-        tone: outcomeTone(job.outcome, job.httpStatus, trace.acceptedHttpStatuses), details,
+        tone: outcomeTone(job.outcome, job.httpStatus, trace.acceptedHttpStatuses, job.botProtection), details,
       });
     }
     if (job.receivedAt) {
@@ -116,7 +116,7 @@ export function traceRows(trace: ExecutionTrace): { rows: TraceRow[]; totalMs: n
       spans: present([
         span("outbox", job.createdAt, job.publishedAt),
         span("queue", job.publishedAt, job.startedAt),
-        span("probe", job.startedAt, job.completedAt, job.outcome ? outcomeTone(job.outcome, job.httpStatus, trace.acceptedHttpStatuses) : undefined),
+        span("probe", job.startedAt, job.completedAt, job.outcome ? outcomeTone(job.outcome, job.httpStatus, trace.acceptedHttpStatuses, job.botProtection) : undefined),
         span("delivery", job.completedAt, job.receivedAt),
       ]),
     });
