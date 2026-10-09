@@ -31,13 +31,23 @@ public final class ValidatedProbeHttpClient implements ProbeHttpClient {
 
     private final CloseableHttpClient client;
     private final Duration connectTimeout;
+    private final String probeRegion;
 
     public ValidatedProbeHttpClient(SafeTargetPolicy policy, Duration connectTimeout) {
+        this(policy, connectTimeout, null);
+    }
+
+    /** The optional region is diagnostic metadata, never an authentication credential. */
+    public ValidatedProbeHttpClient(SafeTargetPolicy policy, Duration connectTimeout, String probeRegion) {
         Objects.requireNonNull(policy);
         if (connectTimeout == null || connectTimeout.isZero() || connectTimeout.isNegative()) {
             throw new IllegalArgumentException("connectTimeout must be positive");
         }
         this.connectTimeout = connectTimeout;
+        if (probeRegion != null && !probeRegion.matches("[a-z]{2}(?:-[a-z]+)+-[0-9]+")) {
+            throw new IllegalArgumentException("probeRegion must be an AWS region name");
+        }
+        this.probeRegion = probeRegion;
         var manager = PoolingHttpClientConnectionManagerBuilder.create()
                 .setDnsResolver(new ValidatedDnsResolver(policy))
                 .setMaxConnTotal(32)
@@ -66,6 +76,7 @@ public final class ValidatedProbeHttpClient implements ProbeHttpClient {
         }
         HttpGet request = new HttpGet(URI.create(normalizedUrl));
         request.setHeader("Accept", "*/*");
+        if (probeRegion != null) request.setHeader("X-RCP-Probe-Region", probeRegion);
         request.setConfig(RequestConfig.custom()
                 .setConnectionRequestTimeout(Timeout.ofMilliseconds(Math.max(1, timeout.toMillis())))
                 .setConnectTimeout(Timeout.ofMilliseconds(Math.max(1, Math.min(connectTimeout.toMillis(), timeout.toMillis()))))
