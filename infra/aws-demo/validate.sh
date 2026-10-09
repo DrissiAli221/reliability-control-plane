@@ -5,6 +5,7 @@ terraform fmt -check -recursive
 terraform init -backend=false -lockfile=readonly -input=false -no-color
 terraform validate -no-color
 python3 -m unittest discover -s tests -v
+node --test github-oidc/index.test.mjs
 # No real credential/profile/state lookup, and no AWS data sources.
 export AWS_ACCESS_KEY_ID=offline AWS_SECRET_ACCESS_KEY=offline
 export AWS_EC2_METADATA_DISABLED=true AWS_CONFIG_FILE=/dev/null AWS_SHARED_CREDENTIALS_FILE=/dev/null
