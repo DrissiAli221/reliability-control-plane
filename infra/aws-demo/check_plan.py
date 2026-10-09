@@ -21,7 +21,7 @@ def check_social(managed, oidc):
     if "Google" in providers:
         require(providers["Google"]["provider_type"] == "Google", "Wrong Google provider type")
     if "GitHub" not in providers:
-        require(not oidc and not of("aws_ssm_parameter") and not of("aws_lambda_function_url"), "GitHub adapter must be off when GitHub is disabled")
+        require(not oidc and not of("aws_lambda_function_url"), "GitHub adapter must be off when GitHub is disabled")
         return
     require(providers["GitHub"]["provider_type"] == "OIDC", "Wrong GitHub provider type")
     require(len(oidc) == 1 and len(of("aws_lambda_function_url")) == 1, "Expected exactly one GitHub adapter and URL")
@@ -30,22 +30,24 @@ def check_social(managed, oidc):
     require(function["memory_size"] == 256 and function["timeout"] == 10, "Unexpected adapter sizing")
     require(not function["vpc_config"], "Adapter must not depend on VPC/NAT")
     require(of("aws_lambda_function_url")[0]["authorization_type"] == "NONE", "Adapter URL is the public OIDC issuer")
-    require(of("aws_ssm_parameter")[0]["type"] == "SecureString", "Signing key must be a SecureString")
+    require("BEGIN" not in json.dumps(function["environment"]), "Signing key leaked into plan values")
     require(of("tls_private_key")[0]["rsa_bits"] == 2048, "Signing key must be RSA 2048")
     logs = [g for g in of("aws_cloudwatch_log_group") if g["name"].endswith("-github-oidc")]
     require(len(logs) == 1 and logs[0]["retention_in_days"] == 14, "Adapter logs need 14-day retention")
 
 
 def check_social_iam(root):
-    """The adapter may read exactly its signing key and write its own logs."""
+    """The adapter may only write its own logs; the key arrives as an env var, so no SSM/KMS access."""
     policy = next((r for r in root["resources"] if r["address"] == "data.aws_iam_policy_document.github_oidc"), None)
     if policy is None:
         return
     statements = policy["expressions"]["statement"]
-    require(len(statements) == 2, "Unexpected adapter grants")
-    require(set(statements[0]["actions"]["constant_value"]) == {"ssm:GetParameter"}, "Adapter may only call ssm:GetParameter")
-    require(statements[0]["resources"].get("references", []) == ["aws_ssm_parameter.github_oidc_key[0].arn", "aws_ssm_parameter.github_oidc_key[0]", "aws_ssm_parameter.github_oidc_key"], "Adapter SSM scope widened")
-    require(set(statements[1]["actions"]["constant_value"]) == {"logs:CreateLogStream", "logs:PutLogEvents"}, "Unexpected adapter log actions")
+    function = next(r for r in root["resources"] if r["address"] == "aws_lambda_function.github_oidc")
+    env_refs = json.dumps(function["expressions"]["environment"])
+    require("tls_private_key.github_oidc[0].private_key_pem_pkcs8" in env_refs, "Signing key must come from the generated sensitive key")
+    require(len(statements) == 1, "Unexpected adapter grants")
+    require(set(statements[0]["actions"]["constant_value"]) == {"logs:CreateLogStream", "logs:PutLogEvents"}, "Unexpected adapter log actions")
+    require(statements[0]["resources"].get("references", [])[0] == "aws_cloudwatch_log_group.github_oidc[0].arn", "Adapter log scope widened")
 
 
 def check(plan):
@@ -63,7 +65,7 @@ def check(plan):
         "aws_cloudfront_response_headers_policy", "aws_cloudfront_distribution", "aws_s3_bucket_policy",
     }
     social = {
-        "aws_cognito_identity_provider", "aws_ssm_parameter", "aws_lambda_function_url",
+        "aws_cognito_identity_provider", "aws_lambda_function_url",
         "aws_lambda_permission", "tls_private_key",
     }
     allowed |= social

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createPublicKey, generateKeyPairSync, verify } from 'node:crypto';
 import { test } from 'node:test';
-import { createHandler } from './index.mjs';
+import { createHandler, keyFromEnv } from './index.mjs';
 
 const DOMAIN = 'abc123.lambda-url.us-east-1.on.aws';
 const ISSUER = `https://${DOMAIN}`;
@@ -43,13 +43,13 @@ function fakeGithub({ emails, tokenReply = { access_token: 'gho_fake', token_typ
 }
 
 function makeHandler(gh) {
-  let ssmCalls = 0;
+  let keyLoads = 0;
   const handler = createHandler({
     fetchImpl: gh?.impl,
-    getSigningKeyPem: async () => { ssmCalls += 1; return PEM; },
+    getSigningKeyPem: async () => { keyLoads += 1; return PEM; },
     nowSeconds: () => NOW,
   });
-  return { handler, ssmCalls: () => ssmCalls };
+  return { handler, keyLoads: () => keyLoads };
 }
 
 const goodEmails = [
@@ -198,10 +198,10 @@ test('token endpoint validates its input', async () => {
 });
 
 test('JWKS publishes the signing key, with a stable thumbprint kid, loaded once', async () => {
-  const { handler, ssmCalls } = makeHandler(fakeGithub());
+  const { handler, keyLoads } = makeHandler(fakeGithub());
   const first = JSON.parse((await handler(event('GET', '/jwks'))).body);
   const second = JSON.parse((await handler(event('GET', '/jwks'))).body);
-  assert.equal(ssmCalls(), 1);
+  assert.equal(keyLoads(), 1);
   const expected = privateKey.export({ format: 'jwk' });
   const [jwk] = first.keys;
   assert.equal(jwk.kty, 'RSA');
@@ -246,6 +246,30 @@ test('unknown paths, wrong methods and internal failures give JSON errors withou
     assert.equal(JSON.parse(res.body).error, 'server_error');
     assert.ok(!res.body.includes('secret-pem-material'));
     assert.ok(!logs.join('\n').includes('secret-pem-material'));
+  } finally {
+    console.error = original;
+  }
+});
+
+test('signing key is read from the SIGNING_KEY_PEM environment variable', async () => {
+  assert.equal(keyFromEnv({ SIGNING_KEY_PEM: PEM }), PEM);
+  assert.throws(() => keyFromEnv({}), /not configured/);
+  const handler = createHandler({ fetchImpl: fakeGithub().impl, getSigningKeyPem: () => keyFromEnv({ SIGNING_KEY_PEM: PEM }), nowSeconds: () => NOW });
+  const jwks = JSON.parse((await handler(event('GET', '/jwks'))).body);
+  assert.equal(jwks.keys[0].n, privateKey.export({ format: 'jwk' }).n);
+});
+
+test('a malformed key never reaches responses or logs', async () => {
+  const marker = 'BEGIN-PRIVATE-MARKER-xyz';
+  const logs = [];
+  const original = console.error;
+  console.error = (...a) => logs.push(a.join(' '));
+  try {
+    const handler = createHandler({ fetchImpl: fakeGithub().impl, getSigningKeyPem: () => keyFromEnv({ SIGNING_KEY_PEM: marker }) });
+    const res = await handler(event('GET', '/jwks'));
+    assert.equal(res.statusCode, 500);
+    assert.ok(!res.body.includes(marker));
+    assert.ok(!logs.join('\n').includes(marker));
   } finally {
     console.error = original;
   }

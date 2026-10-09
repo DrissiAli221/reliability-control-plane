@@ -45,14 +45,6 @@ resource "tls_private_key" "github_oidc" {
   rsa_bits  = 2048
 }
 
-resource "aws_ssm_parameter" "github_oidc_key" {
-  count       = local.github_enabled ? 1 : 0
-  name        = "/${var.name}/github-oidc/signing-key"
-  description = "RS256 key the GitHub OIDC adapter signs id_tokens with."
-  type        = "SecureString"
-  value       = tls_private_key.github_oidc[0].private_key_pem_pkcs8
-}
-
 data "archive_file" "github_oidc" {
   count       = local.github_enabled ? 1 : 0
   type        = "zip"
@@ -68,11 +60,6 @@ resource "aws_cloudwatch_log_group" "github_oidc" {
 
 data "aws_iam_policy_document" "github_oidc" {
   count = local.github_enabled ? 1 : 0
-  statement {
-    sid       = "ReadSigningKey"
-    actions   = ["ssm:GetParameter"]
-    resources = [aws_ssm_parameter.github_oidc_key[0].arn]
-  }
   statement {
     sid       = "WriteLogs"
     actions   = ["logs:CreateLogStream", "logs:PutLogEvents"]
@@ -118,7 +105,8 @@ resource "aws_lambda_function" "github_oidc" {
   source_code_hash               = data.archive_file.github_oidc[0].output_base64sha256
   environment {
     variables = {
-      SIGNING_KEY_PARAMETER = aws_ssm_parameter.github_oidc_key[0].name
+      # Sensitive: derived from the generated key, so Terraform redacts it in plans and outputs.
+      SIGNING_KEY_PEM = tls_private_key.github_oidc[0].private_key_pem_pkcs8
     }
   }
   depends_on = [aws_cloudwatch_log_group.github_oidc, aws_iam_role_policy.github_oidc]

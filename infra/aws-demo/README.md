@@ -94,22 +94,24 @@ the `VITE_SOCIAL_PROVIDERS` build variable lists the enabled names.
    same redirect URI. Cognito never talks to GitHub directly: GitHub OAuth is not OIDC,
    so a small Node.js 22 Lambda in `github-oidc/` (function URL, no npm dependencies)
    adds the missing discovery document, `id_token` and JWKS. Its RS256 signing key is a
-   Terraform `tls_private_key` kept in an SSM SecureString; the Lambda may only read that
-   one parameter. Only a GitHub account with a primary **verified** email can sign in.
+   Terraform `tls_private_key` passed to the Lambda as an encrypted environment
+   variable (SSM is not used: the region policy does not allow it). Only an account with a
+   primary **verified** email can sign in.
 4. Put the four values in the ignored `terraform.tfvars` (see the example file):
    `google_client_id`, `google_client_secret`, `github_client_id`,
    `github_client_secret`, and set `social_providers = ["Google", "GitHub"]` (or one).
 5. Review the plan with the operator and apply. Rebuild the dashboard with the new
    `VITE_SOCIAL_PROVIDERS` value.
 
-The signing key is the one generated secret that does enter Terraform state, so the
-protected state store described below matters. The adapter function URL is public by
+The signing key is the one generated secret. It lives in Terraform state and in the
+function's environment, which Lambda encrypts at rest with the AWS-managed key; anyone
+with `lambda:GetFunctionConfiguration` can read it, so the protected state store described
+below matters. It is never logged. The adapter function URL is public by
 design (it is the OIDC issuer Cognito reads), is capped at 256 MiB and a 10-second
 timeout, and reserves 5 concurrent slots only when `reserve_probe_concurrency=true`.
 Its logs keep 14 days and never include codes or tokens. People who sign in with a
 provider are separate Cognito users from password users, even with the same email.
-Cost is a few Lambda invocations per sign-in plus one standard SSM parameter (free);
-it is not part of `cost-estimate.py`.
+Cost is a few Lambda invocations per sign-in; it is not part of `cost-estimate.py`.
 
 ## Validate without AWS credentials or resources
 

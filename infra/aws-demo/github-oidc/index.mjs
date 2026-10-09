@@ -1,6 +1,6 @@
 // Minimal OIDC adapter in front of GitHub OAuth, for Amazon Cognito's OIDC identity provider.
 // GitHub OAuth is not OIDC (no id_token, no discovery, no JWKS), so this Lambda supplies them.
-// No npm dependencies: node:crypto, global fetch, and the AWS SDK bundled in the Node runtime.
+// No npm dependencies: node:crypto and global fetch.
 import { createHash, createPrivateKey, createPublicKey, sign } from 'node:crypto';
 
 const GITHUB_AUTHORIZE = 'https://github.com/login/oauth/authorize';
@@ -56,11 +56,11 @@ function buildSigner(pem) {
   };
 }
 
-async function loadKeyFromSsm(name) {
-  const { SSMClient, GetParameterCommand } = await import('@aws-sdk/client-ssm');
-  const client = new SSMClient({});
-  const out = await client.send(new GetParameterCommand({ Name: name, WithDecryption: true }));
-  return out.Parameter.Value;
+// The PEM arrives as a Lambda environment variable (encrypted at rest by Lambda).
+export function keyFromEnv(env = process.env) {
+  const pem = env.SIGNING_KEY_PEM;
+  if (!pem) throw new Error('signing key is not configured');
+  return pem;
 }
 
 function parseForm(text) {
@@ -279,5 +279,5 @@ export function createHandler({ fetchImpl = (...a) => fetch(...a), getSigningKey
 }
 
 export const handler = createHandler({
-  getSigningKeyPem: () => loadKeyFromSsm(process.env.SIGNING_KEY_PARAMETER),
+  getSigningKeyPem: () => keyFromEnv(),
 });
