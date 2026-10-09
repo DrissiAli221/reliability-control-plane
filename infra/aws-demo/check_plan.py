@@ -59,7 +59,10 @@ def check_verification_email(managed):
     require(len(message) < 20000, "Verification email exceeds Cognito's 20,000 character limit")
     require(template["email_subject"], "Verification email needs a subject")
     require(template["default_email_option"] == "CONFIRM_WITH_CODE", "Verification must use a code")
-    require("<script" not in message.lower() and "http" not in message.lower(), "Verification email must be self-contained")
+    # The one external reference allowed is the Doto stylesheet; clients that block it fall back to monospace.
+    fonts = "https://fonts.googleapis.com/css2?family=Doto:wght@800&amp;display=swap"
+    rest = message.replace(fonts, "").lower()
+    require("<script" not in rest and "http" not in rest, "Verification email must be self-contained apart from the Doto font")
 
 
 def check(plan):
