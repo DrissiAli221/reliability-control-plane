@@ -4,6 +4,8 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // amazon-cognito-identity-js pulls in the `buffer` package, which reads Node's `global` and throws without it.
+  define: { global: "globalThis" },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/testSetup.ts"],

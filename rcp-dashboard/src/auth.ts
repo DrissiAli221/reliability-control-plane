@@ -210,11 +210,6 @@ export async function startDemoSession(): Promise<void> {
   }));
 }
 
-// Kept until the sign-in page moves to its own form.
-export async function login(next = "/"): Promise<void> {
-  await cognitoManager().signinRedirect({ state: next });
-}
-
 // ---------- Email and password, on our own page ----------
 
 /** A failed account step with a message fit to show, and Cognito's error name for the few cases a page reacts to. */

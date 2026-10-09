@@ -1518,6 +1518,34 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .signin-footer a { color: var(--text-3); text-decoration: none; }
 .signin-footer a:hover { color: var(--text); }
 .signin-status { display: inline-flex; align-items: center; gap: 8px; }
+/* One persistent live region for notices and errors, so every step's message is announced; it takes no room when empty. */
+.signin-messages { display: grid; gap: 8px; width: 100%; text-align: left; }
+.signin-messages > * { margin-top: 16px; }
+.signin-messages > :first-child { margin-top: 20px; }
+.signin-notice { padding: 10px 12px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); font-size: 13px; line-height: 1.5; }
+.signin-messages .form-error { line-height: 1.5; }
+.signin-divider { display: flex; align-items: center; gap: 12px; width: 100%; margin: 24px 0 16px; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+.signin-divider::before, .signin-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.signin-social { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-bottom: 16px; }
+.signin-social .button { height: 40px; font-size: 14px; }
+.signin-form { display: grid; gap: 14px; width: 100%; text-align: left; }
+.signin-messages + .signin-form { margin-top: 24px; }
+.signin-form .field > span { font-family: var(--font-mono); font-size: 11px; font-weight: 400; color: var(--text-3); }
+.signin-form .field input { height: 40px; min-width: 0; }
+.signin-form .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.signin-form .button { width: 100%; height: 40px; font-size: 14px; margin-top: 2px; }
+/* A one-time code is read digit by digit: wide tracking, mono, centred. */
+.signin-code input { font-family: var(--font-mono); font-size: 20px; letter-spacing: 0.5em; text-align: center; text-indent: 0.5em; }
+.signin-policy { display: grid; gap: 4px; margin: -2px 0 0; padding: 0; list-style: none; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+.signin-policy li { display: flex; align-items: center; gap: 8px; }
+.signin-policy i { flex: none; width: 8px; height: 8px; border: 1px solid var(--border-strong); }
+.signin-policy li.met { color: var(--text-2); }
+.signin-policy li.met i { border-color: var(--green); background: var(--green); }
+.signin-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 20px; margin-top: 18px; }
+.signin-link { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; font-size: 13px; color: var(--text-2); }
+.signin-link:hover:not(:disabled) { color: var(--accent-text); text-decoration: underline; text-underline-offset: 3px; }
+.signin-link:disabled { color: var(--text-3); }
+@media (max-width: 420px) { .signin { padding: 24px 16px; } }
 
 /* ---------- Demo session ---------- */
 .demo-banner {
