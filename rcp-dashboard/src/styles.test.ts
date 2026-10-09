@@ -15,8 +15,6 @@ function rule(selector: string): string {
 describe("markers on tracks", () => {
   // The owner dislikes bright lines that stick out of a bar. A marker is a notch: the track's height, a cut in the panel colour.
   it.each([
-    [".meter-mark", "var(--surface)"],
-    [".range-tick", "var(--surface)"],
     [".timeline-now", "var(--surface)"],
     [".drill-meter-now", "var(--bg)"],
   ])("%s is a 2px notch the height of its track", (selector, colour) => {

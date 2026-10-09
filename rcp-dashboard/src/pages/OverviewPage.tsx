@@ -3,6 +3,7 @@ import { ArrowUpRight, Play, RefreshCw } from "lucide-react";
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { fleetOverview, listMonitors, pipelineSnapshot } from "../api";
+import { BlockMeter } from "../components/BlockMeter";
 import { EventStream } from "../components/EventStream";
 import { IncidentTimeline } from "../components/IncidentTimeline";
 import { PulseStrip } from "../components/PulseStrip";
@@ -191,9 +192,7 @@ function Regions({ snapshot }: { snapshot: PipelineSnapshot | null }) {
                 <span className="region-value">{milliseconds(region.p50LatencyMs)}</span>
                 <span className="region-caption">p50 · {count(region.resultsReceived)} of {count(region.jobsPublished)} results back</span>
                 {/* One cell per expected result; the caption above carries the exact counts. */}
-                <div className={`fanout-meter ${tone}`} style={{ ["--cells" as string]: cells }} aria-hidden="true">
-                  {Array.from({ length: cells }, (_, cell) => <i key={cell}>{cell < filled && <b style={{ width: "100%" }} />}</i>)}
-                </div>
+                <BlockMeter className="region-meter" blocks={cells} value={filled / cells} tone={tone} decorative label="" />
               </li>
             );
           })}

@@ -1,4 +1,5 @@
 import { ArrowRight } from "lucide-react";
+import { BlockMeter } from "./BlockMeter";
 import { milliseconds, outcomeLabel, outcomeTone, relativeTime, type Tone } from "../format";
 import type { RecentCheck, Verdict } from "../types";
 
@@ -88,16 +89,14 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
                 </div>
                 <div className="fanout-region-bottom">
                   <span className="fanout-latency"><b>{Math.round(result.latencyMs)}</b><span className="mono"> ms</span></span>
-                  <span
+                  <BlockMeter
                     key={check.executionId}
-                    className={`fanout-meter ${meterTone}`}
-                    title={`${milliseconds(result.latencyMs)} of the ${milliseconds(timeoutMs)} timeout`}
-                  >
-                    {Array.from({ length: METER_CELLS }, (_, cell) => {
-                      const fill = Math.min(1, Math.max(0, share * METER_CELLS - cell));
-                      return <i key={cell}>{fill > 0 && <b style={{ width: `${fill * 100}%` }} />}</i>;
-                    })}
-                  </span>
+                    className="fanout-bar"
+                    blocks={METER_CELLS}
+                    value={share}
+                    tone={meterTone}
+                    label={`${milliseconds(result.latencyMs)} of the ${milliseconds(timeoutMs)} timeout`}
+                  />
                   <span className="fanout-of mono">of {timeoutLabel}</span>
                 </div>
               </li>

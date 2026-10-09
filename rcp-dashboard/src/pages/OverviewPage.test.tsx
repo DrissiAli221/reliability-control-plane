@@ -93,13 +93,12 @@ describe("OverviewPage", () => {
     render(<MemoryRouter><OverviewPage /></MemoryRouter>);
 
     expect(await screen.findByText(/18 of 18 results back/)).toBeInTheDocument();
-    const [full, short, big] = [...document.querySelectorAll(".regions .fanout-meter")];
-    const cellsOf = (meter: Element) => ({ cells: meter.querySelectorAll("i").length, filled: meter.querySelectorAll("i b").length });
+    const [full, short, big] = [...document.querySelectorAll(".regions .blocks")];
+    const cellsOf = (meter: Element) => ({ cells: meter.querySelectorAll(":scope > b").length, filled: meter.querySelectorAll("b > i.fill").length });
     expect(cellsOf(full)).toEqual({ cells: 18, filled: 18 });
     expect(full).toHaveClass("good");
     expect(cellsOf(short)).toEqual({ cells: 20, filled: 15 });
     expect(short).toHaveClass("warn");
     expect(cellsOf(big)).toEqual({ cells: 24, filled: 24 }); // 90 expected, scaled down to the 24-cell cap
-    expect(document.querySelector(".regions .meter")).toBeNull(); // the plain bar is gone
   });
 });

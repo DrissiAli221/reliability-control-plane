@@ -18,7 +18,7 @@ import { ChartBoundary } from "../components/ChartBoundary";
 import { CheckFanout } from "../components/CheckFanout";
 import { LatencyChart, type LatencyWindow } from "../components/LatencyChart";
 import { LatencyHeatmap } from "../components/LatencyHeatmap";
-import { BudgetMeter, CoverageMeter, LatencyRange } from "../components/MetricVisuals";
+import { BlockMeter, budgetMeter, coverageMeter, latencyMeter } from "../components/BlockMeter";
 import { MonitorToggleButton } from "../components/MonitorToggleButton";
 import { PolicyStrip } from "../components/PolicyStrip";
 import { StatusBadge, StatusDot } from "../components/StatusBadge";
@@ -188,7 +188,7 @@ export function MonitorDetailPage() {
         <SloMetric report={evidence} />
         <Metric
           label="Latency · 7d"
-          visual={report?.latency.p50Ms != null && report.latency.p95Ms != null && <LatencyRange p50={report.latency.p50Ms} p95={report.latency.p95Ms} />}
+          visual={report?.latency.p50Ms != null && report.latency.p95Ms != null && <BlockMeter {...latencyMeter(report.latency.p50Ms, report.latency.p95Ms)} />}
           explain={report && (
             <Explain
               title="Latency"
@@ -208,7 +208,7 @@ export function MonitorDetailPage() {
         />
         <Metric
           label="Error budget · 7d"
-          visual={report && <BudgetMeter spent={report.errorBudget.observedBadExecutions} allowed={Number(report.errorBudget.allowedBadExecutions)} />}
+          visual={report && <BlockMeter {...budgetMeter(report.errorBudget.observedBadExecutions, Number(report.errorBudget.allowedBadExecutions))} />}
           explain={report && (
             <Explain
               title="Error budget"
@@ -470,7 +470,7 @@ function SloMetric({ report }: { report?: AvailabilityReport }) {
       <Metric
         label={`SLO · ${report.sloTargetPercent}%`}
         explain={<SloExplain report={report} />}
-        visual={<CoverageMeter coverage={report.evidenceCoveragePercent} minimum={report.minimumEvidenceCoveragePercent} />}
+        visual={<BlockMeter {...coverageMeter(report.evidenceCoveragePercent, report.minimumEvidenceCoveragePercent, null)} />}
         value="Unproven"
         hint={`Coverage ${percent(report.evidenceCoveragePercent, 1)} is below the ${report.minimumEvidenceCoveragePercent}% needed to judge`}
         tone="warn"
@@ -481,7 +481,7 @@ function SloMetric({ report }: { report?: AvailabilityReport }) {
     <Metric
       label={`SLO · ${report.sloTargetPercent}%`}
       explain={<SloExplain report={report} />}
-      visual={<CoverageMeter coverage={report.evidenceCoveragePercent} minimum={report.minimumEvidenceCoveragePercent} />}
+      visual={<BlockMeter {...coverageMeter(report.evidenceCoveragePercent, report.minimumEvidenceCoveragePercent, report.sloMet)} />}
       value={report.sloMet ? "Met" : "Missed"}
       hint={`Based on ${count(report.conclusiveExecutions)} conclusive checks`}
       tone={report.sloMet ? "good" : "fault"}
