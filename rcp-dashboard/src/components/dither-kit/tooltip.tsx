@@ -41,6 +41,20 @@ export function Tooltip({
   }
   const index = chart.hoverIndex ?? lastIndex
 
+  // RCP change: the card no longer wraps, so it can be wider than the 48px the chart assumes when it keeps the card
+  // inside the plot. Measure it and keep it, whatever its width, inside the chart's box.
+  const [box, setBox] = useState({ card: 0, parent: 0 })
+  const measure = (el: HTMLDivElement | null) => {
+    if (!el) return
+    const card = el.offsetWidth
+    const parent = el.parentElement?.clientWidth ?? 0
+    setBox((prev) => (prev.card === card && prev.parent === parent ? prev : { card, parent }))
+  }
+  const half = box.card / 2
+  const left = box.parent > 0
+    ? Math.max(half + 2, Math.min(box.parent - half - 2, chart.tooltipLeft))
+    : chart.tooltipLeft
+
   const heading = chart.heading(index, labelKey)
   const items = chart.itemsAt(index)
 
@@ -49,19 +63,20 @@ export function Tooltip({
       {show && items.length > 0 && (
         <motion.div
           key="dither-tooltip"
+          ref={measure}
           initial={{
             opacity: 0,
             x: "-50%",
             y: "-115%",
             top: chart.tooltipTop,
-            left: chart.tooltipLeft,
+            left,
           }}
           animate={{
             opacity: 1,
             x: "-50%",
             y: "-115%",
             top: chart.tooltipTop,
-            left: chart.tooltipLeft,
+            left,
           }}
           exit={{ opacity: 0 }}
           transition={{
