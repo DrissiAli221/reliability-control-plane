@@ -41,8 +41,9 @@ class ReliabilityReportHtmlRendererTest {
                 "1440 conclusive × 0.5% = 7.2", "4 confirmed DOWN checks", "3.2 of 7.2 checks left");
         assertThat(html).doesNotContain("99.72222%", "100.00000", ">UP_PLUS_DOWN<");
         assertThat(html).doesNotContain("<script", "<link", "<iframe", "src=", "href=", "@import");
-        // The only url() allowed is an embedded font, so the file never fetches anything.
-        assertThat(Pattern.compile("url\\((?!data:font/woff2;base64,)").matcher(html).find()).isFalse();
+        // The only url() allowed is an embedded font or the logo's own gradients, so the file never fetches anything.
+        assertThat(Pattern.compile("url\\((?!data:font/woff2;base64,|#rcp-)").matcher(html).find()).isFalse();
+        assertThat(html).contains("fill=\"url(#rcp-violet)\"", "fill=\"currentColor\"");
 
         // Every meter is a labelled image with its share recorded, never an unlabelled bar.
         assertThat(Pattern.compile("<div class=\"meter\" role=\"img\" aria-label=\"[^\"]+\" data-meter=\"[a-z-]+\" data-share=\"[0-9.]+\">")

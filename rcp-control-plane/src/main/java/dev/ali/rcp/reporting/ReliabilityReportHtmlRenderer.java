@@ -58,7 +58,7 @@ public class ReliabilityReportHtmlRenderer {
             .masthead { display: flex; align-items: center; justify-content: space-between; gap: 16px;
               padding-bottom: 22px; border-bottom: 1px solid var(--border); }
             .brand { display: flex; align-items: center; gap: 10px; }
-            .brand svg { width: 26px; height: 26px; flex: none; }
+            .brand svg { width: 27px; height: 21px; flex: none; color: var(--text); }
             /* The subject is the title, as on the monitor page: name and verdict chip, then target and one meta line. */
             .intro { margin: 40px 0 24px; }
             .title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; }
@@ -110,17 +110,17 @@ public class ReliabilityReportHtmlRenderer {
             .readout-row { display: flex; justify-content: space-between; gap: 10px; margin: 22px 0 10px; font-family: var(--font-mono);
               font-size: 11px; letter-spacing: .04em; color: var(--text-3); }
             .readout-row b { font-weight: 400; color: var(--text); }
-            /* The dashboard's meter: a 6px track, a fill, and a 2px marker line that overhangs the track. */
+            /* The dashboard's meter: a 6px track and a fill; a target is a 2px notch cut through the track, not a line over it. */
             .meter { position: relative; height: 6px; background: var(--track); }
             .meter-fill { position: absolute; inset: 0 auto 0 0; min-width: 3px; background: var(--text-2); }
             .meter-fill.good { background: var(--green); } .meter-fill.bad { background: var(--red); }
             .meter-fill.warn { background: var(--amber); }
-            .meter-mark { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text); }
+            .meter-mark { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--surface); }
             /* Latency: the p50..p95 spread on a scale from zero, a dot at p50 and a tick at p95. */
             .range-span { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--text-3) 55%, transparent); }
             .range-dot { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%;
               background: var(--text-2); outline: 2px solid var(--surface); }
-            .range-tick { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text); }
+            .range-tick { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--text); }
             /* Incidents: each one drawn where it happened in the window, from opened to resolved. */
             .meter-span { position: absolute; top: -3px; bottom: -3px; min-width: 2px; background: var(--red); }
             .meter-span.resolved { background: color-mix(in srgb, var(--red) 55%, var(--track)); }
@@ -162,7 +162,7 @@ public class ReliabilityReportHtmlRenderer {
               :root { color-scheme: light; """ + LIGHT_TOKENS + """
                 --bg: #ffffff; }
               body { font-size: 9pt; } .report { max-width: none; padding: 0; }
-              .masthead { padding-bottom: 3mm; } .brand svg { width: 20px; height: 20px; }
+              .masthead { padding-bottom: 3mm; } .brand svg { width: 20px; height: 16px; }
               .intro { margin: 6mm 0 4mm; } h1 { font-size: 22pt; }
               .figure { font-size: 19pt; }
               h2, h3, .brand { font-size: 10.5pt; }
@@ -183,6 +183,18 @@ public class ReliabilityReportHtmlRenderer {
             }
             """;
 
+    // The aperture mark: stepped violet and lavender brackets around a square; the square takes the text colour so it
+    // stays visible on a light page and in print.
+    private static final String LOGO = """
+            <svg viewBox="0 0 18 14" aria-hidden="true" shape-rendering="crispEdges"><defs>\
+            <linearGradient id="rcp-violet" x1="2" y1="2" x2="8" y2="12" gradientUnits="userSpaceOnUse">\
+            <stop stop-color="#9482ff"/><stop offset=".48" stop-color="#7c63ff"/><stop offset="1" stop-color="#8a73ff"/></linearGradient>\
+            <linearGradient id="rcp-lavender" x1="10" y1="1" x2="16" y2="12" gradientUnits="userSpaceOnUse">\
+            <stop stop-color="#c1b0ff"/><stop offset=".5" stop-color="#ad94f8"/><stop offset="1" stop-color="#b5a1ff"/></linearGradient></defs>\
+            <path fill="url(#rcp-violet)" d="M6 1h2v2H7v1H6v1H5v1H4v1h1v1h1v1h1v1h1v2H6v-1H5v-1H4V9H3V8H2V7H1V6h1V5h1V4h1V3h1V2h1Z"/>\
+            <path fill="url(#rcp-lavender)" d="M12 1h-2v2h1v1h1v1h1v1h1v1h-1v1h-1v1h-1v1h-1v2h2v-1h1v-1h1V9h1V8h1V7h1V6h-1V5h-1V4h-1V3h-1V2h-1Z"/>\
+            <path fill="currentColor" d="M7.75 5.25h2.5v2.5h-2.5Z"/></svg>""";
+
     public String render(ReliabilityReport report) {
         AvailabilityReport a = report.availability();
         String tone = a.sloMet() == null ? "warn" : a.sloMet() ? "good" : "bad";
@@ -194,8 +206,7 @@ public class ReliabilityReportHtmlRenderer {
                 .append("<title>").append(escape(report.monitorName())).append(" · RCP reliability report</title>")
                 .append("<style>").append(STYLES).append("</style></head><body><div class=\"report\">")
                 .append("<header class=\"masthead\"><div class=\"brand\">")
-                .append("<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect x=\".5\" y=\".5\" width=\"23\" height=\"23\" fill=\"#7c6cff\"/>")
-                .append("<path d=\"M4.5 13h3.2l2-5.5 3.6 10 2.2-4.5h4\" fill=\"none\" stroke=\"#0a0a0a\" stroke-width=\"1.9\"/></svg>")
+                .append(LOGO)
                 .append("Reliability Control Plane</div><div class=\"edition\">Reliability report</div></header>")
                 // Like the monitor page: name and verdict chip on one row, then the target and one quiet meta line.
                 .append("<main><section class=\"intro\" aria-labelledby=\"report-title\"><div class=\"title-row\">")
