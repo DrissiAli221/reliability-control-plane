@@ -28,6 +28,7 @@ public class ExecutionFinalizationRepository {
                        result_deadline_at <= CURRENT_TIMESTAMP AS deadline_elapsed
                 FROM probe_executions executions
                 WHERE status = 'PENDING'
+                  AND EXISTS (SELECT 1 FROM monitors m WHERE m.monitor_id = executions.monitor_id AND m.deleted_at IS NULL)
                   AND (
                       result_deadline_at <= CURRENT_TIMESTAMP
                       OR (

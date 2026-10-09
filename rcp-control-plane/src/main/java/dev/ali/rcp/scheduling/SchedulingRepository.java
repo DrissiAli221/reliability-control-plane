@@ -45,7 +45,7 @@ public class SchedulingRepository {
                     behavior_version,
                     next_check_at
                 FROM monitors
-                WHERE enabled = TRUE
+                WHERE deleted_at IS NULL AND enabled = TRUE
                   AND next_check_at <= CURRENT_TIMESTAMP
                 ORDER BY next_check_at, monitor_id
                 LIMIT ?

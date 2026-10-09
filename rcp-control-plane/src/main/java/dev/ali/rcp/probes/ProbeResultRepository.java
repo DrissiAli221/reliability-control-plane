@@ -28,6 +28,12 @@ public class ProbeResultRepository {
         ) == 1;
     }
 
+    public boolean lockLiveMonitor(java.util.UUID monitorId) {
+        return !jdbcTemplate.queryForList(
+                "SELECT monitor_id FROM monitors WHERE monitor_id = ? AND deleted_at IS NULL FOR SHARE",
+                java.util.UUID.class, monitorId).isEmpty();
+    }
+
     public boolean insertResult(ProbeResult result) {
         return jdbcTemplate.update(
                 """

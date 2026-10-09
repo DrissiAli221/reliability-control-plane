@@ -20,7 +20,7 @@ public class ReliabilityReportRepository {
 
     public MonitorLabel monitorLabel(UUID monitorId, String ownerSubject) {
         return jdbcTemplate.queryForObject(
-                "SELECT name, target_url FROM monitors WHERE monitor_id = ? AND owner_subject = ?",
+                "SELECT name, target_url FROM monitors WHERE monitor_id = ? AND owner_subject = ? AND deleted_at IS NULL",
                 (resultSet, rowNumber) -> new MonitorLabel(
                         resultSet.getString("name"),
                         resultSet.getString("target_url")

@@ -10,6 +10,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "monitors")
+@org.hibernate.annotations.SQLRestriction("deleted_at IS NULL")
 public class Monitor {
 
     @Id
@@ -45,6 +46,17 @@ public class Monitor {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    public void markDeleted(Instant now) {
+        deletedAt = now;
+        enabled = false;
+        nextCheckAt = null;
+        behaviorVersion++;
+        updatedAt = now;
+    }
 
     protected Monitor() {
         // Required by JPA

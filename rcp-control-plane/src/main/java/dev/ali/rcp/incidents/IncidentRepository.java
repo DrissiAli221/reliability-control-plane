@@ -28,6 +28,7 @@ public class IncidentRepository {
                 SELECT execution_id, monitor_id, scheduled_at, verdict, monitor_behavior_version
                 FROM probe_executions executions
                 WHERE status = 'FINALIZED'
+                  AND EXISTS (SELECT 1 FROM monitors m WHERE m.monitor_id = executions.monitor_id AND m.deleted_at IS NULL)
                   AND NOT EXISTS (
                       SELECT 1 FROM incident_evaluations evaluated
                       WHERE evaluated.execution_id = executions.execution_id

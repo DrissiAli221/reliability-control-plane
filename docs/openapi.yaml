@@ -68,6 +68,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
   /api/monitors/{monitorId}:
+    delete:
+      summary: Delete an owned monitor
+      description: Soft deletion stops scheduling, frees quota, removes public-page memberships and discards late results. Retained evidence is hidden; this is not a data-erasure endpoint.
+      parameters:
+        - $ref: '#/components/parameters/MonitorId'
+      responses:
+        '204':
+          description: Monitor deleted
+        '404':
+          description: Monitor missing, deleted or owned by someone else
+        '403':
+          description: Read-only demo role cannot delete monitors
     parameters:
       - $ref: '#/components/parameters/MonitorId'
     get:

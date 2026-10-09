@@ -39,7 +39,7 @@ public class MonitorReadRepository {
                     ORDER BY scheduled_at DESC, execution_id DESC
                     LIMIT 1
                 ) latest ON TRUE
-                WHERE monitors.owner_subject = ?
+                WHERE monitors.owner_subject = ? AND monitors.deleted_at IS NULL
                 ORDER BY monitors.name, monitors.monitor_id
                 """,
                 (resultSet, rowNumber) -> new MonitorOverview(

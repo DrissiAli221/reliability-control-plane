@@ -167,3 +167,7 @@ export async function publicStatus(slug: string, signal?: AbortSignal): Promise<
   if (!response.ok) throw new Error(response.status === 404 ? "Status page not found" : "Status page unavailable");
   return response.json() as Promise<PublicStatusPage>;
 }
+
+export async function deleteMonitor(monitorId: string): Promise<void> {
+  await authorizedResponse(`/api/monitors/${encodeURIComponent(monitorId)}`, { method: "DELETE" });
+}

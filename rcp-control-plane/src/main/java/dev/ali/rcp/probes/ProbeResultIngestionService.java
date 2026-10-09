@@ -33,6 +33,10 @@ public class ProbeResultIngestionService {
             logIngestion(result, messageId, ProbeResultIngestion.DUPLICATE_MESSAGE);
             return ProbeResultIngestion.DUPLICATE_MESSAGE;
         }
+        if (!repository.lockLiveMonitor(result.monitorId())) {
+            logIngestion(result, messageId, ProbeResultIngestion.DISCARDED_MONITOR);
+            return ProbeResultIngestion.DISCARDED_MONITOR;
+        }
         if (!repository.insertResult(result)) {
             logIngestion(result, messageId, ProbeResultIngestion.DUPLICATE_LOGICAL_RESULT);
             return ProbeResultIngestion.DUPLICATE_LOGICAL_RESULT;

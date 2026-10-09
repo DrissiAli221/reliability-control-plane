@@ -1,11 +1,12 @@
 import { AlertTriangle, ChevronLeft, ExternalLink, PauseCircle, RefreshCw } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FALLBACK_CAVEATS } from "../caveats";
 import {
   availability, executionTrace, getMonitor, incidentState, latencyHeatmap, listMonitors, monitorHistory, reliabilityReport, setMonitorEnabled,
 } from "../api";
 import { isLocalAuth } from "../auth";
+import { DeleteMonitorDialog } from "../components/DeleteMonitorDialog";
 import { ChaosPanel } from "../components/ChaosPanel";
 import { CheckTimeline } from "../components/CheckTimeline";
 import { ExportReportButton } from "../components/ExportReportButton";
@@ -50,6 +51,8 @@ type DetailData = {
 
 export function MonitorDetailPage() {
   const { monitorId = "" } = useParams();
+  const navigate = useNavigate();
+  const [deleting, setDeleting] = useState(false);
   const [latencyRange, setLatencyRange] = useState<LatencyWindow>(24);
   const load = useCallback(async (): Promise<DetailData> => {
     const monitor = await getMonitor(monitorId);
@@ -111,6 +114,7 @@ export function MonitorDetailPage() {
   return (
     <>
       <Breadcrumb name={monitor.name} />
+      {deleting && !readOnly && <DeleteMonitorDialog monitorId={monitor.id} name={monitor.name} onClose={() => setDeleting(false)} onDeleted={() => navigate("/monitors", { replace: true })} />}
 
       <header className="page-header detail-header">
         <div>
@@ -135,6 +139,7 @@ export function MonitorDetailPage() {
             <RefreshCw size={16} className={detail.loading ? "spin" : undefined} />
           </button>
           {!readOnly && <MonitorToggleButton enabled={monitor.enabled} onToggle={toggle} />}
+          {!readOnly && <button type="button" className="button secondary" onClick={() => setDeleting(true)}>Delete monitor</button>}
           <ExportReportButton monitorId={monitor.id} monitorName={monitor.name} />
         </div>
       </header>
