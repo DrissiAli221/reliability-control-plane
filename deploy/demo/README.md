@@ -297,10 +297,14 @@ is outside the dashboard's forecast; restore again if its process is forcibly ki
 ### Probe header and separate Lambda rollout
 
 Lambda probes add exactly one `X-RCP-Probe-Region` header, with `eu-west-1` or
-`us-east-1`, to **every monitored target**, not just the drill. It contains no
-monitor identifier, URL, user identity or credential. It is spoofable diagnostic
-metadata, never an authentication mechanism. Local workers using the original
-HTTP-client constructor keep sending no region header.
+`us-east-1`, **only** to requests for `/drill/status.html` on the demo API host.
+The host comes from the `PROBE_REGION_HEADER_HOST` Lambda environment variable,
+which Terraform derives from `api_origin`; when the variable is unset the header
+is never sent, and every other target (Example Domain, Wikipedia, GitHub Status,
+Cloudflare Status) never receives it. It contains no monitor identifier, URL, user
+identity or credential. It is spoofable diagnostic metadata, never an
+authentication mechanism. Local workers using the original HTTP-client
+constructor keep sending no region header.
 
 Regional mode returns 200 for requests without a recognized header. Therefore
 it is harmless before the Lambda rollout: both old probes keep succeeding in a

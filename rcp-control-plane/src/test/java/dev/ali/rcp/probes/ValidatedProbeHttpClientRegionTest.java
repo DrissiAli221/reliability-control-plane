@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ValidatedProbeHttpClientRegionTest {
     @Test
-    void regionIsOneDiagnosticHeaderOnEachTargetAndAbsentForLegacyClients() throws Exception {
+    void regionHeaderIsSentOnlyToTheConfiguredHostAndDrillPath() throws Exception {
         InetAddress loopback = InetAddress.getByName("127.0.0.1");
         AtomicReference<List<String>> observed = new AtomicReference<>();
         HttpServer server = HttpServer.create(new InetSocketAddress(loopback, 0), 0);
@@ -34,16 +34,25 @@ class ValidatedProbeHttpClientRegionTest {
         };
         server.start();
         try {
-            String base = "http://127.0.0.1:" + server.getAddress().getPort();
+            int port = server.getAddress().getPort();
+            String base = "http://127.0.0.1:" + port;
             for (String region : List.of("eu-west-1", "us-east-1")) {
-                var client = new ValidatedProbeHttpClient(fixture, Duration.ofSeconds(1), region);
-                for (String path : List.of("/drill/status.html", "/another-public-target")) {
-                    assertThat(client.get(base + path, Duration.ofSeconds(2), 1024).statusCode()).isEqualTo(200);
-                    assertThat(observed.get()).containsExactly(region);
+                var client = new ValidatedProbeHttpClient(fixture, Duration.ofSeconds(1), region, "127.0.0.1");
+                assertThat(client.get(base + "/drill/status.html", Duration.ofSeconds(2), 1024).statusCode()).isEqualTo(200);
+                assertThat(observed.get()).containsExactly(region);
+                for (String other : List.of("/another-public-target", "/drill/status.html/x", "/")) {
+                    client.get(base + other, Duration.ofSeconds(2), 1024);
+                    assertThat(observed.get()).isNull();
                 }
             }
+            // A different host, an unset host and a blank host never receive the header.
+            for (String host : new String[]{"example.com", null, " "}) {
+                new ValidatedProbeHttpClient(fixture, Duration.ofSeconds(1), "eu-west-1", host)
+                        .get(base + "/drill/status.html", Duration.ofSeconds(2), 1024);
+                assertThat(observed.get()).isNull();
+            }
             new ValidatedProbeHttpClient(fixture, Duration.ofSeconds(1))
-                    .get(base + "/", Duration.ofSeconds(2), 1024);
+                    .get(base + "/drill/status.html", Duration.ofSeconds(2), 1024);
             assertThat(observed.get()).isNull();
         } finally {
             server.stop(0);
@@ -53,7 +62,7 @@ class ValidatedProbeHttpClientRegionTest {
     @Test
     void rejectsInvalidRegionAndHeaderInjection() {
         for (String region : List.of("", "eu-west-1\r\nInjected: value", "not a region")) {
-            assertThatThrownBy(() -> new ValidatedProbeHttpClient(new SafeTargetPolicy(), Duration.ofSeconds(1), region))
+            assertThatThrownBy(() -> new ValidatedProbeHttpClient(new SafeTargetPolicy(), Duration.ofSeconds(1), region, "api.example.com"))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
