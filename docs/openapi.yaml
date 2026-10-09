@@ -668,7 +668,7 @@ components:
       type: string
       nullable: true
       enum: [CLOUDFLARE_CHALLENGE, null]
-      description: Known cf-mitigated challenge marker, never inferred from a 403 alone. Older probes omit it. Does not affect the verdict.
+      description: Known cf-mitigated challenge marker, never inferred from a 403 alone. Older probes omit it. A challenged region is not evidence about the target: both regions challenged gives NO_DATA, one challenged with one real answer gives DISAGREEMENT, unless the response status is in the monitor's accepted statuses, which keeps it UP.
     AcceptedHttpStatuses:
       type: array
       nullable: true
