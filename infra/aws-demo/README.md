@@ -113,6 +113,16 @@ Its logs keep 14 days and never include codes or tokens. People who sign in with
 provider are separate Cognito users from password users, even with the same email.
 Cost is a few Lambda invocations per sign-in; it is not part of `cost-estimate.py`.
 
+**Why our own adapter.** The usual answer to "GitHub with Cognito" is
+[github-cognito-openid-wrapper](https://github.com/TimothyJones/github-cognito-openid-wrapper),
+which does the same job: it wraps GitHub OAuth in the OIDC endpoints Cognito expects. We
+wrote a small one instead because the wrapper ships its own SAM/CloudFormation stack, older
+Node runtimes and a dependency tree to keep patched, while ours is one file with no npm
+dependencies, deployed and reviewed with the rest of this Terraform, and covered by
+`node --test` (`github-oidc/index.test.mjs`): discovery, the authorize redirect, the token
+exchange with Basic or form client credentials, the verified-email rule, and JWKS/`id_token`
+signature checks.
+
 ## Validate without AWS credentials or resources
 
 Run from the repository root:
