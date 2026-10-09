@@ -31,7 +31,8 @@ describe("tour", () => {
     const outage = ALL_STEPS.find((step) => step.target === "outage-drill")!;
     expect(fault).toMatchObject({ only: "local", optional: true, route: "/pipeline" });
     expect(outage).toMatchObject({ only: "deployed", optional: true, route: "monitor", monitor: "drill" });
-    expect(outage.body).toMatch(/even UTC hour/);
+    expect(outage.body).toMatch(/two-hour UTC cycles/);
+    expect(outage.body).toMatch(/countdown is a forecast/);
     expect(outage.body).not.toMatch(/locally/i);
   });
 

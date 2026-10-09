@@ -190,50 +190,82 @@ sensitive query strings by default. Use bounded service logs for startup diagnos
 A missing/incorrect API DNS record or blocked port 80 prevents public certificates.
 No ACME request is needed for the local smoke test described below.
 
-## Scheduled outage drill
+## Varied scheduled demo drills
 
-`GET https://rcp-ali.duckdns.org/drill/status.html` returns **200** while
-`deploy/demo/drill/status.html` exists and **404** while it is absent. Caddy mounts
-that directory read-only and serves only this exact GET/HEAD route; API proxying
-and the public `/actuator` 404 stay unchanged. Responses use `Cache-Control:
-no-store`. The page is tiny and has no credentials or external dependencies.
-Runtime contents are ignored by Git, so updating the checkout cannot accidentally
-restore the page during an outage.
+Only our own `https://rcp-ali.duckdns.org/drill/status.html` endpoint is faulted.
+Caddy proxies the exact GET/HEAD route to a small Python responder on an internal
+Docker network. It has no published ports, credentials or outbound network access,
+and is bounded to 64 MiB, 0.25 CPU and 16 concurrent requests. API proxying,
+`/healthz`, and the public `/actuator` 404 stay unchanged. Responses are not cached.
+No third-party website, including SpectraTV, is altered by a drill.
 
-After review, install on the VM from `/opt/rcp` (these are deployment commands,
-not part of local tests):
+Each two-hour UTC cycle has a deterministic plan derived from its epoch cycle
+number. Roughly one in four cycles is skipped. Other cycles start 5–95 minutes
+into the cycle and use one of four modes:
+
+| Mode | Planned response | Expected evidence |
+| --- | --- | --- |
+| Full outage | HTTP 404 in both regions for 4–20 minutes | Consecutive DOWN checks can open an incident; consecutive UP checks resolve it. |
+| Slow response | HTTP 200 delayed 2–4 seconds for 4–20 minutes | A latency spike under the configured 5-second timeout. Additional network delays can still cause timeouts. |
+| Regional failure | HTTP 503 only for the selected probe region for 4–20 minutes | One failed region and one successful region are inconclusive and excluded from uptime. |
+| Short blip | HTTP 404 for 15–40 seconds | Shorter than the 60-second interval, normally avoiding an incident. Delayed checks can still overlap; this is not guaranteed. |
+
+Verdict and incident rules are unchanged: two failed regions, including two
+timeouts, still mean DOWN. The dashboard shows a **planned** window and mode;
+actual checks and incident status come from the backend. A disabled timer, a late
+start, or a reboot can shorten or suppress a window. The browser cannot establish
+whether the responder is actually faulting. Keep server scripts and dashboard
+assets on the same schedule version. Both implementations are checked against
+`fixtures/drill-schedule-v1.json`; the schedule is intentionally predictable,
+not cryptographic randomness.
+
+The timer evaluates the plan every minute and never catches up missed windows.
+A late start runs only the remaining time, never a fresh full-duration outage.
+Atomic `state.json` writes give the responder an absolute expiry, so an interrupted
+controller cannot leave a scheduled fault active indefinitely. Outage/blip modes
+also remove `status.html`; restoration puts it back. A cycle marker prevents
+restarting an interrupted window. Runtime files remain ignored by Git.
+Normal completion, errors and SIGTERM restore the endpoint; `ExecStopPost` covers
+forced termination. The boot recovery service restores it before Docker starts.
+
+### Install or upgrade the drill on the VM
+
+First take and verify an off-host backup using the backup section. The following
+commands are for the reviewed release on the VM, **not local validation**. Stop
+the old timer before updating the checkout so its running process cannot retain
+an obsolete plan. Use `git pull --ff-only`; resolve a divergent checkout separately.
 
 ```sh
-sudo mkdir -p /opt/rcp/deploy/demo/drill
-sudo chmod 755 /opt/rcp/deploy/demo/drill
+set -e
+cd /opt/rcp
+sudo systemctl disable --now rcp-demo-drill.timer
+sudo systemctl stop rcp-demo-drill.service
+git pull --ff-only
+sudo mkdir -p deploy/demo/drill
+sudo chmod 755 deploy/demo/drill
 sudo python3 deploy/demo/scripts/outage-drill.py restore
 sudo install -m 644 deploy/demo/systemd/rcp-demo-drill*.service /etc/systemd/system/
 sudo install -m 644 deploy/demo/systemd/rcp-demo-drill.timer /etc/systemd/system/
 sudo systemd-analyze verify /etc/systemd/system/rcp-demo-drill*.service /etc/systemd/system/rcp-demo-drill.timer
-systemd-analyze calendar --iterations=3 '*-*-* 00/2:00:00 UTC'
+systemd-analyze calendar --iterations=3 '*-*-* *:*:00 UTC'
 sudo systemctl daemon-reload
 sudo systemctl enable --now rcp-demo-drill-restore.service
-cd /opt/rcp/deploy/demo
-docker compose up -d --no-deps --force-recreate caddy
+cd deploy/demo
+docker compose pull drill
+docker compose up -d --no-deps --force-recreate --wait --wait-timeout 120 drill caddy
 sudo systemctl enable --now rcp-demo-drill.timer
 sudo systemctl list-timers rcp-demo-drill.timer
+curl -fsS https://rcp-ali.duckdns.org/healthz
 curl -sS -o /dev/null -w '%{http_code}\n' https://rcp-ali.duckdns.org/drill/status.html
 ```
 
-The timer starts at **00:00, 02:00, …, 22:00 UTC**, removes the file for 600
-seconds, then atomically restores it. It has no missed-run catch-up. Incident
-opening and resolution happen after the monitor's normal checks and incident
-thresholds, not exactly at the file transitions. With a 60-second interval, the
-ten-minute outage supplies several failed checks from both regions.
+For a first installation, omit the first two stop commands when those units do
+not exist. Install all three units; Python 3 is required on the VM. If the checkout
+is not `/opt/rcp`, update each unit's paths before installing. The status response
+can legitimately be 404, 503 or slow during its planned window. Check the journal
+and the backend's results rather than treating every non-200 as a deployment error.
 
-Duplicate outage starts do nothing while one is running. Normal completion,
-errors, and SIGTERM restore the page; systemd's `ExecStopPost` also restores after
-a forced kill. A separate enabled recovery service restores the page **before
-Docker starts at boot**, including after power loss during an outage. Install both
-services and the timer. Python 3 is required on the VM. If you change the
-`/opt/rcp` checkout location, update all three units' paths first.
-
-To inspect or stop the drill and bring the page back:
+Inspect, pause, or restore:
 
 ```sh
 sudo journalctl -u rcp-demo-drill.service -u rcp-demo-drill-restore.service --since today
@@ -242,9 +274,33 @@ sudo systemctl stop rcp-demo-drill.service
 sudo python3 /opt/rcp/deploy/demo/scripts/outage-drill.py restore
 ```
 
-Leave the boot recovery service enabled while Caddy serves the route. To resume,
-run `sudo systemctl enable --now rcp-demo-drill.timer`. For a deliberate manual
-**ten-minute** drill, run `sudo systemctl start --no-block rcp-demo-drill.service`.
+Leave boot recovery enabled. Resume with
+`sudo systemctl enable --now rcp-demo-drill.timer`. Restoring during an active
+window suppresses that window until the next cycle. For an operator-requested
+**manual ten-minute outage**, keep the timer disabled and run
+`sudo python3 /opt/rcp/deploy/demo/scripts/outage-drill.py outage`. The manual run
+is outside the dashboard's forecast; restore again if its process is forcibly killed.
+
+### Probe header and separate Lambda rollout
+
+Lambda probes add exactly one `X-RCP-Probe-Region` header, with `eu-west-1` or
+`us-east-1`, to **every monitored target**, not just the drill. It contains no
+monitor identifier, URL, user identity or credential. It is spoofable diagnostic
+metadata, never an authentication mechanism. Local workers using the original
+HTTP-client constructor keep sending no region header.
+
+Regional mode returns 200 for requests without a recognized header. Therefore
+it is harmless before the Lambda rollout: both old probes keep succeeding in a
+regional window. A partially rolled-out pair cannot yet prove the intended
+one-region scenario. Update both regions together after reviewing the plan.
+This PR does not deploy Lambdas or modify AWS resource definitions.
+
+From the operator checkout, follow the AWS runbook to build the probe package,
+then create and review a **real Terraform plan**. Confirm the deployed package's
+code hash changes for both probe Lambdas and investigate any unrelated changes.
+Obtain deployment approval **before apply**; server installation alone does not
+update those probes. Publish the rebuilt dashboard using the next section so
+its schedule agrees with the server.
 
 ### Add the monitor to the existing deployment
 

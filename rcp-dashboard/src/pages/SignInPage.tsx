@@ -364,7 +364,7 @@ function DemoStatus() {
     <span className="signin-status">
       <StatusDot tone="good" />
       {phase.active
-        ? "Demo live in 2 regions · outage drill running"
+        ? "Demo live in 2 regions · drill scheduled now"
         : `Demo live in 2 regions · next drill ${utcClock(phase.nextStart)} UTC`}
     </span>
   );

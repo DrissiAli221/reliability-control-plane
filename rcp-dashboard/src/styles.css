@@ -524,6 +524,7 @@ a { color: inherit; }
 .drill-meter-cells i b { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--text-3) 45%, transparent); }
 .drill-meter-cells i.outage { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--red) 75%, transparent) 0 3px, transparent 3px 6px), var(--red-bg); }
 .drill-meter-cells i.outage b { background: color-mix(in srgb, var(--red) 60%, transparent); }
+.drill-meter-window { position: absolute; top: 0; bottom: 0; min-width: 1px; background: repeating-linear-gradient(135deg, var(--amber) 0 2px, transparent 2px 5px); pointer-events: none; }
 /* "Now" is a notch through the cells. --bg, a stronger cut than --surface, so it still reads over unfilled cells. */
 .drill-meter-now { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--bg); transition: left 1s linear; }
 .drill-meter-ticks { position: relative; height: 14px; margin-top: 8px; font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--track-label); color: var(--text-3); }

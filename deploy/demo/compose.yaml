@@ -129,6 +129,29 @@ services:
     cpus: 0.5
     logging: *logging
 
+  drill:
+    image: python:3.13.7-alpine
+    restart: unless-stopped
+    user: "65534:65534"
+    init: true
+    command: ["python3", "-B", "/opt/drill/drill-server.py"]
+    volumes:
+      - ./scripts:/opt/drill:ro
+      - ./drill:/srv/drill:ro
+    networks: [drill]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 64m
+    cpus: 0.25
+    pids_limit: 32
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/ready', timeout=2).close()"]
+      interval: 20s
+      timeout: 3s
+      retries: 3
+    logging: *logging
+
   caddy:
     image: caddy:2.10.2-alpine
     restart: unless-stopped
@@ -140,14 +163,16 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./drill:/srv/drill:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
       control-plane:
         condition: service_healthy
+      drill:
+        condition: service_healthy
     networks:
       - edge
+      - drill
     security_opt:
       - no-new-privileges:true
     mem_limit: 128m
@@ -171,6 +196,8 @@ secrets:
     file: ./secrets/grafana_metrics_token
 
 networks:
+  drill:
+    internal: true
   database:
     internal: true
   edge:
