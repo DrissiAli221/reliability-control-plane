@@ -102,7 +102,10 @@ export type ReliabilityReport = {
   incidentTimeline: Array<{ incidentId: string; eventType: "OPENED" | "RESOLVED"; occurredAt: string }>;
   incidentTimelineTruncated: boolean;
   limitations: string[];
+  caveats?: ReportCaveat[];
 };
+
+export type ReportCaveat = { topic: string; text: string };
 
 export type PublicComponentStatus = "OPERATIONAL" | "DEGRADED" | "OUTAGE" | "PAUSED" | "STALE" | "UNKNOWN";
 

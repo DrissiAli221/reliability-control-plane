@@ -590,10 +590,27 @@ a { color: inherit; }
 .incident-list .subtle { font-size: 12.5px; }
 .incident-list .mono { margin-left: auto; }
 .panel-more { padding: 10px 16px; border-top: 1px solid var(--border); font-size: 12.5px; }
-.limits { margin-top: 8px; font-size: 13px; color: var(--text-2); }
-.limits summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-2); }
+.limits { margin-top: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.limits summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 41px; padding: 10px 16px;
+  cursor: pointer; list-style: none; font-size: 13px; font-weight: 500; letter-spacing: var(--track-heading); color: var(--text-2);
+}
+.limits summary::-webkit-details-marker { display: none; }
+.limits summary::after {
+  content: ""; width: 6px; height: 6px; flex: none; border: solid var(--text-3); border-width: 0 1px 1px 0;
+  transform: translateY(-2px) rotate(45deg); transition: transform 0.15s;
+}
+.limits[open] summary { border-bottom: 1px solid var(--border); color: var(--text); }
+.limits[open] summary::after { transform: translateY(2px) rotate(225deg); }
 .limits summary:hover { color: var(--text); }
-.limits ul { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; color: var(--text-3); max-width: 760px; }
+.limits summary:focus-visible { outline: 1px solid var(--text-3); outline-offset: -1px; }
+.caveats { margin: 0; }
+.caveats > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding: 9px 16px; border-bottom: 1px solid var(--border); }
+.caveats > div:last-child { border-bottom: 0; }
+.caveats dt { font-family: var(--font-mono); font-size: 11px; font-weight: 400; letter-spacing: var(--track-label); color: var(--text-3); line-height: 20px; }
+.caveats dd { margin: 0; font-size: 13px; color: var(--text-2); }
+@media (max-width: 520px) { .caveats > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+@media (prefers-reduced-motion: reduce) { .limits summary::after { transition: none; } }
 
 /* ---------- Empty, error, loading ---------- */
 .empty { display: grid; justify-items: center; gap: 8px; padding: 56px 24px; text-align: center; }

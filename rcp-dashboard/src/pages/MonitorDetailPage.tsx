@@ -1,6 +1,7 @@
-import { AlertTriangle, ChevronLeft, ExternalLink, Info, PauseCircle, RefreshCw } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ExternalLink, PauseCircle, RefreshCw } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
+import { FALLBACK_CAVEATS } from "../caveats";
 import {
   availability, executionTrace, getMonitor, incidentState, latencyHeatmap, listMonitors, monitorHistory, reliabilityReport, setMonitorEnabled,
 } from "../api";
@@ -383,8 +384,12 @@ export function MonitorDetailPage() {
 
       {report && (
         <details className="limits">
-          <summary><Info size={14} aria-hidden="true" /> What these numbers do not prove</summary>
-          <ul>{report.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul>
+          <summary>What these numbers do not prove</summary>
+          <dl className="caveats">
+            {(report.caveats?.length ? report.caveats : FALLBACK_CAVEATS).map((caveat) => (
+              <div key={caveat.topic}><dt>{caveat.topic}</dt><dd>{caveat.text}</dd></div>
+            ))}
+          </dl>
         </details>
       )}
     </>
