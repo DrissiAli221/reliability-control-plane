@@ -28,7 +28,7 @@ class Schedule(unittest.TestCase):
         for p in plans:
             duration = p['end'] - p['start']
             self.assertTrue(p['cycleStart'] < p['start'] < p['end'] < p['cycleStart'] + CYCLE_MS)
-            self.assertTrue(2000 <= p['delayMs'] <= 4000)
+            self.assertTrue(2000 <= p['delayMs'] <= 3500)
             self.assertTrue(15_000 <= duration <= 40_000 if p['mode'] == 'blip' else 240_000 <= duration <= 1_200_000)
         with self.assertRaises(ValueError):
             plan(1)

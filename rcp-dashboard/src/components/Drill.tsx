@@ -51,7 +51,7 @@ export function DrillPanel({ now, overview }: { now: number; overview?: MonitorO
     { title: "Observe policy", detail: "An incident is still possible" },
     { title: "Recovers", detail: "Endpoint returns to normal" },
   ] : [
-    { title: DRILL_MODE_LABELS[window.mode], detail: window.mode === "slow" ? "Successful response delayed 2–4 s" : "Only the named probe region fails" },
+    { title: DRILL_MODE_LABELS[window.mode], detail: window.mode === "slow" ? "Successful response delayed 2–3.5 s" : "Only the named probe region fails" },
     { title: "Observe checks", detail: "Actual results determine the verdict" },
     { title: "Observe policy", detail: window.mode === "regional" ? "Mixed regional results are excluded from uptime" : "A timeout still counts as failure" },
     { title: "Recovers", detail: "The endpoint returns to normal" },
@@ -76,7 +76,7 @@ export function DrillPanel({ now, overview }: { now: number; overview?: MonitorO
         </div>
         <div className="drill-story">
           <p>{recovering ? "The backend still reports an open incident. Consecutive UP checks are required to resolve it; the next planned window is shown separately."
-            : window.mode === "slow" ? "A planned latency spike: responses take 2–4 seconds, under the configured 5-second timeout. Network delays can still cause a timeout."
+            : window.mode === "slow" ? "A planned latency spike: responses take 2–3.5 seconds, under the configured 5-second timeout. Network delays can still cause a timeout."
             : window.mode === "regional" ? `A planned regional fault for ${window.failedRegion}. Requests without a recognized probe-region header remain healthy.`
             : window.mode === "blip" ? "A 15–40 second failure, shorter than the check interval. It normally avoids an incident; delayed checks can still overlap."
             : "A planned full outage: both regions see the endpoint fail. Consecutive DOWN checks can open an incident."}</p>

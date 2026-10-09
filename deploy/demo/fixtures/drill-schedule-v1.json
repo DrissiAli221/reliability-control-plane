@@ -5,7 +5,7 @@
     "end": -4646000,
     "mode": "blip",
     "skipped": true,
-    "delayMs": 2168,
+    "delayMs": 3142,
     "failedRegion": "eu-west-1"
   },
   {
@@ -14,7 +14,7 @@
     "end": 1920000,
     "mode": "outage",
     "skipped": false,
-    "delayMs": 3898,
+    "delayMs": 2873,
     "failedRegion": "eu-west-1"
   },
   {
@@ -23,7 +23,7 @@
     "end": 9780000,
     "mode": "slow",
     "skipped": false,
-    "delayMs": 3760,
+    "delayMs": 3207,
     "failedRegion": "eu-west-1"
   },
   {
@@ -32,7 +32,7 @@
     "end": 4102449514000,
     "mode": "blip",
     "skipped": true,
-    "delayMs": 2719,
+    "delayMs": 3153,
     "failedRegion": "us-east-1"
   },
   {
@@ -41,7 +41,7 @@
     "end": 1791247860000,
     "mode": "slow",
     "skipped": false,
-    "delayMs": 3991,
+    "delayMs": 3271,
     "failedRegion": "us-east-1"
   },
   {
@@ -50,7 +50,7 @@
     "end": 1791255180000,
     "mode": "outage",
     "skipped": false,
-    "delayMs": 3868,
+    "delayMs": 3291,
     "failedRegion": "us-east-1"
   },
   {
@@ -59,7 +59,7 @@
     "end": 1791260905000,
     "mode": "blip",
     "skipped": false,
-    "delayMs": 3030,
+    "delayMs": 2662,
     "failedRegion": "us-east-1"
   },
   {
@@ -68,7 +68,7 @@
     "end": 1791269820000,
     "mode": "regional",
     "skipped": true,
-    "delayMs": 2688,
+    "delayMs": 2742,
     "failedRegion": "eu-west-1"
   },
   {
@@ -77,7 +77,7 @@
     "end": 1791278580000,
     "mode": "slow",
     "skipped": false,
-    "delayMs": 3306,
+    "delayMs": 2410,
     "failedRegion": "eu-west-1"
   },
   {
@@ -86,7 +86,7 @@
     "end": 1791282780000,
     "mode": "outage",
     "skipped": false,
-    "delayMs": 3963,
+    "delayMs": 2484,
     "failedRegion": "eu-west-1"
   },
   {
@@ -95,7 +95,7 @@
     "end": 1791292943000,
     "mode": "blip",
     "skipped": false,
-    "delayMs": 2122,
+    "delayMs": 3338,
     "failedRegion": "eu-west-1"
   },
   {
@@ -104,7 +104,7 @@
     "end": 1791300540000,
     "mode": "regional",
     "skipped": true,
-    "delayMs": 2641,
+    "delayMs": 2343,
     "failedRegion": "us-east-1"
   },
   {
@@ -113,7 +113,7 @@
     "end": 1791306480000,
     "mode": "slow",
     "skipped": false,
-    "delayMs": 2893,
+    "delayMs": 3256,
     "failedRegion": "us-east-1"
   },
   {
@@ -122,7 +122,7 @@
     "end": 1791315120000,
     "mode": "outage",
     "skipped": false,
-    "delayMs": 3039,
+    "delayMs": 2305,
     "failedRegion": "us-east-1"
   },
   {
@@ -131,7 +131,7 @@
     "end": 1791317535000,
     "mode": "blip",
     "skipped": false,
-    "delayMs": 2918,
+    "delayMs": 2214,
     "failedRegion": "us-east-1"
   },
   {
@@ -140,7 +140,7 @@
     "end": 1791327660000,
     "mode": "regional",
     "skipped": true,
-    "delayMs": 3052,
+    "delayMs": 2857,
     "failedRegion": "eu-west-1"
   },
   {
@@ -149,7 +149,7 @@
     "end": 1791333660000,
     "mode": "slow",
     "skipped": false,
-    "delayMs": 3464,
+    "delayMs": 2461,
     "failedRegion": "eu-west-1"
   },
   {
@@ -158,7 +158,7 @@
     "end": 1791343740000,
     "mode": "outage",
     "skipped": false,
-    "delayMs": 2568,
+    "delayMs": 2294,
     "failedRegion": "eu-west-1"
   },
   {
@@ -167,7 +167,7 @@
     "end": 1791350605000,
     "mode": "blip",
     "skipped": false,
-    "delayMs": 2518,
+    "delayMs": 2711,
     "failedRegion": "eu-west-1"
   },
   {
@@ -176,7 +176,7 @@
     "end": 1791354480000,
     "mode": "regional",
     "skipped": true,
-    "delayMs": 2418,
+    "delayMs": 2217,
     "failedRegion": "us-east-1"
   },
   {
@@ -185,7 +185,7 @@
     "end": 1791365640000,
     "mode": "outage",
     "skipped": true,
-    "delayMs": 2802,
+    "delayMs": 2783,
     "failedRegion": "eu-west-1"
   },
   {
@@ -194,7 +194,7 @@
     "end": 1791373140000,
     "mode": "slow",
     "skipped": false,
-    "delayMs": 3665,
+    "delayMs": 2526,
     "failedRegion": "eu-west-1"
   },
   {
@@ -203,7 +203,7 @@
     "end": 1791378780000,
     "mode": "regional",
     "skipped": false,
-    "delayMs": 2204,
+    "delayMs": 2244,
     "failedRegion": "us-east-1"
   },
   {
@@ -212,7 +212,7 @@
     "end": 1791385655000,
     "mode": "blip",
     "skipped": false,
-    "delayMs": 3042,
+    "delayMs": 3370,
     "failedRegion": "eu-west-1"
   },
   {
@@ -221,7 +221,7 @@
     "end": 1791391680000,
     "mode": "outage",
     "skipped": true,
-    "delayMs": 2553,
+    "delayMs": 2118,
     "failedRegion": "us-east-1"
   },
   {
@@ -230,7 +230,7 @@
     "end": 1791401520000,
     "mode": "slow",
     "skipped": false,
-    "delayMs": 3389,
+    "delayMs": 3250,
     "failedRegion": "us-east-1"
   },
   {
@@ -239,7 +239,7 @@
     "end": 1791407640000,
     "mode": "regional",
     "skipped": false,
-    "delayMs": 2724,
+    "delayMs": 3123,
     "failedRegion": "eu-west-1"
   },
   {
@@ -248,7 +248,7 @@
     "end": 1791413069000,
     "mode": "blip",
     "skipped": false,
-    "delayMs": 2394,
+    "delayMs": 2420,
     "failedRegion": "us-east-1"
   },
   {
@@ -257,7 +257,7 @@
     "end": 1791418980000,
     "mode": "outage",
     "skipped": true,
-    "delayMs": 3564,
+    "delayMs": 3066,
     "failedRegion": "eu-west-1"
   },
   {
@@ -266,7 +266,7 @@
     "end": 1791427800000,
     "mode": "slow",
     "skipped": false,
-    "delayMs": 2861,
+    "delayMs": 3276,
     "failedRegion": "eu-west-1"
   },
   {
@@ -275,7 +275,7 @@
     "end": 1791436560000,
     "mode": "regional",
     "skipped": false,
-    "delayMs": 3297,
+    "delayMs": 2095,
     "failedRegion": "us-east-1"
   },
   {
@@ -284,7 +284,7 @@
     "end": 1791444751000,
     "mode": "blip",
     "skipped": false,
-    "delayMs": 3000,
+    "delayMs": 2390,
     "failedRegion": "eu-west-1"
   },
   {
@@ -293,7 +293,7 @@
     "end": 1791451320000,
     "mode": "outage",
     "skipped": true,
-    "delayMs": 3228,
+    "delayMs": 3297,
     "failedRegion": "us-east-1"
   },
   {
@@ -302,7 +302,7 @@
     "end": 1791456180000,
     "mode": "slow",
     "skipped": false,
-    "delayMs": 3983,
+    "delayMs": 2242,
     "failedRegion": "us-east-1"
   },
   {
@@ -311,7 +311,7 @@
     "end": 1791466800000,
     "mode": "regional",
     "skipped": false,
-    "delayMs": 3056,
+    "delayMs": 3024,
     "failedRegion": "eu-west-1"
   },
   {
@@ -320,7 +320,7 @@
     "end": 1791472231000,
     "mode": "blip",
     "skipped": false,
-    "delayMs": 3509,
+    "delayMs": 2893,
     "failedRegion": "us-east-1"
   }
 ]

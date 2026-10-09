@@ -207,7 +207,7 @@ into the cycle and use one of four modes:
 | Mode | Planned response | Expected evidence |
 | --- | --- | --- |
 | Full outage | HTTP 404 in both regions for 4–20 minutes | Consecutive DOWN checks can open an incident; consecutive UP checks resolve it. |
-| Slow response | HTTP 200 delayed 2–4 seconds for 4–20 minutes | A latency spike under the configured 5-second timeout. Additional network delays can still cause timeouts. |
+| Slow response | HTTP 200 delayed 2–3.5 seconds for 4–20 minutes | A latency spike under the configured 5-second timeout. Additional network delays can still cause timeouts. |
 | Regional failure | HTTP 503 only for the selected probe region for 4–20 minutes | One failed region and one successful region are inconclusive and excluded from uptime. |
 | Short blip | HTTP 404 for 15–40 seconds | Shorter than the 60-second interval, normally avoiding an incident. Delayed checks can still overlap; this is not guaranteed. |
 

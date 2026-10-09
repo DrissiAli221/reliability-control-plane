@@ -24,7 +24,7 @@ def response(directory, region, now_ms):
             if mode == "regional" and region == state.get("failedRegion") and region in ("eu-west-1", "us-east-1"):
                 return 503, b"Planned regional demo fault\n", 0
             delay = state.get("delayMs")
-            if mode == "slow" and type(delay) is int and 2000 <= delay <= 4000:
+            if mode == "slow" and type(delay) is int and 2000 <= delay <= 3500:
                 return 200, PAGE, min(delay, end - now_ms) / 1000
         # Expired state returns healthy even if a killed process left the file absent.
         if mode != "healthy":

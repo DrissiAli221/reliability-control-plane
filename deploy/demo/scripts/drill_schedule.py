@@ -24,7 +24,7 @@ def plan(cycle_start_ms):
     duration_ms = (4 + draw() % 17) * 60_000
     if mode == "blip":
         duration_ms = (15 + draw() % 26) * 1000
-    delay_ms = 2000 + draw() % 2001
+    delay_ms = 2000 + draw() % 1501
     failed_region = ("eu-west-1", "us-east-1")[draw() % 2]
     start = cycle_start_ms + offset_ms
     return {"cycleStart": cycle_start_ms, "start": start, "end": start + duration_ms,

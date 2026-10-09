@@ -25,7 +25,7 @@ export function drillPlan(cycleStart: number): DrillPlan {
   const offset = (5 + draw() % 91) * 60_000;
   let duration = (4 + draw() % 17) * 60_000;
   if (mode === "blip") duration = (15 + draw() % 26) * 1000;
-  const delayMs = 2000 + draw() % 2001;
+  const delayMs = 2000 + draw() % 1501;
   const failedRegion = ["eu-west-1", "us-east-1"][draw() % 2];
   const start = cycleStart + offset;
   return { cycleStart, start, end: start + duration, mode, skipped, delayMs, failedRegion };
