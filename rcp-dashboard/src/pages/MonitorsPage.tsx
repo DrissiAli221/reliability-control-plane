@@ -1,8 +1,9 @@
-import { ArrowUpRight, Download, Pause, Play, Plus, RefreshCw, Search } from "lucide-react";
+import { ArrowUpRight, Download, Pause, Play, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { availability, createMonitor, listMonitors, monitorHistory, setMonitorEnabled } from "../api";
 import { LoadingNote, SkLine, SkRows } from "../components/Skeleton";
+import { DeleteMonitorDialog } from "../components/DeleteMonitorDialog";
 import { ActionMenu } from "../components/ActionMenu";
 import { RollingText } from "../components/RollingText";
 import { RowPreview } from "../components/RowPreview";
@@ -50,6 +51,7 @@ export function MonitorsPage() {
   const [params, setParams] = useSearchParams();
   const [showCreate, setShowCreate] = useState(() => params.get("create") === "1");
   const [query, setQuery] = useState("");
+  const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [notice, setNotice] = useState<string | null>(null);
   const previousStates = useRef<Map<string, string> | null>(null);
@@ -189,6 +191,7 @@ export function MonitorsPage() {
                     onOpen={() => navigate(`/monitors/${row.monitor.id}`)}
                     readOnly={readOnly}
                     onToggle={() => void runAction(() => setMonitorEnabled(row.monitor.id, !row.monitor.enabled), "Monitor could not be updated")}
+                    onDelete={() => setDeleting({ id: row.monitor.id, name: row.monitor.name })}
                     onDownload={() => void runAction(() => downloadReport(row.monitor.id, row.monitor.name), "The report could not be downloaded")}
                   />
                 ))}
@@ -206,12 +209,23 @@ export function MonitorsPage() {
         conclusive verdict; below 95% the SLO is reported as unproven rather than met.
       </p>
 
+      {deleting && !readOnly && (
+        <DeleteMonitorDialog
+          monitorId={deleting.id}
+          name={deleting.name}
+          onClose={() => setDeleting(null)}
+          onDeleted={() => {
+            setDeleting(null);
+            void fleet.refresh();
+          }}
+        />
+      )}
       {showCreate && <CreateMonitorDialog onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
     </>
   );
 }
 
-function FleetTableRow({ row, now, index, changed, readOnly, onOpen, onToggle, onDownload }: {
+function FleetTableRow({ row, now, index, changed, readOnly, onOpen, onToggle, onDelete, onDownload }: {
   row: FleetRow;
   readOnly: boolean;
   now: number;
@@ -219,6 +233,7 @@ function FleetTableRow({ row, now, index, changed, readOnly, onOpen, onToggle, o
   changed: boolean;
   onOpen: () => void;
   onToggle: () => void;
+  onDelete: () => void;
   onDownload: () => void;
 }) {
   const { monitor, availability: report, history } = row;
@@ -290,6 +305,7 @@ function FleetTableRow({ row, now, index, changed, readOnly, onOpen, onToggle, o
             { label: "Open details", icon: <ArrowUpRight size={14} />, onSelect: onOpen },
             ...(readOnly ? [] : [{ label: monitor.enabled ? "Pause checks" : "Resume checks", icon: monitor.enabled ? <Pause size={14} /> : <Play size={14} />, onSelect: onToggle }]),
             { label: "Download 7-day report", icon: <Download size={14} />, onSelect: onDownload },
+            ...(readOnly ? [] : [{ label: "Delete monitor", icon: <Trash2 size={14} />, tone: "danger" as const, separatorBefore: true, onSelect: onDelete }]),
           ]}
         />
       </td>
