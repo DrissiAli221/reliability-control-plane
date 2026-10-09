@@ -1,15 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listMonitors } from "./api";
+import { APERTURE_CORE, APERTURE_LEFT, APERTURE_RIGHT } from "./brand";
 import type { MonitorOverview } from "./types";
 
-const ACCENT = "#7c6cff";
+const ACCENT = "#7c63ff";
+const LAVENDER = "#b5a1ff";
 const FAULT = "#e5484d";
 const POLL_MS = 15_000;
 
-/** The brand square, drawn red while any incident is open so a background tab still shows trouble. */
+/**
+ * The aperture mark on a dark tile so it reads on any tab bar; while an incident is open the brackets turn red, so a
+ * background tab still shows trouble.
+ */
 export function faviconSvg(incident: boolean): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="${incident ? FAULT : ACCENT}"/>`
-    + `<path d="M5 17h4.5l2.8-7.5 5 13.5 3-6H27" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"/></svg>`;
+  const [left, right] = incident ? [FAULT, FAULT] : [ACCENT, LAVENDER];
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges"><rect width="32" height="32" fill="#0a0a0a"/>`
+    + `<g transform="translate(2.5 5.5) scale(1.5)"><path fill="${left}" d="${APERTURE_LEFT}"/><path fill="${right}" d="${APERTURE_RIGHT}"/>`
+    + `<path fill="#ffffff" d="${APERTURE_CORE}"/></g></svg>`;
 }
 
 export function tabTitle(page: string, openIncidents: number): string {

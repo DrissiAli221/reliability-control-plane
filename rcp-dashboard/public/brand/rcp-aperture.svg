@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="140" viewBox="0 0 18 14" fill="none">
+  <title>RCP Aperture</title>
+  <desc>Stepped violet and lavender brackets surrounding a white square.</desc>
+  <defs>
+    <linearGradient id="violet" x1="2" y1="2" x2="8" y2="12" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9482ff"/>
+      <stop offset="0.48" stop-color="#7c63ff"/>
+      <stop offset="1" stop-color="#8a73ff"/>
+    </linearGradient>
+    <linearGradient id="lavender" x1="10" y1="1" x2="16" y2="12" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#c1b0ff"/>
+      <stop offset="0.5" stop-color="#ad94f8"/>
+      <stop offset="1" stop-color="#b5a1ff"/>
+    </linearGradient>
+    <linearGradient id="white" x1="8" y1="5" x2="10" y2="8" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eeeeed"/>
+    </linearGradient>
+  </defs>
+  <g shape-rendering="crispEdges">
+    <path fill="url(#violet)" d="M6 1h2v2H7v1H6v1H5v1H4v1h1v1h1v1h1v1h1v2H6v-1H5v-1H4V9H3V8H2V7H1V6h1V5h1V4h1V3h1V2h1Z"/>
+    <path fill="url(#lavender)" d="M12 1h-2v2h1v1h1v1h1v1h1v1h-1v1h-1v1h-1v1h-1v2h2v-1h1v-1h1V9h1V8h1V7h1V6h-1V5h-1V4h-1V3h-1V2h-1Z"/>
+    <path fill="url(#white)" d="M7.75 5.25h2.5v2.5h-2.5Z"/>
+  </g>
+</svg>

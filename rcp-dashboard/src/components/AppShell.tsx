@@ -1,5 +1,5 @@
 import { Activity, ArrowRight, BookOpen, Eye, ExternalLink, Gauge, LayoutList, LogOut, MoreHorizontal, Moon, Sun, Workflow } from "lucide-react";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { onboard, pipelineSnapshot } from "../api";
 import { isLocalAuth } from "../auth";
@@ -12,17 +12,32 @@ import { CommandPalette, PaletteButton } from "./CommandPalette";
 import { IncidentToasts } from "./IncidentToasts";
 import { StatusBar } from "./StatusBar";
 import { StatusDot } from "./StatusBadge";
+import { APERTURE_CORE, APERTURE_LEFT, APERTURE_RIGHT } from "../brand";
 import { TopBar } from "./TopBar";
 import { Tour } from "./Tour";
 
 const telemetryUrl = import.meta.env.VITE_GRAFANA_URL
   ?? (import.meta.env.DEV ? "http://localhost:3000/d/rcp-overview/rcp-overview" : null);
 
+/**
+ * The aperture mark: stepped violet and lavender brackets around a square. The square takes the text colour, so it
+ * stays visible on light pages; gradient ids are per instance because several marks can share a page.
+ */
 export function BrandMark() {
+  const id = useId();
   return (
-    <svg className="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="0.5" y="0.5" width="23" height="23" rx="6" />
-      <path d="M4.5 13h3.2l2-5.5 3.6 10 2.2-4.5h4" />
+    <svg className="brand-mark" viewBox="0 0 18 14" aria-hidden="true" shapeRendering="crispEdges">
+      <defs>
+        <linearGradient id={`${id}v`} x1="2" y1="2" x2="8" y2="12" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#9482ff" /><stop offset=".48" stopColor="#7c63ff" /><stop offset="1" stopColor="#8a73ff" />
+        </linearGradient>
+        <linearGradient id={`${id}l`} x1="10" y1="1" x2="16" y2="12" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#c1b0ff" /><stop offset=".5" stopColor="#ad94f8" /><stop offset="1" stopColor="#b5a1ff" />
+        </linearGradient>
+      </defs>
+      <path fill={`url(#${id}v)`} d={APERTURE_LEFT} />
+      <path fill={`url(#${id}l)`} d={APERTURE_RIGHT} />
+      <path fill="currentColor" d={APERTURE_CORE} />
     </svg>
   );
 }

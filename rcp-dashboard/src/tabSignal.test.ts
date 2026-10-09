@@ -9,7 +9,8 @@ describe("tab signal", () => {
   });
 
   it("turns the favicon red while an incident is open", () => {
-    expect(faviconSvg(false)).toContain('fill="#7c6cff"');
+    expect(faviconSvg(false)).toContain('fill="#7c63ff"');
+    expect(faviconSvg(false)).not.toContain('fill="#e5484d"');
     expect(faviconSvg(true)).toContain('fill="#e5484d"');
   });
 
