@@ -20,7 +20,7 @@ export type TraceSpan = { kind: SpanKind; startMs: number; endMs: number; tone?:
 export type TraceRow = { label: string; mono?: boolean; spans: TraceSpan[] };
 
 export const verdictRule: Record<Verdict, string> = {
-  UP: "every region returned a 2xx or 3xx response",
+  UP: "every region returned a status accepted by this check’s saved rule",
   DOWN: "every region reported a target failure",
   DISAGREEMENT: "regions disagreed, or a region had no target evidence",
   NO_DATA: "no region produced evidence about the target",
@@ -65,10 +65,11 @@ export function traceEvents(trace: ExecutionTrace): TraceEvent[] {
       const details: Array<[string, string]> = [["outcome", outcomeLabel(job.outcome, job.httpStatus)]];
       if (job.latencyMs != null) details.push(["latency", `${job.latencyMs} ms`]);
       if (job.responseBytes != null) details.push(["bytes", String(job.responseBytes)]);
+      if (job.botProtection === "CLOUDFLARE_CHALLENGE") details.push(["bot protection", "Cloudflare challenge"]);
       if (job.errorType) details.push(["error", job.errorType]);
       add({
         at: job.completedAt, type: "ProbeCompleted", category: "probe", region: job.region,
-        tone: outcomeTone(job.outcome, job.httpStatus), details,
+        tone: outcomeTone(job.outcome, job.httpStatus, trace.acceptedHttpStatuses), details,
       });
     }
     if (job.receivedAt) {
@@ -115,7 +116,7 @@ export function traceRows(trace: ExecutionTrace): { rows: TraceRow[]; totalMs: n
       spans: present([
         span("outbox", job.createdAt, job.publishedAt),
         span("queue", job.publishedAt, job.startedAt),
-        span("probe", job.startedAt, job.completedAt, job.outcome ? outcomeTone(job.outcome, job.httpStatus) : undefined),
+        span("probe", job.startedAt, job.completedAt, job.outcome ? outcomeTone(job.outcome, job.httpStatus, trace.acceptedHttpStatuses) : undefined),
         span("delivery", job.completedAt, job.receivedAt),
       ]),
     });

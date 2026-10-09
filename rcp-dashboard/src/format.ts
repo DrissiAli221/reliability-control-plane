@@ -82,8 +82,8 @@ export function outcomeLabel(outcome: string, httpStatus: number | null): string
 // Mirrors RegionalProbeFact: only network failures and HTTP responses are evidence about the target.
 const TARGET_FAILURES = new Set(["CONNECT_TIMEOUT", "REQUEST_TIMEOUT", "TLS_FAILURE", "CONNECTION_FAILURE"]);
 
-export function outcomeTone(outcome: string, httpStatus: number | null): Tone {
-  if (outcome === "HTTP_RESPONSE") return httpStatus != null && httpStatus >= 200 && httpStatus < 400 ? "good" : "fault";
+export function outcomeTone(outcome: string, httpStatus: number | null, acceptedHttpStatuses?: number[] | null): Tone {
+  if (outcome === "HTTP_RESPONSE") return httpStatus != null && (acceptedHttpStatuses ? acceptedHttpStatuses.includes(httpStatus) : httpStatus >= 200 && httpStatus < 400) ? "good" : "fault";
   return TARGET_FAILURES.has(outcome) ? "fault" : "muted";
 }
 

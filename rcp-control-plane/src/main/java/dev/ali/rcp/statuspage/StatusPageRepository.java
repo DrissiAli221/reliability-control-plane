@@ -25,12 +25,12 @@ public class StatusPageRepository {
         for (int index = 0; index < monitorIds.size(); index++) {
             parameters[index + 1] = monitorIds.get(index);
         }
-        Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM monitors WHERE owner_subject = ? AND monitor_id IN (" + placeholders + ")",
-                Integer.class,
+        List<UUID> owned = jdbcTemplate.queryForList(
+                "SELECT monitor_id FROM monitors WHERE owner_subject = ? AND deleted_at IS NULL AND monitor_id IN (" + placeholders + ") ORDER BY monitor_id FOR SHARE",
+                UUID.class,
                 parameters
         );
-        return count == null ? 0 : count;
+        return owned.size();
     }
 
     public void insertPage(UUID pageId, String ownerSubject, String name, String slug, boolean published) {
@@ -101,7 +101,7 @@ public class StatusPageRepository {
                     ORDER BY scheduled_at DESC, execution_id DESC
                     LIMIT 1
                 ) latest ON TRUE
-                WHERE membership.page_id = ?
+                WHERE membership.page_id = ? AND monitors.deleted_at IS NULL
                 ORDER BY membership.sort_order
                 """,
                 (resultSet, rowNumber) -> {

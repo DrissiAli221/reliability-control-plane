@@ -1,6 +1,7 @@
 package dev.ali.rcp;
 
 import dev.ali.rcp.monitors.Monitor;
+import dev.ali.rcp.monitors.MonitorHistoryRepository;
 import dev.ali.rcp.monitors.MonitorRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,11 +15,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
@@ -44,6 +48,9 @@ class MonitorHistoryApiTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private MonitorHistoryRepository historyRepository;
+
     private Monitor monitor;
     private Instant todayStart;
 
@@ -62,6 +69,37 @@ class MonitorHistoryApiTest {
         execution(todayStart.plusSeconds(60), "UP", http(EU, 200, 100), http(US, 200, 300));
         execution(todayStart.plusSeconds(120), "UP", http(EU, 200, 200), http(US, 200, 400));
         execution(todayStart.plusSeconds(180), "NO_DATA", failure(EU), failure(US));
+    }
+
+    @Test
+    void dailyEvidenceUsesUtcBoundariesRegardlessOfConnectionTimeZone() {
+        LocalDate day = LocalDate.of(2026, 1, 15);
+        Instant start = day.atStartOfDay(ZoneOffset.UTC).toInstant();
+        monitor = monitorRepository.saveAndFlush(Monitor.create(
+                "ali-subject", "UTC boundary monitor", "https://example.com", 60, 5_000,
+                start.minus(Duration.ofDays(2))
+        ));
+        execution(start.minusSeconds(1), "DOWN");
+        execution(start, "UP");
+        execution(start.plusSeconds(43_200), "UP");
+        execution(start.plusSeconds(86_399), "UP");
+        execution(start.plusSeconds(86_400), "DOWN");
+
+        for (String zone : List.of("UTC", "Africa/Casablanca", "America/Los_Angeles")) {
+            jdbcTemplate.queryForObject("SELECT set_config('TimeZone', ?, true)", String.class, zone);
+            var days = historyRepository.dailyEvidence(List.of(monitor.getId()), day.minusDays(1), day.plusDays(1))
+                    .get(monitor.getId());
+            assertThat(days).as("UTC buckets with connection zone %s", zone).hasSize(3);
+            assertThat(days.get(0).day()).isEqualTo(day.minusDays(1));
+            assertThat(days.get(0).up()).as("previous-day UP in %s", zone).isZero();
+            assertThat(days.get(0).down()).as("previous-day DOWN in %s", zone).isEqualTo(1);
+            assertThat(days.get(1).day()).isEqualTo(day);
+            assertThat(days.get(1).up()).as("same-day UP in %s", zone).isEqualTo(3);
+            assertThat(days.get(1).down()).as("same-day DOWN in %s", zone).isZero();
+            assertThat(days.get(2).day()).isEqualTo(day.plusDays(1));
+            assertThat(days.get(2).up()).isZero();
+            assertThat(days.get(2).down()).isEqualTo(1);
+        }
     }
 
     @Test

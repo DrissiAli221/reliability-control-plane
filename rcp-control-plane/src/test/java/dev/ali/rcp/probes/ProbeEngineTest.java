@@ -31,6 +31,16 @@ class ProbeEngineTest {
     }
 
     @Test
+    void carriesTheHeaderHintAsMetadataWithoutChangingTheHttpFact() {
+        ProbeEngine engine = engine(target -> target,
+                (url, timeout, maximumBodyBytes) -> new ProbeHttpResponse(403, 17, "CLOUDFLARE_CHALLENGE"));
+        ProbeResult result = engine.execute(job(NOW.plusSeconds(30)));
+        assertThat(result.outcome()).isEqualTo(ProbeOutcome.HTTP_RESPONSE);
+        assertThat(result.httpStatus()).isEqualTo(403);
+        assertThat(result.botProtection()).isEqualTo("CLOUDFLARE_CHALLENGE");
+    }
+
+    @Test
     void expiredJobNeverTouchesTheTarget() {
         AtomicBoolean called = new AtomicBoolean();
         ProbeEngine engine = engine(

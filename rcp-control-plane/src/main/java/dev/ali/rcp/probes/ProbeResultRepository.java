@@ -28,6 +28,12 @@ public class ProbeResultRepository {
         ) == 1;
     }
 
+    public boolean lockLiveMonitor(java.util.UUID monitorId) {
+        return !jdbcTemplate.queryForList(
+                "SELECT monitor_id FROM monitors WHERE monitor_id = ? AND deleted_at IS NULL FOR SHARE",
+                java.util.UUID.class, monitorId).isEmpty();
+    }
+
     public boolean insertResult(ProbeResult result) {
         return jdbcTemplate.update(
                 """
@@ -45,9 +51,9 @@ public class ProbeResultRepository {
                     latency_ms,
                     response_bytes,
                     error_type,
-                    monitor_behavior_version
+                    monitor_behavior_version, bot_protection
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (job_id) DO NOTHING
                 """,
                 result.jobId(),
@@ -62,7 +68,7 @@ public class ProbeResultRepository {
                 result.latencyMillis(),
                 result.responseBytes(),
                 result.errorType(),
-                result.monitorBehaviorVersion()
+                result.monitorBehaviorVersion(), result.botProtection()
         ) == 1;
     }
 

@@ -69,7 +69,8 @@ public class DataRetention {
         long outbox = deleteInBatches("""
                 DELETE FROM outbox_events WHERE event_id IN (
                     SELECT event_id FROM outbox_events
-                    WHERE published_at < CURRENT_TIMESTAMP - make_interval(days => ?)
+                    WHERE COALESCE(published_at, CASE WHEN last_error = 'monitor_deleted' THEN failed_at END)
+                          < CURRENT_TIMESTAMP - make_interval(days => ?)
                     LIMIT ?)
                 """);
         long messages = deleteInBatches("""
@@ -84,10 +85,11 @@ public class DataRetention {
     private int pruneExecutionBatch() {
         List<UUID> ids = jdbc.queryForList("""
                 SELECT e.execution_id FROM probe_executions e
-                WHERE e.status = 'FINALIZED'
+                WHERE (e.status = 'FINALIZED' OR EXISTS (SELECT 1 FROM monitors m WHERE m.monitor_id = e.monitor_id AND m.deleted_at IS NOT NULL))
                   AND e.scheduled_at < CURRENT_TIMESTAMP - make_interval(days => ?)
                   -- Finalized only means the regions answered; the incident decision is a separate, later step.
-                  AND EXISTS (SELECT 1 FROM incident_evaluations done WHERE done.execution_id = e.execution_id)
+                  AND (EXISTS (SELECT 1 FROM incident_evaluations done WHERE done.execution_id = e.execution_id)
+                       OR EXISTS (SELECT 1 FROM monitors m WHERE m.monitor_id = e.monitor_id AND m.deleted_at IS NOT NULL))
                   -- Incident processing reads the monitor's last evaluated check to detect a changed configuration,
                   -- which after a long pause can be far older than the history window.
                   AND NOT EXISTS (SELECT 1 FROM monitor_incident_state s

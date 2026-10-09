@@ -1,3 +1,5 @@
+import { AcceptedStatusCodesField } from "./AcceptedStatusCodesField";
+import { parseStatusCodes } from "../statusCodes";
 import { X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useSession } from "../session";
@@ -38,6 +40,7 @@ export function CreateMonitorDialog({ onClose, onCreate }: {
         targetUrl: String(data.get("targetUrl")).trim(),
         checkIntervalSeconds: Number(data.get("checkIntervalSeconds")),
         timeoutMs: Number(data.get("timeoutMs")),
+        acceptedHttpStatuses: parseStatusCodes(String(data.get("acceptedHttpStatuses") ?? "")),
       });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Monitor could not be created");
@@ -47,7 +50,7 @@ export function CreateMonitorDialog({ onClose, onCreate }: {
 
   return (
     <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section className="dialog" role="dialog" aria-modal="true" aria-labelledby="create-title" ref={dialog}>
+      <section className="dialog monitor-settings" role="dialog" aria-modal="true" aria-labelledby="create-title" ref={dialog}>
         <header className="dialog-header">
           <div>
             <h2 id="create-title">Create monitor</h2>
@@ -79,6 +82,7 @@ export function CreateMonitorDialog({ onClose, onCreate }: {
               </select>
             </label>
           </div>
+          <AcceptedStatusCodesField disabled={saving} />
           {error && <p className="form-error" role="alert">{error}</p>}
           <footer className="dialog-actions">
             <button type="button" className="button secondary" onClick={onClose}>Cancel</button>
