@@ -47,6 +47,22 @@ public class Monitor {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.ARRAY)
+    @Column(name = "accepted_http_statuses", columnDefinition = "integer[]")
+    private Integer[] acceptedHttpStatuses;
+
+    public java.util.List<Integer> getAcceptedHttpStatuses() {
+        return acceptedHttpStatuses == null ? null : java.util.List.copyOf(java.util.Arrays.asList(acceptedHttpStatuses));
+    }
+
+    public void changeAcceptedHttpStatuses(java.util.List<Integer> codes, Instant now) {
+        java.util.List<Integer> normalized = dev.ali.rcp.monitors.AcceptedHttpStatuses.normalize(codes);
+        if (java.util.Objects.equals(getAcceptedHttpStatuses(), normalized)) return;
+        acceptedHttpStatuses = normalized == null ? null : normalized.toArray(Integer[]::new);
+        behaviorVersion++;
+        updatedAt = now;
+    }
+
     @Column(name = "deleted_at")
     private Instant deletedAt;
 

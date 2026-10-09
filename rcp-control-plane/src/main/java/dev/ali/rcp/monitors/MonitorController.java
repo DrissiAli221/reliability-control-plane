@@ -60,6 +60,12 @@ public class MonitorController {
         return ResponseEntity.created(location).body(response);
     }
 
+    @PatchMapping("/{monitorId}")
+    public MonitorResponse setAcceptedHttpStatuses(@PathVariable UUID monitorId,
+            @Valid @RequestBody UpdateMonitorStatusCodesRequest request, Authentication authentication) {
+        return monitorService.setAcceptedHttpStatuses(authentication.getName(), monitorId, request.acceptedHttpStatuses());
+    }
+
     @org.springframework.web.bind.annotation.DeleteMapping("/{monitorId}")
     public ResponseEntity<Void> delete(@PathVariable UUID monitorId, Authentication authentication) {
         monitorService.delete(authentication.getName(), monitorId);

@@ -68,6 +68,32 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
   /api/monitors/{monitorId}:
+    patch:
+      operationId: setAcceptedHttpStatuses
+      summary: Change the accepted HTTP statuses for future checks only
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [acceptedHttpStatuses]
+              properties:
+                acceptedHttpStatuses:
+                  $ref: '#/components/schemas/AcceptedHttpStatuses'
+      responses:
+        '200':
+          description: Updated monitor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Monitor'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          description: Read-only demo role cannot change statuses
     delete:
       summary: Delete an owned monitor
       description: Soft deletion stops scheduling, frees quota, removes public-page memberships and discards late results. Retained evidence is hidden; this is not a data-erasure endpoint.
@@ -638,10 +664,22 @@ components:
           type: string
         instance:
           type: string
+    AcceptedHttpStatuses:
+      type: array
+      nullable: true
+      description: Null or omitted on create means 200–399. An explicit set replaces the default; each execution snapshots its rule. Duplicate entries are normalized and sorted. Null on PATCH restores the default; omitting the PATCH field is invalid.
+      minItems: 1
+      maxItems: 500
+      items:
+        type: integer
+        minimum: 100
+        maximum: 599
     CreateMonitorRequest:
       type: object
       required: [name, targetUrl, checkIntervalSeconds, timeoutMs]
       properties:
+        acceptedHttpStatuses:
+          $ref: '#/components/schemas/AcceptedHttpStatuses'
         name:
           type: string
           minLength: 1
@@ -663,6 +701,8 @@ components:
       type: object
       required: [id, name, targetUrl, checkIntervalSeconds, timeoutMs, enabled, nextCheckAt, createdAt]
       properties:
+        acceptedHttpStatuses:
+          $ref: '#/components/schemas/AcceptedHttpStatuses'
         id:
           type: string
           format: uuid
@@ -972,6 +1012,8 @@ components:
                 nullable: true
               lastOutcome:
                 type: string
+              lastAcceptedHttpStatuses:
+                $ref: '#/components/schemas/AcceptedHttpStatuses'
               lastHttpStatus:
                 type: integer
                 nullable: true
@@ -986,6 +1028,8 @@ components:
           items:
             type: object
             properties:
+              acceptedHttpStatuses:
+                $ref: '#/components/schemas/AcceptedHttpStatuses'
               executionId:
                 type: string
                 format: uuid
@@ -1087,6 +1131,8 @@ components:
     ExecutionTrace:
       type: object
       properties:
+        acceptedHttpStatuses:
+          $ref: '#/components/schemas/AcceptedHttpStatuses'
         executionId:
           type: string
           format: uuid

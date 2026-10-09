@@ -85,7 +85,7 @@ public class PipelineRepository {
         return jdbcTemplate.query(
                 """
                 SELECT execution_id, monitor_id, scheduled_at, created_at, result_deadline_at,
-                       status, verdict, finalized_at, expected_region_count
+                       status, verdict, finalized_at, expected_region_count, accepted_http_statuses_snapshot
                 FROM probe_executions
                 WHERE execution_id = ? AND monitor_id = ?
                 """,
@@ -100,7 +100,8 @@ public class PipelineRepository {
                         instant(resultSet, "finalized_at"),
                         resultSet.getInt("expected_region_count"),
                         jobs,
-                        evaluation.stream().findFirst().orElse(null)
+                        evaluation.stream().findFirst().orElse(null),
+                        dev.ali.rcp.monitors.AcceptedHttpStatuses.read(resultSet,"accepted_http_statuses_snapshot")
                 ),
                 executionId, monitorId
         ).stream().findFirst();

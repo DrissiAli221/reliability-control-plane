@@ -89,6 +89,7 @@ public class MonitorService {
                 databaseNow()
         );
 
+        monitor.changeAcceptedHttpStatuses(request.acceptedHttpStatuses(), monitor.getCreatedAt());
         Monitor saved = monitorRepository.saveAndFlush(monitor);
 
         return MonitorResponse.from(saved);
@@ -108,6 +109,15 @@ public class MonitorService {
             safeTargetPolicy.validateAndNormalize(monitor.getTargetUrl());
         }
         monitor.changeEnabled(enabled, databaseNow());
+        monitorRepository.flush();
+        return MonitorResponse.from(monitor);
+    }
+
+    @Transactional
+    public MonitorResponse setAcceptedHttpStatuses(String ownerSubject, UUID monitorId, java.util.List<Integer> codes) {
+        Monitor monitor = monitorRepository.findOwnedForUpdate(monitorId, ownerSubject)
+                .orElseThrow(MonitorNotFoundException::new);
+        monitor.changeAcceptedHttpStatuses(codes, databaseNow());
         monitorRepository.flush();
         return MonitorResponse.from(monitor);
     }

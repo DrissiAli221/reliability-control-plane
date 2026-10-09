@@ -43,7 +43,7 @@ public class SchedulingRepository {
                     check_interval_seconds,
                     timeout_ms,
                     behavior_version,
-                    next_check_at
+                    next_check_at, accepted_http_statuses
                 FROM monitors
                 WHERE deleted_at IS NULL AND enabled = TRUE
                   AND next_check_at <= CURRENT_TIMESTAMP
@@ -65,7 +65,8 @@ public class SchedulingRepository {
                         resultSet.getObject(
                                 "next_check_at",
                                 OffsetDateTime.class
-                        ).toInstant()
+                        ).toInstant(),
+                        dev.ali.rcp.monitors.AcceptedHttpStatuses.read(resultSet, "accepted_http_statuses")
                 ),
                 batchSize
         );
@@ -90,11 +91,11 @@ public class SchedulingRepository {
                     timeout_ms_snapshot,
                     monitor_behavior_version,
                     incident_policy_version,
-                    expected_region_count,
+                    expected_region_count, accepted_http_statuses_snapshot,
                     status,
                     created_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', CURRENT_TIMESTAMP)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS integer[]), 'PENDING', CURRENT_TIMESTAMP)
                 """,
                 executionId,
                 monitor.monitorId(),
@@ -104,7 +105,8 @@ public class SchedulingRepository {
                 monitor.timeoutMs(),
                 monitor.behaviorVersion(),
                 incidentPolicyVersion,
-                expectedRegionCount
+                expectedRegionCount,
+                dev.ali.rcp.monitors.AcceptedHttpStatuses.databaseValue(monitor.acceptedHttpStatuses())
         );
 
         requireOneChangedRow("insert probe execution", changedRows);

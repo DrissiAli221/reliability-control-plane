@@ -21,16 +21,25 @@ public record MonitorHistory(
             String lastOutcome,
             Integer lastHttpStatus,
             Long lastLatencyMs,
-            Instant lastCompletedAt
+            Instant lastCompletedAt,
+            List<Integer> lastAcceptedHttpStatuses
     ) {
+        public RegionSummary(String region, long httpSamples, Long p50Ms, Long p95Ms, String lastOutcome,
+                Integer lastHttpStatus, Long lastLatencyMs, Instant lastCompletedAt) {
+            this(region,httpSamples,p50Ms,p95Ms,lastOutcome,lastHttpStatus,lastLatencyMs,lastCompletedAt,null);
+        }
     }
 
     public record RecentCheck(
             UUID executionId,
             Instant scheduledAt,
             String verdict,
-            List<RegionResult> results
+            List<RegionResult> results,
+            List<Integer> acceptedHttpStatuses
     ) {
+        public RecentCheck(UUID executionId, Instant scheduledAt, String verdict, List<RegionResult> results) {
+            this(executionId, scheduledAt, verdict, results, null);
+        }
     }
 
     public record RegionResult(

@@ -19,8 +19,14 @@ public record ExecutionTrace(
         Instant finalizedAt,
         int expectedRegionCount,
         List<JobTrace> jobs,
-        Evaluation evaluation
+        Evaluation evaluation,
+        List<Integer> acceptedHttpStatuses
 ) {
+
+    public ExecutionTrace(UUID executionId, UUID monitorId, Instant scheduledAt, Instant createdAt, Instant resultDeadlineAt,
+            String status, String verdict, Instant finalizedAt, int expectedRegionCount, List<JobTrace> jobs, Evaluation evaluation) {
+        this(executionId,monitorId,scheduledAt,createdAt,resultDeadlineAt,status,verdict,finalizedAt,expectedRegionCount,jobs,evaluation,null);
+    }
 
     public record JobTrace(
             UUID jobId,

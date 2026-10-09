@@ -84,10 +84,10 @@ public class MonitorHistoryRepository {
         jdbcTemplate.query(
                 """
                 SELECT DISTINCT ON (probe_region)
-                       probe_region, outcome, http_status, latency_ms, completed_at
-                FROM probe_results
-                WHERE monitor_id = ? AND scheduled_at >= ?
-                ORDER BY probe_region, scheduled_at DESC
+                       probe_region, outcome, http_status, latency_ms, completed_at, executions.accepted_http_statuses_snapshot
+                FROM probe_results results JOIN probe_executions executions ON executions.execution_id = results.execution_id
+                WHERE results.monitor_id = ? AND results.scheduled_at >= ?
+                ORDER BY probe_region, results.scheduled_at DESC
                 """,
                 resultSet -> {
                     String region = resultSet.getString("probe_region");
@@ -96,7 +96,8 @@ public class MonitorHistoryRepository {
                             resultSet.getString("outcome"),
                             resultSet.getObject("http_status", Integer.class),
                             resultSet.getLong("latency_ms"),
-                            resultSet.getObject("completed_at", OffsetDateTime.class).toInstant()
+                            resultSet.getObject("completed_at", OffsetDateTime.class).toInstant(),
+                            dev.ali.rcp.monitors.AcceptedHttpStatuses.read(resultSet, "accepted_http_statuses_snapshot")
                     ));
                 },
                 monitorId, timestamp(since)
@@ -123,7 +124,7 @@ public class MonitorHistoryRepository {
                             latest.lastOutcome(),
                             latest.lastHttpStatus(),
                             latest.lastLatencyMs(),
-                            latest.lastCompletedAt()
+                            latest.lastCompletedAt(), latest.lastAcceptedHttpStatuses()
                     ));
                 },
                 monitorId, timestamp(since)
@@ -135,10 +136,10 @@ public class MonitorHistoryRepository {
         Map<UUID, MonitorHistory.RecentCheck> checks = new LinkedHashMap<>();
         jdbcTemplate.query(
                 """
-                SELECT executions.execution_id, executions.scheduled_at, executions.verdict,
+                SELECT executions.execution_id, executions.scheduled_at, executions.verdict, executions.accepted_http_statuses_snapshot,
                        results.probe_region, results.outcome, results.http_status, results.latency_ms
                 FROM (
-                    SELECT execution_id, scheduled_at, verdict
+                    SELECT execution_id, scheduled_at, verdict, accepted_http_statuses_snapshot
                     FROM probe_executions
                     WHERE monitor_id = ? AND status = 'FINALIZED'
                     ORDER BY scheduled_at DESC
@@ -151,8 +152,9 @@ public class MonitorHistoryRepository {
                     UUID executionId = resultSet.getObject("execution_id", UUID.class);
                     Instant scheduledAt = resultSet.getObject("scheduled_at", OffsetDateTime.class).toInstant();
                     String verdict = resultSet.getString("verdict");
+                    List<Integer> accepted = dev.ali.rcp.monitors.AcceptedHttpStatuses.read(resultSet, "accepted_http_statuses_snapshot");
                     MonitorHistory.RecentCheck check = checks.computeIfAbsent(executionId,
-                            id -> new MonitorHistory.RecentCheck(id, scheduledAt, verdict, new ArrayList<>()));
+                            id -> new MonitorHistory.RecentCheck(id, scheduledAt, verdict, new ArrayList<>(), accepted));
                     String region = resultSet.getString("probe_region");
                     if (region != null) {
                         check.results().add(new MonitorHistory.RegionResult(
@@ -167,7 +169,7 @@ public class MonitorHistoryRepository {
         );
         return checks.values().stream()
                 .map(check -> new MonitorHistory.RecentCheck(
-                        check.executionId(), check.scheduledAt(), check.verdict(), List.copyOf(check.results())))
+                        check.executionId(), check.scheduledAt(), check.verdict(), List.copyOf(check.results()), check.acceptedHttpStatuses()))
                 .toList();
     }
 

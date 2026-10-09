@@ -56,15 +56,16 @@ public class ExecutionFinalizationRepository {
     public List<RegionalProbeFact> findFacts(UUID executionId) {
         return jdbcTemplate.query(
                 """
-                SELECT probe_region, outcome, http_status
-                FROM probe_results
-                WHERE execution_id = ?
+                SELECT probe_region, outcome, http_status, executions.accepted_http_statuses_snapshot
+                FROM probe_results results JOIN probe_executions executions ON executions.execution_id = results.execution_id
+                WHERE results.execution_id = ?
                 ORDER BY probe_region
                 """,
                 (resultSet, rowNumber) -> new RegionalProbeFact(
                         resultSet.getString("probe_region"),
                         ProbeOutcome.valueOf(resultSet.getString("outcome")),
-                        resultSet.getObject("http_status", Integer.class)
+                        resultSet.getObject("http_status", Integer.class),
+                        dev.ali.rcp.monitors.AcceptedHttpStatuses.read(resultSet, "accepted_http_statuses_snapshot")
                 ),
                 executionId
         );
