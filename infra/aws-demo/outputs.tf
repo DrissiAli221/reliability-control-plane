@@ -70,13 +70,13 @@ output "server_application_json" {
         result-visibility-timeout-seconds = 60
       }
       monitors = {
-        max-per-owner        = 3
+        max-per-owner        = 5
         min-interval-seconds = 60
         max-total            = 8
         max-timeout-ms       = 5000
       }
       demo = {
-        monitors            = "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org, Scheduled outage drill|${var.api_origin}/drill/status.html"
+        monitors            = "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org, Scheduled outage drill|${var.api_origin}/drill/status.html, GitHub Status|https://www.githubstatus.com/api/v2/status.json, Cloudflare Status|https://www.cloudflarestatus.com/api/v2/status.json"
         example-monitor-url = "https://example.com"
       }
     }

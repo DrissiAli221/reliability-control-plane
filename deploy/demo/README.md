@@ -13,12 +13,13 @@ half is documented in [`infra/aws-demo`](../../infra/aws-demo/README.md).
 
 - Deploy an application release that supports expired-session handling,
   stale public status data, backend read-only `demo` group, 60-second minimum,
-  8 global/3 owner monitor caps, maximum 5-second check timeout, example seeding,
+  8 global/5 owner monitor caps, maximum 5-second check timeout, example seeding,
   and `/api/demo/session`. Verify backend group enforcement, concurrent quota
   protection, and the 30/minute demo-login limit for the single backend.
   Stock Caddy does not add another login rate limiter here.
-- The shared demo account must retain `demo` membership. The backend seeds its three
-  monitors (Example Domain, Wikipedia, and Scheduled outage drill) on startup
+- The shared demo account must retain `demo` membership. The backend seeds five
+  monitors (Example Domain, Wikipedia, Scheduled outage drill, GitHub Status,
+  and Cloudflare Status) on startup
   using the Cognito UUID `sub`. Capture that subject during provisioning; do not substitute its
   email or remove group membership to seed monitors.
 - Establish the AWS budget alert before creating application resources.
@@ -302,35 +303,79 @@ Obtain deployment approval **before apply**; server installation alone does not
 update those probes. Publish the rebuilt dashboard using the next section so
 its schedule agrees with the server.
 
-### Add the monitor to the existing deployment
+### Upgrade the existing demo fleet without losing history
 
-New generated configuration seeds three monitors, using the configured HTTPS
-API origin for the drill target, while keeping the global cap **8** and owner
-quota **3**. On startup the backend adds any configured demo monitor the workspace
-lacks (matched by name) and leaves existing monitors and their history alone, so
-adding an entry to `rcp.demo.monitors` and restarting is enough. Never delete its
-existing monitors or remove its `demo` group to reseed.
+New generated configuration seeds **five** monitors and sets **5 per owner / 8
+globally**, with the same 60-second minimum interval and 5-second maximum timeout.
+The owner limit applies to every owner, not only the shared account. Example
+Domain, Wikipedia and our drill remain; GitHub Status and Cloudflare Status are
+added as small public JSON endpoints. These checks measure the availability of
+those HTTP endpoints, **not** the provider-wide health reported inside the JSON.
+All public targets still go through the probes' safe-address validation; there is
+no new named-host allowlist or third-party fault injection.
 
-The live demo received the drill monitor before that behaviour existed. For a
-deployment running an older backend, after verifying the drill URL returns 200, download
-and verify a database backup using the backup instructions below. Then, from
-`/opt/rcp/deploy/demo`, run this operator-only transaction:
+On startup, the backend adds missing configured demo monitors matched by name
+and retains existing monitors and history. Never remove the `demo` group, delete
+monitors or replace the stored Cognito `sub` to reseed. Inspect current monitor
+counts first: five configured targets cannot fit if an existing workspace or the
+global fleet already fills either cap. The settings do not evict existing monitors.
+
+After taking a verified off-host backup, update the existing private configuration
+on the VM. The helper preserves identity, URLs, queue maps and unrelated settings,
+refuses unreviewed quota/timeout changes, adds only missing target URLs, and writes
+atomically. It requires private permissions and preserves file ownership. Do not
+rerun the new-deployment generator over existing configuration.
 
 ```sh
-docker compose exec -T postgres psql -X -U rcp -d rcp -v ON_ERROR_STOP=1 \
-  -v demo_subject="$(cat secrets/demo_owner_subject)" \
-  < scripts/add-drill-monitor.sql
+set -e
+cd /opt/rcp
+sudo test ! -e deploy/demo/secrets/application.before-variety.json
+sudo install -m 600 deploy/demo/secrets/application.json deploy/demo/secrets/application.before-variety.json
+sudo chmod 600 deploy/demo/secrets/application.json
+if ! sudo python3 deploy/demo/scripts/configure-variety.py deploy/demo/secrets/application.json; then
+  sudo chmod 444 deploy/demo/secrets/application.json
+  exit 1
+fi
+sudo chmod 444 deploy/demo/secrets/application.json
+cd deploy/demo
+docker compose --profile monitoring up -d --no-deps --force-recreate --wait --wait-timeout 180 control-plane
+curl -fsS https://rcp-ali.duckdns.org/healthz
 ```
 
-This uses the locally stored Cognito subject, not an email or login credential.
-It adds only the fixed `rcp-ali.duckdns.org` target, retains all existing history,
-and leaves the read-only group untouched. The transaction checks both quotas,
-requires an existing workspace, and does nothing if that owner already monitors
-the drill URL. It locks monitor writes briefly while checking capacity; the
-existing trigger creates schedule history. If a quota is full or the subject is
-wrong, it fails without adding anything. Verify the new monitor in the demo UI;
-no backend restart is required. This SQL is for the named live deployment only:
-review its fixed URL before using it on a different hostname.
+Keep `secrets/` mode 0700; 0444 on the mounted application file lets container UID
+10001 read it. The protected backup is 0600. Omit `--profile monitoring` if Alloy
+is not installed. **Recreate**, rather than merely restart, the backend because
+an atomic replacement must be rebound into its file-backed Compose secret.
+Check the demo UI now contains five targets and that `/api/me` reports the
+approved quotas. Existing history stays attached to the same monitor IDs.
+
+For an older backend that cannot add missing demo targets on startup, use the
+operator-only SQL helper after the configuration update. First confirm the existing
+workspace belongs to the stored subject and has capacity:
+
+```sh
+cd /opt/rcp/deploy/demo
+docker compose exec -T postgres psql -X -U rcp -d rcp -v ON_ERROR_STOP=1 \
+  -v demo_subject="$(cat secrets/demo_owner_subject)" \
+  < scripts/add-demo-variety.sql
+```
+
+It adds only the two fixed status endpoints, deduplicated by owner and URL. The
+transaction takes a brief table lock, validates the existing subject, and refuses
+to exceed either cap; failure adds nothing. It leaves other owners, existing
+history, scheduling triggers and group membership alone. The older
+`add-drill-monitor.sql` remains available for a workspace missing the drill itself;
+its quota check now also uses five. These helpers do not delete monitors to make
+space. Verify the backend version and existing names before choosing the startup
+seeder or SQL path.
+
+For configuration rollback, disable the drill timer and restore the endpoint
+first. Restore `application.before-variety.json` with private permissions, set
+0444 inside the protected directory, and recreate the backend. This restores the
+old configuration, **not** the database: newly seeded monitors and history remain.
+Do not downgrade to the owner quota of three while five monitors remain without
+reviewing that workspace. Keep the previous responder/dashboard release together
+if rolling back the schedule version.
 
 ## Publish the dashboard
 
@@ -472,7 +517,7 @@ python3 deploy/demo/scripts/local-smoke.py --build --phase2
 ```
 
 This second mode uses local JWTs, enables the demo configuration, disables
-both queue polling and local workers, and verifies the seeded demo UUID, three
+both queue polling and local workers, and verifies the seeded demo UUID, five
 monitors, server-side read-only rejection, 60-second/5-second limits, and one-time
 onboarding. It uses a fresh local database, not the developer's running services.
 The local token endpoint exists only in this loopback test's `local` profile;
