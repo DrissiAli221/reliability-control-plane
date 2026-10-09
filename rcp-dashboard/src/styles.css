@@ -1757,3 +1757,18 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
   .rolling-strip, .signin-go, .drill-meter-now { transition: none; }
   .button:active:not(:disabled), .icon-button:active:not(:disabled), .segmented button:active, .chip:active:not(.static) { transform: none; filter: brightness(1.2); }
 }
+
+/* ---------- Lit from the top ----------
+   Every coloured fill reads like a key of the same keyboard as the buttons: a soft sheen and a one-pixel highlight on
+   the top edge, nothing at the sides or the foot. Listed in one place so a new fill joins by adding its selector.
+   Fills too small to carry an edge (the 2px dots of the 3×3 status matrix) stay flat on purpose. */
+:is(
+  .segment.up, .segment.down, .segment.disagreement, .segment.no-data,
+  .span.staging, .span.outbox, .span.queue, .span.probe, .span.delivery, .span.finalize,
+  .check-verdict > i, .check-bar b, .preview-track i, .preview-tape i,
+  .tracker-swatch, .tracker-legend i, .evidence-legend i:not(.unscheduled), .chip i.p50, .chip i.incident, .segment.pending,
+  .chart-tip-incident i, .tip-swatch, .event-type i, .tour-progress i.done
+) { background-image: var(--key-sheen); box-shadow: var(--key-edge); }
+/* Status badges and chips are small keys too: the button's sheen and lit top edge on their tinted face. */
+:is(.badge, .chip) { background-image: var(--key-sheen); box-shadow: var(--key-edge); }
+:root[data-theme="light"] :is(.badge, .chip) { box-shadow: inset 0 1px 0.4px rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(10, 10, 11, 0.06); }

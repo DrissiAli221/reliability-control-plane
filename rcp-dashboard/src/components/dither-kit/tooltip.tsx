@@ -110,7 +110,7 @@ export function Tooltip({
               return (
                 <div key={item.name} className="contents">
                   <span
-                    className="size-2 rounded-[1px]"
+                    className="tip-swatch size-2"
                     style={{ backgroundColor: rgb(item.seed.fill), opacity }}
                   />
                   <span className="text-muted-foreground" style={{ opacity }}>
