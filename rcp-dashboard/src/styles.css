@@ -39,6 +39,9 @@
   --lift-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
   --lift-pressed: inset 0 0 0 1px var(--lift-ring), inset 0 1px 2px rgba(0, 0, 0, 0.35);
   --lift-pressed-accent: inset 0 0 0 1px var(--lift-ring-accent), inset 0 1px 2px rgba(0, 0, 0, 0.35);
+  /* Coloured keys (meter blocks, chart segments): lit from the top only, like the buttons. */
+  --key-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 70%);
+  --key-edge: inset 0 1px 0.4px rgba(255, 255, 255, 0.4);
 
   --green: #30a46c;
   --green-text: #4cc38a;
@@ -367,8 +370,8 @@ a { color: inherit; }
 .blocks > b > i.fill {
   left: 0; transform-origin: left; animation: block-grow 400ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   /* Lit like the buttons, from the top only: a soft sheen and a one-pixel highlight on the top edge; no rim, no shaded foot. */
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 70%), var(--hue);
-  box-shadow: inset 0 1px 0.4px rgba(255, 255, 255, 0.4);
+  background: var(--key-sheen), var(--hue);
+  box-shadow: var(--key-edge);
 }
 .blocks > b > i.short { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--hue) 75%, transparent) 0 1.5px, transparent 1.5px 4px); }
 @keyframes block-grow { from { transform: scaleX(0); } }
@@ -378,11 +381,8 @@ a { color: inherit; }
 /* The compact uptime tracker in a tile: same keys, a day is a stack of outcomes under one rim and highlight. */
 .metric-visual .tracker.compact .tracker-bar { position: relative; border-radius: 0; background: var(--well); }
 .metric-visual .tracker.compact .tracker-bar i + i { box-shadow: none; }
-.metric-visual .tracker.compact .tracker-bar:has(i)::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 70%);
-  box-shadow: inset 0 1px 0.4px rgba(255, 255, 255, 0.4);
-}
+.metric-visual .tracker.compact .tracker-bar i.lit { box-shadow: var(--key-edge); }
+
 
 /* ---------- Panels & tables ---------- */
 .panel { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
@@ -558,10 +558,10 @@ a { color: inherit; }
 .tracker-bar { display: flex; flex-direction: column; overflow: hidden; }
 .tracker-bar i { display: block; min-height: 0; flex-basis: 0; }
 .tracker-bar i + i { box-shadow: 0 -1px 0 var(--surface); }
-.tracker-bar i.up { background: var(--green); }
-.tracker-bar i.down { background: var(--red); }
-.tracker-bar i.disagreement { background: var(--amber); }
-.tracker-bar i.no-data { background: var(--gray-bar); }
+.tracker-bar i.up { background-color: var(--green); }
+.tracker-bar i.down { background-color: var(--red); }
+.tracker-bar i.disagreement { background-color: var(--amber); }
+.tracker-bar i.no-data { background-color: var(--gray-bar); }
 .tracker-bars:hover .tracker-bar:not(.active) { opacity: 0.55; }
 .tracker-axis { display: flex; justify-content: space-between; margin-top: 8px; }
 .tracker-tooltip {
@@ -770,12 +770,13 @@ a { color: inherit; }
 :root[data-theme="light"] .nav-item.active, :root[data-theme="light"] .nav-item.active:active { background: var(--surface); box-shadow: inset 0 0 0 1px var(--border), inset 2px 0 0 var(--accent); }
 :root[data-theme="light"] .statusbar { background: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none; }
 :root[data-theme="light"] .hero-stats div { background: var(--surface); }
-:root[data-theme="light"] .timeline-span { background: color-mix(in srgb, var(--red) 85%, var(--surface)); }
+:root[data-theme="light"] .timeline-span { background-color: color-mix(in srgb, var(--red) 85%, var(--surface)); }
 :root[data-theme="light"] .drill-meter-cells i b { background: #c6c6cd; }
 :root[data-theme="light"] .led i { opacity: 0.4; }
 :root[data-theme="light"] .heatmap { --heat: #0e7490; }
 :root[data-theme="light"] .heatmap-grid i:not(.hot) { opacity: 0.7; }
 :root[data-theme="light"] .tracker-bar i + i { box-shadow: 0 -1px 0 var(--surface); }
+:root[data-theme="light"] .tracker-bar i + i.lit { box-shadow: 0 -1px 0 var(--surface), var(--key-edge); }
 
 /* ---- Light depth: modules are separate white cards floating on the page, with gaps and soft layered shadows.
    Dark keeps its touching hardware-panel grid. Cells inside a module (tiles, steps, nodes, rows) still share hairlines. ---- */
@@ -1200,8 +1201,8 @@ a { color: inherit; }
 .fleet-cells i:is(.good, .fault, .warn, .muted) {
   --hue: var(--green);
   /* Lit like the buttons, from the top only: a soft sheen and a one-pixel highlight on the top edge; no rim, no shaded foot. */
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 70%), var(--hue);
-  box-shadow: inset 0 1px 0.4px rgba(255, 255, 255, 0.4);
+  background: var(--key-sheen), var(--hue);
+  box-shadow: var(--key-edge);
 }
 .fleet-cells i.fault { --hue: var(--red); }
 .fleet-cells i.warn { --hue: var(--amber); }
@@ -1274,11 +1275,11 @@ a { color: inherit; }
 @container (max-width: 64px) { .pulse-idle-label i { display: none; } }
 .pulse-bar i { display: block; flex-basis: 0; min-height: 0; }
 .pulse-bar i + i { box-shadow: 0 -1px 0 var(--surface); }
-.pulse-bar i.up { background: var(--green); }
-.pulse-bar:has(i.down, i.disagreement, i.no-data) i.up { background: var(--green-muted); }
-.pulse-bar i.down { background: var(--red); }
-.pulse-bar i.disagreement { background: var(--amber); }
-.pulse-bar i.no-data { background: var(--no-data); }
+.pulse-bar i.up { background-color: var(--green); }
+.pulse-bar:has(i.down, i.disagreement, i.no-data) i.up { background-color: var(--green-muted); }
+.pulse-bar i.down { background-color: var(--red); }
+.pulse-bar i.disagreement { background-color: var(--amber); }
+.pulse-bar i.no-data { background-color: var(--no-data); }
 .pulse-bars:hover .pulse-bar:not(.active) { opacity: 0.5; }
 .pulse-axis { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; line-height: 14px; color: var(--text-3); }
 
@@ -1289,8 +1290,11 @@ a { color: inherit; }
 }
 .timeline-tick { position: absolute; top: -1px; bottom: -1px; width: 1px; background: var(--border); }
 .timeline-tick em { position: absolute; bottom: 100%; left: 0; transform: translateX(-50%); margin-bottom: 3px; font-style: normal; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-3); }
-.timeline-span { position: absolute; top: 8px; bottom: 8px; min-width: 3px; background: color-mix(in srgb, var(--red) 70%, transparent); transition: filter 120ms; }
+.timeline-span { position: absolute; top: 8px; bottom: 8px; min-width: 3px; background-color: color-mix(in srgb, var(--red) 70%, transparent); transition: filter 120ms; }
 .timeline-span:hover { filter: brightness(1.3); }
+/* Lit from the top like the buttons and blocks: a soft sheen and a one-pixel highlight on the top edge. */
+.timeline-span, .pulse-bar i.lit, .tracker-bar i.lit { background-image: var(--key-sheen); box-shadow: var(--key-edge); }
+.pulse-bar i + i.lit, .tracker-bar i + i.lit { box-shadow: 0 -1px 0 var(--surface), var(--key-edge); }
 .timeline-span.open { background: repeating-linear-gradient(135deg, var(--red) 0 4px, color-mix(in srgb, var(--red) 55%, transparent) 4px 8px); }
 .timeline-now { position: absolute; top: 0; bottom: 0; right: 0; width: 2px; background: var(--surface); }
 .timeline-empty { font-size: 13px; }
@@ -1530,11 +1534,11 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 }
 .decision-times button:hover { background: var(--surface-hover); }
 .decision-monitor { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.decision-track { height: 6px; background: var(--gray-bg); }
-.decision-track b { display: block; height: 100%; min-width: 2px; background: var(--no-data); transform-origin: left; animation: sweep 420ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
-.decision-track b.good { background: var(--green); }
-.decision-track b.fault { background: var(--red); }
-.decision-track b.warn { background: var(--amber); }
+.decision-track { height: 8px; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--text-3) 22%, transparent) 0 1px, transparent 1px 4px), var(--gray-bg); }
+.decision-track b { display: block; height: 100%; min-width: 2px; background-color: var(--no-data); background-image: var(--key-sheen); box-shadow: var(--key-edge); transform-origin: left; animation: sweep 420ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+.decision-track b.good { background-color: var(--green); }
+.decision-track b.fault { background-color: var(--red); }
+.decision-track b.warn { background-color: var(--amber); }
 .decision-took { text-align: right; font-size: 12px; }
 .decision-times time { font-size: 12px; text-align: right; }
 .decision-transition { font-family: var(--font-mono); font-size: 11.5px; text-align: right; }

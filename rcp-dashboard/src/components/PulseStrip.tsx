@@ -2,6 +2,10 @@ import { useState } from "react";
 import { count } from "../format";
 import type { VerdictBucket } from "../types";
 
+/** Column height in px (`.pulse-bars`), and the shortest segment that still gets a lit top edge. */
+const PULSE_BAR_PX = 36;
+const LIT_MIN_PX = 4;
+
 function clock(value: number): string {
   return new Date(value).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
@@ -47,6 +51,10 @@ export function PulseStrip({ buckets, from, bucketSeconds }: { buckets: VerdictB
         {buckets.map((bucket, index) => {
           const size = total(bucket);
           const share = (value: number) => (value === 0 ? 0 : Math.max(value / size, 0.16));
+          // A segment gets the top-lit key look only when it is tall enough for the highlight to read as an edge.
+          const grows = [share(bucket.down), share(bucket.disagreement), bucket.noData / size, bucket.up / size];
+          const sum = grows.reduce((a, b) => a + b, 0);
+          const lit = (grow: number) => (grow / sum) * PULSE_BAR_PX >= LIT_MIN_PX ? " lit" : "";
           return (
             <span
               key={index}
@@ -56,10 +64,10 @@ export function PulseStrip({ buckets, from, bucketSeconds }: { buckets: VerdictB
             >
               {size > 0 && (
                 <>
-                  {bucket.down > 0 && <i className="down" style={{ flexGrow: share(bucket.down) }} />}
-                  {bucket.disagreement > 0 && <i className="disagreement" style={{ flexGrow: share(bucket.disagreement) }} />}
-                  {bucket.noData > 0 && <i className="no-data" style={{ flexGrow: bucket.noData / size }} />}
-                  {bucket.up > 0 && <i className="up" style={{ flexGrow: bucket.up / size }} />}
+                  {bucket.down > 0 && <i className={`down${lit(share(bucket.down))}`} style={{ flexGrow: share(bucket.down) }} />}
+                  {bucket.disagreement > 0 && <i className={`disagreement${lit(share(bucket.disagreement))}`} style={{ flexGrow: share(bucket.disagreement) }} />}
+                  {bucket.noData > 0 && <i className={`no-data${lit(bucket.noData / size)}`} style={{ flexGrow: bucket.noData / size }} />}
+                  {bucket.up > 0 && <i className={`up${lit(bucket.up / size)}`} style={{ flexGrow: bucket.up / size }} />}
                 </>
               )}
             </span>

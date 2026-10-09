@@ -7,6 +7,15 @@ import type { DailyEvidence } from "../types";
 const MIN_FAILURE_SHARE = 0.18;
 const TOOLTIP_HALF_WIDTH = 112;
 const TOOLTIP_CLEARANCE = 132;
+/** Bar heights in px (the compact tracker is 12px inside a metric tile), and the shortest lit segment. */
+const BAR_PX = { compact: 12, large: 32 } as const;
+const LIT_MIN_PX = 4;
+
+/** " lit" when the segment is tall enough for a top highlight to read as an edge rather than a white line. */
+function litSegment(share: number, all: Array<[string, number]>, size: keyof typeof BAR_PX): string {
+  const sum = all.reduce((total, [, value]) => total + value, 0);
+  return sum > 0 && (share / sum) * BAR_PX[size] >= LIT_MIN_PX ? " lit" : "";
+}
 
 function segments(day: DailyEvidence): Array<[string, number]> {
   const total = day.up + day.down + day.disagreement + day.noData;
@@ -73,8 +82,8 @@ export function Tracker({ days, size = "large", label }: TrackerProps) {
             style={{ animationDelay: `${index * 8}ms` }}
             onMouseEnter={(event) => show(index, event.currentTarget)}
           >
-            {segments(day).map(([kind, share]) => (
-              <i key={kind} className={kind} style={{ flexGrow: share }} />
+            {segments(day).map(([kind, share], _, all) => (
+              <i key={kind} className={`${kind}${litSegment(share, all, size)}`} style={{ flexGrow: share }} />
             ))}
           </span>
         ))}
