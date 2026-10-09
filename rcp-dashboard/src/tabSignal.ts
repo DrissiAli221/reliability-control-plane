@@ -9,14 +9,16 @@ const FAULT = "#e5484d";
 const POLL_MS = 15_000;
 
 /**
- * The aperture mark on a dark tile so it reads on any tab bar; while an incident is open the brackets turn red, so a
- * background tab still shows trouble.
+ * The aperture mark on a transparent background. Its centre square follows the browser's colour scheme (white on a
+ * dark tab bar, near-black on a light one); while an incident is open the brackets turn red, so a background tab
+ * still shows trouble.
  */
 export function faviconSvg(incident: boolean): string {
   const [left, right] = incident ? [FAULT, FAULT] : [ACCENT, LAVENDER];
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges"><rect width="32" height="32" fill="#0a0a0a"/>`
-    + `<g transform="translate(2.5 5.5) scale(1.5)"><path fill="${left}" d="${APERTURE_LEFT}"/><path fill="${right}" d="${APERTURE_RIGHT}"/>`
-    + `<path fill="#ffffff" d="${APERTURE_CORE}"/></g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 14" shape-rendering="crispEdges">`
+    + `<style>.core{fill:#ffffff}@media (prefers-color-scheme:light){.core{fill:#0a0a0a}}</style>`
+    + `<path fill="${left}" d="${APERTURE_LEFT}"/><path fill="${right}" d="${APERTURE_RIGHT}"/>`
+    + `<path class="core" d="${APERTURE_CORE}"/></svg>`;
 }
 
 export function tabTitle(page: string, openIncidents: number): string {
