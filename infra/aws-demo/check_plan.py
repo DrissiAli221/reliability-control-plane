@@ -10,6 +10,44 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def check_social(managed, oidc):
+    """Optional Google/GitHub sign-in: absent by default, tightly scoped when enabled."""
+    def of(kind):
+        return [r["change"]["after"] for r in managed.values() if r["type"] == kind]
+    providers = {p["provider_name"]: p for p in of("aws_cognito_identity_provider")}
+    client = of("aws_cognito_user_pool_client")[0]
+    require(client["supported_identity_providers"] == ["COGNITO"] + sorted(providers), "App client must list COGNITO plus enabled providers")
+    require(set(providers) <= {"Google", "GitHub"}, "Unexpected identity provider")
+    if "Google" in providers:
+        require(providers["Google"]["provider_type"] == "Google", "Wrong Google provider type")
+    if "GitHub" not in providers:
+        require(not oidc and not of("aws_ssm_parameter") and not of("aws_lambda_function_url"), "GitHub adapter must be off when GitHub is disabled")
+        return
+    require(providers["GitHub"]["provider_type"] == "OIDC", "Wrong GitHub provider type")
+    require(len(oidc) == 1 and len(of("aws_lambda_function_url")) == 1, "Expected exactly one GitHub adapter and URL")
+    function = oidc[0]
+    require(function["region"] == "us-east-1" and function["architectures"] == ["arm64"], "Wrong adapter placement")
+    require(function["memory_size"] == 256 and function["timeout"] == 10, "Unexpected adapter sizing")
+    require(not function["vpc_config"], "Adapter must not depend on VPC/NAT")
+    require(of("aws_lambda_function_url")[0]["authorization_type"] == "NONE", "Adapter URL is the public OIDC issuer")
+    require(of("aws_ssm_parameter")[0]["type"] == "SecureString", "Signing key must be a SecureString")
+    require(of("tls_private_key")[0]["rsa_bits"] == 2048, "Signing key must be RSA 2048")
+    logs = [g for g in of("aws_cloudwatch_log_group") if g["name"].endswith("-github-oidc")]
+    require(len(logs) == 1 and logs[0]["retention_in_days"] == 14, "Adapter logs need 14-day retention")
+
+
+def check_social_iam(root):
+    """The adapter may read exactly its signing key and write its own logs."""
+    policy = next((r for r in root["resources"] if r["address"] == "data.aws_iam_policy_document.github_oidc"), None)
+    if policy is None:
+        return
+    statements = policy["expressions"]["statement"]
+    require(len(statements) == 2, "Unexpected adapter grants")
+    require(set(statements[0]["actions"]["constant_value"]) == {"ssm:GetParameter"}, "Adapter may only call ssm:GetParameter")
+    require(statements[0]["resources"].get("references", []) == ["aws_ssm_parameter.github_oidc_key[0].arn", "aws_ssm_parameter.github_oidc_key[0]", "aws_ssm_parameter.github_oidc_key"], "Adapter SSM scope widened")
+    require(set(statements[1]["actions"]["constant_value"]) == {"logs:CreateLogStream", "logs:PutLogEvents"}, "Unexpected adapter log actions")
+
+
 def check(plan):
     changes = plan["resource_changes"]
     managed = {r["address"]: r for r in changes if r["mode"] == "managed"}
@@ -24,15 +62,21 @@ def check(plan):
         "aws_cloudfront_origin_access_control", "aws_cloudfront_function", "aws_cloudfront_cache_policy",
         "aws_cloudfront_response_headers_policy", "aws_cloudfront_distribution", "aws_s3_bucket_policy",
     }
+    social = {
+        "aws_cognito_identity_provider", "aws_ssm_parameter", "aws_lambda_function_url",
+        "aws_lambda_permission", "tls_private_key",
+    }
+    allowed |= social
     for resource in changes:
         if resource["mode"] == "data":
-            require(resource["type"] == "aws_iam_policy_document", "Unexpected API-backed data source")
+            require(resource["type"] in {"aws_iam_policy_document", "archive_file"}, "Unexpected API-backed data source")
     for resource in managed.values():
         require(resource["type"] in allowed, f"Excluded resource type: {resource['type']}")
         require(resource["change"]["actions"] == ["create"], "Offline check must use empty state")
     def resources(kind):
         return [r["change"]["after"] for r in managed.values() if r["type"] == kind]
-    lambdas = resources("aws_lambda_function")
+    oidc = [r for r in resources("aws_lambda_function") if r["runtime"] == "nodejs22.x"]
+    lambdas = [r for r in resources("aws_lambda_function") if r["runtime"] != "nodejs22.x"]
     require(len(lambdas) == 2, "Expected exactly two probe workers")
     require({r["region"] for r in lambdas} == {"eu-west-1", "us-east-1"}, "Wrong worker regions")
     for function in lambdas:
@@ -58,6 +102,7 @@ def check(plan):
         if not queue["name"].endswith("-dlq"):
             require(queue["receive_wait_time_seconds"] == 20, "Use long polling")
             require(queue["visibility_timeout_seconds"] == (180 if "-jobs-" in queue["name"] else 60), "Incorrect visibility timeout")
+    check_social(managed, oidc)
     client = resources("aws_cognito_user_pool_client")[0]
     require(client["generate_secret"] is False and client["allowed_oauth_flows"] == ["code"], "SPA must use public code flow")
     require(set(client["explicit_auth_flows"]) == {"ALLOW_ADMIN_USER_PASSWORD_AUTH", "ALLOW_USER_SRP_AUTH"}, "Unexpected password/refresh flows")
@@ -88,6 +133,7 @@ def check(plan):
     for statement, (actions, references) in zip(statements, expected):
         require(set(statement["actions"]["constant_value"]) == actions, "Unexpected IAM actions")
         require(set(statement["resources"].get("references", [])) == references, "Server IAM scope widened")
+    check_social_iam(root)
     for module_name in ["us_probe", "europe_probe"]:
         module = root["module_calls"][module_name]["module"]
         policy = next(r for r in module["resources"] if r["address"] == "data.aws_iam_policy_document.probe")

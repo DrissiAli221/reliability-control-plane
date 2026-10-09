@@ -9,6 +9,16 @@ output "identity" {
   }
 }
 
+output "social_sign_in" {
+  description = "Register redirect_uri with Google and GitHub; javascript_origin is Google's authorized JS origin."
+  value = {
+    providers         = local.social_providers
+    redirect_uri      = "${local.cognito_domain}/oauth2/idpresponse"
+    javascript_origin = local.dashboard_origin
+    github_issuer     = local.github_issuer
+  }
+}
+
 output "queues" {
   value = {
     jobs          = local.job_queue_urls
@@ -32,6 +42,7 @@ output "dashboard" {
       VITE_API_BASE_URL      = var.api_origin
       VITE_COGNITO_AUTHORITY = local.issuer_uri
       VITE_COGNITO_CLIENT_ID = aws_cognito_user_pool_client.dashboard.id
+      VITE_SOCIAL_PROVIDERS  = join(",", local.social_providers)
     }
   }
 }

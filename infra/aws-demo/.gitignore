@@ -5,3 +5,4 @@ plan.json
 validation.log
 
 __pycache__/
+.build/

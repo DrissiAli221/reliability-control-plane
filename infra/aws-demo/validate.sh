@@ -17,3 +17,11 @@ terraform plan -refresh=false -input=false -lock=false -state="$validation_dir/e
     -var-file=offline.tfvars -out="$validation_dir/demo.tfplan" -no-color
 terraform show -json "$validation_dir/demo.tfplan" > "$validation_dir/plan.json"
 python3 check_plan.py "$validation_dir/plan.json"
+# Second plan with both social providers on, using obviously fake client credentials.
+TF_VAR_google_client_id=fake-google-id TF_VAR_google_client_secret=fake-google-secret \
+TF_VAR_github_client_id=fake-github-id TF_VAR_github_client_secret=fake-github-secret \
+    terraform plan -refresh=false -input=false -lock=false -state="$validation_dir/empty.tfstate" \
+    -var-file=offline.tfvars -var='social_providers=["Google","GitHub"]' \
+    -out="$validation_dir/social.tfplan" -no-color
+terraform show -json "$validation_dir/social.tfplan" > "$validation_dir/social.json"
+python3 check_plan.py "$validation_dir/social.json"
