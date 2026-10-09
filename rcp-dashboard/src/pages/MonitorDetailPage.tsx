@@ -1,4 +1,4 @@
-import { AlertTriangle, ChevronLeft, ExternalLink, PauseCircle, RefreshCw, Trash2 } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ExternalLink, ListChecks, PauseCircle, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FALLBACK_CAVEATS } from "../caveats";
@@ -6,6 +6,7 @@ import {
   availability, executionTrace, getMonitor, incidentState, latencyHeatmap, listMonitors, monitorHistory, reliabilityReport, setMonitorEnabled,
 } from "../api";
 import { isLocalAuth } from "../auth";
+import { ActionMenu } from "../components/ActionMenu";
 import { AcceptedStatusCodesDialog } from "../components/AcceptedStatusCodesDialog";
 import { formatStatusCodes } from "../statusCodes";
 import { DeleteMonitorDialog } from "../components/DeleteMonitorDialog";
@@ -143,9 +144,17 @@ export function MonitorDetailPage() {
           <button type="button" className="icon-button bordered" onClick={() => void detail.refresh()} aria-label="Refresh" disabled={detail.loading}>
             <RefreshCw size={16} className={detail.loading ? "spin" : undefined} />
           </button>
-          {!readOnly && <button type="button" className="button secondary" onClick={() => setEditingStatuses(true)}>Accepted statuses</button>}
           {!readOnly && <MonitorToggleButton enabled={monitor.enabled} onToggle={toggle} />}
-          {!readOnly && <button type="button" className="button danger" onClick={() => setDeleting(true)}><Trash2 size={14} aria-hidden="true" />Delete monitor</button>}
+          {!readOnly && (
+            <ActionMenu
+              label="More monitor actions"
+              bordered
+              actions={[
+                { label: "Accepted statuses…", icon: <ListChecks size={14} />, onSelect: () => setEditingStatuses(true) },
+                { label: "Delete monitor", icon: <Trash2 size={14} />, tone: "danger", separatorBefore: true, onSelect: () => setDeleting(true) },
+              ]}
+            />
+          )}
           <ExportReportButton monitorId={monitor.id} monitorName={monitor.name} />
         </div>
       </header>

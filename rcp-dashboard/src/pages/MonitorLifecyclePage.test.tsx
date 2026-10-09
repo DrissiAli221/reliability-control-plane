@@ -27,7 +27,8 @@ function page() {
 }
 it("returns to the list only after confirmed deletion", async () => {
   page();
-  fireEvent.click(await screen.findByRole("button",{name:"Delete monitor"}));
+  fireEvent.click(await screen.findByRole("button",{name:"More monitor actions"}));
+  fireEvent.click(screen.getByRole("menuitem",{name:"Delete monitor"}));
   fireEvent.change(screen.getByRole("textbox"),{target:{value:"Checkout"}});
   fireEvent.click(within(screen.getByRole("dialog")).getByRole("button",{name:"Delete monitor"}));
   expect(await screen.findByRole("heading",{name:"Monitor list"})).toBeInTheDocument();
@@ -36,6 +37,16 @@ it("returns to the list only after confirmed deletion", async () => {
 it("shows custom statuses but hides both mutations for the demo role", async () => {
   vi.mocked(useReadOnly).mockReturnValue(true); page();
   expect(await screen.findByText("Accepts 403")).toBeInTheDocument();
+  expect(screen.queryByRole("button",{name:"More monitor actions"})).not.toBeInTheDocument();
   expect(screen.queryByRole("button",{name:"Delete monitor"})).not.toBeInTheDocument();
-  expect(screen.queryByRole("button",{name:"Accepted statuses"})).not.toBeInTheDocument();
+});
+it("opens accepted statuses from the header menu, after a separator, with delete as a danger item", async () => {
+  page();
+  fireEvent.click(await screen.findByRole("button",{name:"More monitor actions"}));
+  const items = screen.getAllByRole("menuitem");
+  expect(items.map((item) => item.textContent)).toEqual(["Accepted statuses…","Delete monitor"]);
+  expect(items[1]).toHaveClass("danger");
+  expect(screen.getByRole("separator")).toBeInTheDocument();
+  fireEvent.click(items[0]);
+  expect(await screen.findByRole("dialog")).toBeInTheDocument();
 });
