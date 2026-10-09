@@ -845,7 +845,7 @@ a { color: inherit; }
   .col-latency { display: none; }
 }
 @media (max-width: 860px) {
-  .shell { grid-template-columns: minmax(0, 1fr); }
+  .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; } /* the bar keeps its height; a short page leaves its spare space below, not in the bar */
   .sidebar { position: static; height: auto; flex-direction: row; align-items: center; gap: 12px; padding: 10px 16px; border-right: 0; border-bottom: 1px solid var(--border); }
   .workspace { height: auto; padding: 0; border-bottom: 0; }
   .sidebar > :not(.workspace), .workspace + * { margin: 0; }
