@@ -99,7 +99,7 @@ function contextSentence(monitors: MonitorOverview[], snapshot: PipelineSnapshot
   }
   if (monitors.some((monitor) => monitor.enabled && isDrillMonitor(monitor.targetUrl))) {
     const phase = drillPhase(now);
-    parts.push(phase.active ? "a planned outage drill is running" : `the next planned drill is at ${utcClock(phase.nextStart)} UTC`);
+    parts.push(phase.active ? "a demo drill is scheduled now" : `the next planned drill is at ${utcClock(phase.nextStart)} UTC`);
   }
   if (parts.length === 0) return "";
   const sentence = parts.join("; ");

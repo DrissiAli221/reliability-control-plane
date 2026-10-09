@@ -69,13 +69,29 @@ class DrillMonitorSQL(unittest.TestCase):
 
     def test_owner_and_global_caps_leave_database_unchanged(self):
         script = (DEMO / "scripts/add-drill-monitor.sql").read_text()
-        self.add_monitors(1, SUBJECT)
+        self.add_monitors(3, SUBJECT)
         self.sql(script, success=False)
-        self.assertEqual(self.sql("SELECT count(*) FROM monitors"), "3")
+        self.assertEqual(self.sql("SELECT count(*) FROM monitors"), "5")
         self.setUp()
         self.add_monitors(6, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
         self.sql(script, success=False)
         self.assertEqual(self.sql("SELECT count(*) FROM monitors"), "8")
+
+    def test_variety_is_idempotent_preserves_history_and_has_atomic_caps(self):
+        script = (DEMO / "scripts/add-demo-variety.sql").read_text()
+        self.sql(script)
+        self.sql(script)
+        self.assertEqual(self.sql("SELECT count(*) FROM monitors"), "4")
+        self.assertEqual(self.sql("SELECT count(*) FROM monitor_schedule_periods"), "4")
+        self.assertEqual(self.sql("SELECT count(*) FROM monitors WHERE name LIKE 'Existing %'"), "2")
+        self.setUp()
+        self.add_monitors(2, SUBJECT)
+        self.sql(script, success=False)
+        self.assertEqual(self.sql("SELECT count(*) FROM monitors"), "4")
+        self.setUp()
+        self.add_monitors(5, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+        self.sql(script, success=False)
+        self.assertEqual(self.sql("SELECT count(*) FROM monitors"), "7")
 
     def test_unknown_or_invalid_subject_cannot_create_workspace(self):
         for subject in ["not-a-subject", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"]:

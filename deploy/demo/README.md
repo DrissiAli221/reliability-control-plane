@@ -13,12 +13,13 @@ half is documented in [`infra/aws-demo`](../../infra/aws-demo/README.md).
 
 - Deploy an application release that supports expired-session handling,
   stale public status data, backend read-only `demo` group, 60-second minimum,
-  8 global/3 owner monitor caps, maximum 5-second check timeout, example seeding,
+  8 global/5 owner monitor caps, maximum 5-second check timeout, example seeding,
   and `/api/demo/session`. Verify backend group enforcement, concurrent quota
   protection, and the 30/minute demo-login limit for the single backend.
   Stock Caddy does not add another login rate limiter here.
-- The shared demo account must retain `demo` membership. The backend seeds its three
-  monitors (Example Domain, Wikipedia, and Scheduled outage drill) on startup
+- The shared demo account must retain `demo` membership. The backend seeds five
+  monitors (Example Domain, Wikipedia, Scheduled outage drill, GitHub Status,
+  and Cloudflare Status) on startup
   using the Cognito UUID `sub`. Capture that subject during provisioning; do not substitute its
   email or remove group membership to seed monitors.
 - Establish the AWS budget alert before creating application resources.
@@ -190,50 +191,94 @@ sensitive query strings by default. Use bounded service logs for startup diagnos
 A missing/incorrect API DNS record or blocked port 80 prevents public certificates.
 No ACME request is needed for the local smoke test described below.
 
-## Scheduled outage drill
+## Varied scheduled demo drills
 
-`GET https://rcp-ali.duckdns.org/drill/status.html` returns **200** while
-`deploy/demo/drill/status.html` exists and **404** while it is absent. Caddy mounts
-that directory read-only and serves only this exact GET/HEAD route; API proxying
-and the public `/actuator` 404 stay unchanged. Responses use `Cache-Control:
-no-store`. The page is tiny and has no credentials or external dependencies.
-Runtime contents are ignored by Git, so updating the checkout cannot accidentally
-restore the page during an outage.
+Only our own `https://rcp-ali.duckdns.org/drill/status.html` endpoint is faulted.
+Caddy proxies the exact GET/HEAD route to a small Python responder on an internal
+Docker network. It has no published ports, credentials or outbound network access,
+and is bounded to 64 MiB, 0.25 CPU and 16 concurrent requests. API proxying,
+`/healthz`, and the public `/actuator` 404 stay unchanged. Responses are not cached.
+No third-party website, including SpectraTV, is altered by a drill.
 
-After review, install on the VM from `/opt/rcp` (these are deployment commands,
-not part of local tests):
+Each two-hour UTC cycle has a deterministic plan derived from its epoch cycle
+number. Roughly one in four cycles is skipped. Other cycles start 5–95 minutes
+into the cycle and use one of four modes:
+
+| Mode | Planned response | Expected evidence |
+| --- | --- | --- |
+| Full outage | HTTP 404 in both regions for 4–20 minutes | Consecutive DOWN checks can open an incident; consecutive UP checks resolve it. |
+| Slow response | HTTP 200 delayed 2–3.5 seconds for 4–20 minutes | A latency spike under the configured 5-second timeout. Additional network delays can still cause timeouts. |
+| Regional failure | HTTP 503 only for the selected probe region for 4–20 minutes | One failed region and one successful region are inconclusive and excluded from uptime. |
+| Short blip | HTTP 404 for 15–40 seconds | Shorter than the 60-second interval, normally avoiding an incident. Delayed checks can still overlap; this is not guaranteed. |
+
+Verdict and incident rules are unchanged: two failed regions, including two
+timeouts, still mean DOWN. The dashboard shows a **planned** window and mode;
+actual checks and incident status come from the backend. A disabled timer, a late
+start, or a reboot can shorten or suppress a window. The browser cannot establish
+whether the responder is actually faulting. Keep server scripts and dashboard
+assets on the same schedule version. Both implementations are checked against
+`fixtures/drill-schedule-v1.json`; the schedule is intentionally predictable,
+not cryptographic randomness.
+
+The timer evaluates the plan every minute and never catches up missed windows.
+A late start runs only the remaining time, never a fresh full-duration outage.
+Atomic `state.json` writes give the responder an absolute expiry, so an interrupted
+controller cannot leave a scheduled fault active indefinitely. Outage/blip modes
+also remove `status.html`; restoration puts it back. A cycle marker prevents
+restarting an interrupted window. Runtime files remain ignored by Git.
+Normal completion, errors and SIGTERM restore the endpoint; `ExecStopPost` covers
+forced termination. The boot recovery service restores it before Docker starts.
+
+### Install or upgrade the drill on the VM
+
+First take and verify an off-host backup using the backup section. The following
+commands are for the reviewed release on the VM, **not local validation**. Stop
+the old timer before updating the checkout so its running process cannot retain
+an obsolete plan. Use `git pull --ff-only`; resolve a divergent checkout separately.
+
+**Order matters: publish the rebuilt dashboard before enabling or restarting
+`rcp-demo-drill.timer`.** The timer starts faulting the drill endpoint on the new
+schedule; an old dashboard would still forecast the previous fixed two-hour
+outage, so viewers would see a countdown that disagrees with what is happening.
+The commands below therefore leave the timer disabled. Publish the dashboard (see
+"Publish the dashboard"), then enable the timer.
 
 ```sh
-sudo mkdir -p /opt/rcp/deploy/demo/drill
-sudo chmod 755 /opt/rcp/deploy/demo/drill
+set -e
+cd /opt/rcp
+sudo systemctl disable --now rcp-demo-drill.timer
+sudo systemctl stop rcp-demo-drill.service
+git pull --ff-only
+sudo mkdir -p deploy/demo/drill
+sudo chmod 755 deploy/demo/drill
 sudo python3 deploy/demo/scripts/outage-drill.py restore
 sudo install -m 644 deploy/demo/systemd/rcp-demo-drill*.service /etc/systemd/system/
 sudo install -m 644 deploy/demo/systemd/rcp-demo-drill.timer /etc/systemd/system/
 sudo systemd-analyze verify /etc/systemd/system/rcp-demo-drill*.service /etc/systemd/system/rcp-demo-drill.timer
-systemd-analyze calendar --iterations=3 '*-*-* 00/2:00:00 UTC'
+systemd-analyze calendar --iterations=3 '*-*-* *:*:00 UTC'
 sudo systemctl daemon-reload
 sudo systemctl enable --now rcp-demo-drill-restore.service
-cd /opt/rcp/deploy/demo
-docker compose up -d --no-deps --force-recreate caddy
-sudo systemctl enable --now rcp-demo-drill.timer
-sudo systemctl list-timers rcp-demo-drill.timer
+cd deploy/demo
+docker compose pull drill
+docker compose up -d --no-deps --force-recreate --wait --wait-timeout 120 drill caddy
+curl -fsS https://rcp-ali.duckdns.org/healthz
 curl -sS -o /dev/null -w '%{http_code}\n' https://rcp-ali.duckdns.org/drill/status.html
 ```
 
-The timer starts at **00:00, 02:00, …, 22:00 UTC**, removes the file for 600
-seconds, then atomically restores it. It has no missed-run catch-up. Incident
-opening and resolution happen after the monitor's normal checks and incident
-thresholds, not exactly at the file transitions. With a 60-second interval, the
-ten-minute outage supplies several failed checks from both regions.
+Only after the rebuilt dashboard is published, enable the timer:
 
-Duplicate outage starts do nothing while one is running. Normal completion,
-errors, and SIGTERM restore the page; systemd's `ExecStopPost` also restores after
-a forced kill. A separate enabled recovery service restores the page **before
-Docker starts at boot**, including after power loss during an outage. Install both
-services and the timer. Python 3 is required on the VM. If you change the
-`/opt/rcp` checkout location, update all three units' paths first.
+```sh
+sudo systemctl enable --now rcp-demo-drill.timer
+sudo systemctl list-timers rcp-demo-drill.timer
+```
 
-To inspect or stop the drill and bring the page back:
+For a first installation, omit the first two stop commands when those units do
+not exist. Install all three units; Python 3 is required on the VM. If the checkout
+is not `/opt/rcp`, update each unit's paths before installing. The status response
+can legitimately be 404, 503 or slow during its planned window. Check the journal
+and the backend's results rather than treating every non-200 as a deployment error.
+
+Inspect, pause, or restore:
 
 ```sh
 sudo journalctl -u rcp-demo-drill.service -u rcp-demo-drill-restore.service --since today
@@ -242,39 +287,111 @@ sudo systemctl stop rcp-demo-drill.service
 sudo python3 /opt/rcp/deploy/demo/scripts/outage-drill.py restore
 ```
 
-Leave the boot recovery service enabled while Caddy serves the route. To resume,
-run `sudo systemctl enable --now rcp-demo-drill.timer`. For a deliberate manual
-**ten-minute** drill, run `sudo systemctl start --no-block rcp-demo-drill.service`.
+Leave boot recovery enabled. Resume with
+`sudo systemctl enable --now rcp-demo-drill.timer`. Restoring during an active
+window suppresses that window until the next cycle. For an operator-requested
+**manual ten-minute outage**, keep the timer disabled and run
+`sudo python3 /opt/rcp/deploy/demo/scripts/outage-drill.py outage`. The manual run
+is outside the dashboard's forecast; restore again if its process is forcibly killed.
 
-### Add the monitor to the existing deployment
+### Probe header and separate Lambda rollout
 
-New generated configuration seeds three monitors, using the configured HTTPS
-API origin for the drill target, while keeping the global cap **8** and owner
-quota **3**. On startup the backend adds any configured demo monitor the workspace
-lacks (matched by name) and leaves existing monitors and their history alone, so
-adding an entry to `rcp.demo.monitors` and restarting is enough. Never delete its
-existing monitors or remove its `demo` group to reseed.
+Lambda probes add exactly one `X-RCP-Probe-Region` header, with `eu-west-1` or
+`us-east-1`, **only** to requests for `/drill/status.html` on the demo API host.
+The host comes from the `PROBE_REGION_HEADER_HOST` Lambda environment variable,
+which Terraform derives from `api_origin`; when the variable is unset the header
+is never sent, and every other target (Example Domain, Wikipedia, GitHub Status,
+Cloudflare Status) never receives it. It contains no monitor identifier, URL, user
+identity or credential. It is spoofable diagnostic metadata, never an
+authentication mechanism. Local workers using the original HTTP-client
+constructor keep sending no region header.
 
-The live demo received the drill monitor before that behaviour existed. For a
-deployment running an older backend, after verifying the drill URL returns 200, download
-and verify a database backup using the backup instructions below. Then, from
-`/opt/rcp/deploy/demo`, run this operator-only transaction:
+Regional mode returns 200 for requests without a recognized header. Therefore
+it is harmless before the Lambda rollout: both old probes keep succeeding in a
+regional window. A partially rolled-out pair cannot yet prove the intended
+one-region scenario. Update both regions together after reviewing the plan.
+This PR does not deploy Lambdas or modify AWS resource definitions.
+
+From the operator checkout, follow the AWS runbook to build the probe package,
+then create and review a **real Terraform plan**. Confirm the deployed package's
+code hash changes for both probe Lambdas and investigate any unrelated changes.
+Obtain deployment approval **before apply**; server installation alone does not
+update those probes. Publish the rebuilt dashboard using the next section so
+its schedule agrees with the server.
+
+### Upgrade the existing demo fleet without losing history
+
+New generated configuration seeds **five** monitors and sets **5 per owner / 8
+globally**, with the same 60-second minimum interval and 5-second maximum timeout.
+The owner limit applies to every owner, not only the shared account. Example
+Domain, Wikipedia and our drill remain; GitHub Status and Cloudflare Status are
+added as small public JSON endpoints. These checks measure the availability of
+those HTTP endpoints, **not** the provider-wide health reported inside the JSON.
+All public targets still go through the probes' safe-address validation; there is
+no new named-host allowlist or third-party fault injection.
+
+On startup, the backend adds missing configured demo monitors matched by name
+and retains existing monitors and history. Never remove the `demo` group, delete
+monitors or replace the stored Cognito `sub` to reseed. Inspect current monitor
+counts first: five configured targets cannot fit if an existing workspace or the
+global fleet already fills either cap. The settings do not evict existing monitors.
+
+After taking a verified off-host backup, update the existing private configuration
+on the VM. The helper preserves identity, URLs, queue maps and unrelated settings,
+refuses unreviewed quota/timeout changes, adds only missing target URLs, and writes
+atomically. It requires private permissions and preserves file ownership. Do not
+rerun the new-deployment generator over existing configuration.
 
 ```sh
-docker compose exec -T postgres psql -X -U rcp -d rcp -v ON_ERROR_STOP=1 \
-  -v demo_subject="$(cat secrets/demo_owner_subject)" \
-  < scripts/add-drill-monitor.sql
+set -e
+cd /opt/rcp
+sudo test ! -e deploy/demo/secrets/application.before-variety.json
+sudo install -m 600 deploy/demo/secrets/application.json deploy/demo/secrets/application.before-variety.json
+sudo chmod 600 deploy/demo/secrets/application.json
+if ! sudo python3 deploy/demo/scripts/configure-variety.py deploy/demo/secrets/application.json; then
+  sudo chmod 444 deploy/demo/secrets/application.json
+  exit 1
+fi
+sudo chmod 444 deploy/demo/secrets/application.json
+cd deploy/demo
+docker compose --profile monitoring up -d --no-deps --force-recreate --wait --wait-timeout 180 control-plane
+curl -fsS https://rcp-ali.duckdns.org/healthz
 ```
 
-This uses the locally stored Cognito subject, not an email or login credential.
-It adds only the fixed `rcp-ali.duckdns.org` target, retains all existing history,
-and leaves the read-only group untouched. The transaction checks both quotas,
-requires an existing workspace, and does nothing if that owner already monitors
-the drill URL. It locks monitor writes briefly while checking capacity; the
-existing trigger creates schedule history. If a quota is full or the subject is
-wrong, it fails without adding anything. Verify the new monitor in the demo UI;
-no backend restart is required. This SQL is for the named live deployment only:
-review its fixed URL before using it on a different hostname.
+Keep `secrets/` mode 0700; 0444 on the mounted application file lets container UID
+10001 read it. The protected backup is 0600. Omit `--profile monitoring` if Alloy
+is not installed. **Recreate**, rather than merely restart, the backend because
+an atomic replacement must be rebound into its file-backed Compose secret.
+Check the demo UI now contains five targets and that `/api/me` reports the
+approved quotas. Existing history stays attached to the same monitor IDs.
+
+For an older backend that cannot add missing demo targets on startup, use the
+operator-only SQL helper after the configuration update. First confirm the existing
+workspace belongs to the stored subject and has capacity:
+
+```sh
+cd /opt/rcp/deploy/demo
+docker compose exec -T postgres psql -X -U rcp -d rcp -v ON_ERROR_STOP=1 \
+  -v demo_subject="$(cat secrets/demo_owner_subject)" \
+  < scripts/add-demo-variety.sql
+```
+
+It adds only the two fixed status endpoints, deduplicated by owner and URL. The
+transaction takes a brief table lock, validates the existing subject, and refuses
+to exceed either cap; failure adds nothing. It leaves other owners, existing
+history, scheduling triggers and group membership alone. The older
+`add-drill-monitor.sql` remains available for a workspace missing the drill itself;
+its quota check now also uses five. These helpers do not delete monitors to make
+space. Verify the backend version and existing names before choosing the startup
+seeder or SQL path.
+
+For configuration rollback, disable the drill timer and restore the endpoint
+first. Restore `application.before-variety.json` with private permissions, set
+0444 inside the protected directory, and recreate the backend. This restores the
+old configuration, **not** the database: newly seeded monitors and history remain.
+Do not downgrade to the owner quota of three while five monitors remain without
+reviewing that workspace. Keep the previous responder/dashboard release together
+if rolling back the schedule version.
 
 ## Publish the dashboard
 
@@ -416,7 +533,7 @@ python3 deploy/demo/scripts/local-smoke.py --build --phase2
 ```
 
 This second mode uses local JWTs, enables the demo configuration, disables
-both queue polling and local workers, and verifies the seeded demo UUID, three
+both queue polling and local workers, and verifies the seeded demo UUID, five
 monitors, server-side read-only rejection, 60-second/5-second limits, and one-time
 onboarding. It uses a fresh local database, not the developer's running services.
 The local token endpoint exists only in this loopback test's `local` profile;

@@ -7,3 +7,9 @@ variable "artifact_path" { type = string }
 variable "offline_mode" { type = bool }
 
 variable "reserve_concurrency" { type = bool }
+
+variable "region_header_host" {
+  description = "Host that receives the X-RCP-Probe-Region header on /drill/status.html. Empty means the header is never sent."
+  type        = string
+  default     = ""
+}

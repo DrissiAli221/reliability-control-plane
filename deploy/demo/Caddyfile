@@ -16,9 +16,14 @@
 	}
 	handle @drill {
 		header Cache-Control "no-store"
-		root * /srv/drill
-		rewrite * /status.html
-		file_server
+		reverse_proxy drill:8080 {
+			header_up -Authorization
+			header_up -Cookie
+			transport http {
+				dial_timeout 2s
+				response_header_timeout 6s
+			}
+		}
 	}
 	# Only a coarse readiness signal is public; upstream bodies and headers stay private.
 	@health {

@@ -36,13 +36,14 @@ def render(outputs, api_domain, acme_email):
         raise ValueError("Read-only group must be demo")
     if rcp["identity"]["allowed-origins"] != dashboard["origin"]:
         raise ValueError("CORS origin differs from the dashboard")
-    if rcp["monitors"] != {"max-per-owner": 3, "min-interval-seconds": 60, "max-total": 8, "max-timeout-ms": 5000}:
+    if rcp["monitors"] != {"max-per-owner": 5, "min-interval-seconds": 60, "max-total": 8, "max-timeout-ms": 5000}:
         raise ValueError("Unexpected demo quotas")
     demo = rcp["demo"]
     if "seed-example-monitor" in demo:
         raise ValueError("The old seed-example-monitor flag is unsupported; regenerate outputs")
     expected_monitors = ("Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org, "
-                         f"Scheduled outage drill|https://{api_domain}/drill/status.html")
+                         f"Scheduled outage drill|https://{api_domain}/drill/status.html"
+                         ", GitHub Status|https://www.githubstatus.com/api/v2/status.json, Cloudflare Status|https://www.cloudflarestatus.com/api/v2/status.json")
     if demo.get("monitors") != expected_monitors:
         raise ValueError("Unexpected shared demo seed targets")
     if demo.get("example-monitor-url") != "https://example.com":

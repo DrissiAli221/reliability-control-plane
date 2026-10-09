@@ -1,79 +1,88 @@
-/**
- * The demo's scheduled outage drill. The server removes the drill page at every even UTC hour for ten minutes
- * (deploy/demo/systemd/rcp-demo-drill.timer and scripts/outage-drill.py); keep these values in step with them.
- * This is a deployment fact shown for context; incident decisions still come from the backend.
+/** Version 1: shared UTC schedule, verified against deploy/demo/fixtures/drill-schedule-v1.json.
+ * Plans describe intended drills; actual verdicts and incidents always come from the backend.
  */
 export const DRILL_PATH = "/drill/status.html";
-export const DRILL_CYCLE_MS = 2 * 60 * 60 * 1000;
-export const DRILL_OUTAGE_MS = 10 * 60 * 1000;
+export const DRILL_CYCLE_MS = 7_200_000;
+export const DRILL_TRACK_CELLS = 12;
+export type DrillMode = "outage" | "slow" | "regional" | "blip";
+export type DrillPlan = {
+  cycleStart: number; start: number; end: number; mode: DrillMode;
+  skipped: boolean; delayMs: number; failedRegion: string;
+};
+
+export function drillPlan(cycleStart: number): DrillPlan {
+  if (cycleStart % DRILL_CYCLE_MS !== 0) throw new Error("Expected an aligned two-hour UTC cycle");
+  let state = ((cycleStart / DRILL_CYCLE_MS) ^ 0x52435031) >>> 0;
+  state ||= 1;
+  const draw = () => {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    return state >>>= 0;
+  };
+  const skipped = draw() % 4 === 0;
+  const mode = (["outage", "slow", "regional", "blip"] as const)[draw() % 4];
+  const offset = (5 + draw() % 91) * 60_000;
+  let duration = (4 + draw() % 17) * 60_000;
+  if (mode === "blip") duration = (15 + draw() % 26) * 1000;
+  const delayMs = 2000 + draw() % 1501;
+  const failedRegion = ["eu-west-1", "us-east-1"][draw() % 2];
+  const start = cycleStart + offset;
+  return { cycleStart, start, end: start + duration, mode, skipped, delayMs, failedRegion };
+}
 
 export type DrillPhase = {
-  /** True while the drill page is removed. */
   active: boolean;
-  /** Start of the current cycle's outage (an even UTC hour). */
   cycleStart: number;
-  /** End of the current cycle's outage. */
   outageEnd: number;
-  /** Start of the next cycle's outage. */
   nextStart: number;
-  /** Position within the two-hour cycle, 0 to 1. */
   progress: number;
+  plan: DrillPlan;
+  nextPlan: DrillPlan;
 };
 
 export function isDrillMonitor(targetUrl: string): boolean {
-  try {
-    return new URL(targetUrl).pathname === DRILL_PATH;
-  } catch {
-    return false;
-  }
+  try { return new URL(targetUrl).pathname === DRILL_PATH; }
+  catch { return false; }
 }
 
-/** The epoch began at 00:00 UTC, an even hour, so cycles align with the timer's 00/2:00 calendar. */
 export function drillPhase(now: number): DrillPhase {
-  const elapsed = ((now % DRILL_CYCLE_MS) + DRILL_CYCLE_MS) % DRILL_CYCLE_MS;
-  const cycleStart = now - elapsed;
+  const cycleStart = Math.floor(now / DRILL_CYCLE_MS) * DRILL_CYCLE_MS;
+  const plan = drillPlan(cycleStart);
+  let nextPlan = plan;
+  // Include a later start within this cycle, and advance across skipped cycles.
+  for (let i = 0; nextPlan.skipped || nextPlan.start <= now; i++) {
+    if (i > 4096) throw new Error("No upcoming drill found");
+    nextPlan = drillPlan(nextPlan.cycleStart + DRILL_CYCLE_MS);
+  }
   return {
-    active: elapsed < DRILL_OUTAGE_MS,
-    cycleStart,
-    outageEnd: cycleStart + DRILL_OUTAGE_MS,
-    nextStart: cycleStart + DRILL_CYCLE_MS,
-    progress: elapsed / DRILL_CYCLE_MS,
+    active: !plan.skipped && now >= plan.start && now < plan.end,
+    cycleStart, outageEnd: plan.end, nextStart: nextPlan.start,
+    progress: (now - cycleStart) / DRILL_CYCLE_MS, plan, nextPlan,
   };
 }
 
-export const DRILL_TRACK_CELL_MS = DRILL_OUTAGE_MS;
-export const DRILL_TRACK_CELLS = (DRILL_CYCLE_MS) / DRILL_TRACK_CELL_MS;
-
 export type DrillTrack = {
-  /** Where the track starts: the end of the last outage window. */
-  start: number;
-  /** Where it ends: the end of the next outage window. */
-  end: number;
-  /** Fill of each 10-minute cell, 0 to 1. */
-  fills: number[];
-  /** Which cell is the outage window: the last one between drills, the first one during a drill. */
-  outageIndex: number;
-  /** Current position along the whole track, 0 to 1. */
-  position: number;
+  start: number; end: number; fills: number[]; position: number;
+  windowStart: number; windowEnd: number;
 };
 
-/** The between-drills track: 12 ten-minute cells from the last outage's end to the next outage's end. */
+/** Keep the same twelve-cell visual, with the planned fault drawn at its actual position and width. */
 export function drillTrack(phase: DrillPhase, now: number): DrillTrack {
-  return laidOutTrack(phase.outageEnd, phase.nextStart + DRILL_OUTAGE_MS, DRILL_TRACK_CELLS - 1, now);
+  const plan = phase.active ? phase.plan : phase.nextPlan;
+  const start = plan.cycleStart;
+  const end = start + DRILL_CYCLE_MS;
+  const cellMs = DRILL_CYCLE_MS / DRILL_TRACK_CELLS;
+  const fills = Array.from({ length: DRILL_TRACK_CELLS }, (_, i) => Math.min(1, Math.max(0, (now - start - i * cellMs) / cellMs)));
+  return { start, end, fills, windowStart: (plan.start - start) / DRILL_CYCLE_MS,
+    windowEnd: (plan.end - start) / DRILL_CYCLE_MS, position: Math.min(1, Math.max(0, (now - start) / DRILL_CYCLE_MS)) };
 }
 
-/** The same 12 cells for a running drill: the whole cycle from its outage start, with the outage as the first cell. */
-export function drillCycleTrack(phase: DrillPhase, now: number): DrillTrack {
-  return laidOutTrack(phase.cycleStart, phase.nextStart, 0, now);
-}
+export const drillCycleTrack = drillTrack;
 
-function laidOutTrack(start: number, end: number, outageIndex: number, now: number): DrillTrack {
-  const fills = Array.from({ length: DRILL_TRACK_CELLS }, (_, index) => {
-    const cellStart = start + index * DRILL_TRACK_CELL_MS;
-    return Math.min(1, Math.max(0, (now - cellStart) / DRILL_TRACK_CELL_MS));
-  });
-  return { start, end, fills, outageIndex, position: Math.min(1, Math.max(0, (now - start) / (end - start))) };
-}
+export const DRILL_MODE_LABELS: Record<DrillMode, string> = {
+  outage: "Full outage", slow: "Slow response", regional: "Regional failure", blip: "Short blip",
+};
 
 /** "1:07:42" or "6:05": a countdown that reads like a clock. */
 export function countdown(ms: number): string {
@@ -84,6 +93,8 @@ export function countdown(ms: number): string {
   return hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}:${seconds}` : `${minutes}:${seconds}`;
 }
 
-export function utcClock(epochMs: number): string {
-  return new Date(epochMs).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+export function utcClock(epochMs: number, withSeconds = false): string {
+  return new Date(epochMs).toLocaleTimeString("en-GB", {
+    hour: "2-digit", minute: "2-digit", ...(withSeconds ? { second: "2-digit" } : {}), timeZone: "UTC",
+  });
 }

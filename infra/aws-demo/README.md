@@ -47,9 +47,10 @@ costs. Local validation proves configuration, not AWS deployment or availability
 - Runtime IAM: send only to two job queues; receive/delete/change visibility/read
   attributes only on the result queue; `AdminInitiateAuth` only on this user pool.
 - The output `server_application_json` preserves the region keys exactly. It also
-  wires 3 monitors/owner, 60-second minimum interval, 8 monitors globally, demo
+  wires 5 monitors/owner, 60-second minimum interval, 8 monitors globally, demo
   group enforcement, and a 5,000 ms maximum timeout. `rcp.demo.monitors` seeds
-  Example Domain and Wikipedia for the shared account, and
+  Example Domain, Wikipedia, Scheduled outage drill, GitHub Status and Cloudflare
+  Status for the shared account, and
   `rcp.demo.example-monitor-url=https://example.com` enables one-time onboarding.
   Provisioning captures the Cognito UUID `sub` in a host file supplied through
   `RCP_DEMO_OWNER_SUBJECT`; an email/username is not a valid substitute. Deploy an
@@ -214,7 +215,7 @@ python3 infra/aws-demo/cost-estimate.py --monitors 8 --seconds 5 --retry-percent
 S3 storage/requests, CloudFront requests/transfer/functions, cross-region result
 traffic, CloudWatch logs, Cognito users/email quotas, budget service charges, VM
 storage/traffic, backups, and a domain are **additional**, not assumed to be cents.
-At 2 seeded monitors, an average billed duration of 0.5 seconds and no retries
+For a reduced two-monitor deployment, an average billed duration of 0.5 seconds and no retries
 gives about $0.58/month for Lambda and SQS in this model. At the eight-monitor
 cap, that is about $1.83/month. An average of 5 seconds with 10% retries gives
 about $9.33/month at 256 MiB, compared with $22.01 at 512 MiB for the same billed

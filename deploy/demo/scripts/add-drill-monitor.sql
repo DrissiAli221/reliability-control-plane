@@ -22,8 +22,8 @@ BEGIN
     IF (SELECT count(*) FROM monitors) >= 8 THEN
         RAISE EXCEPTION 'Global monitor cap of 8 reached';
     END IF;
-    IF (SELECT count(*) FROM monitors WHERE owner_subject = subject) >= 3 THEN
-        RAISE EXCEPTION 'Demo owner quota of 3 reached';
+    IF (SELECT count(*) FROM monitors WHERE owner_subject = subject) >= 5 THEN
+        RAISE EXCEPTION 'Demo owner quota of 5 reached';
     END IF;
     INSERT INTO monitors (monitor_id, owner_subject, name, target_url,
                           check_interval_seconds, timeout_ms, enabled, next_check_at)
