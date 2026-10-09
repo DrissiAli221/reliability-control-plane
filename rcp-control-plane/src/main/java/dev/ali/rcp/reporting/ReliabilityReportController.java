@@ -20,13 +20,16 @@ import java.util.UUID;
 public class ReliabilityReportController {
     private final ReliabilityReportService service;
     private final ReliabilityReportHtmlRenderer htmlRenderer;
+    private final ReliabilityReportCsvWriter csvWriter;
 
     public ReliabilityReportController(
             ReliabilityReportService service,
-            ReliabilityReportHtmlRenderer htmlRenderer
+            ReliabilityReportHtmlRenderer htmlRenderer,
+            ReliabilityReportCsvWriter csvWriter
     ) {
         this.service = service;
         this.htmlRenderer = htmlRenderer;
+        this.csvWriter = csvWriter;
     }
 
     @GetMapping
@@ -56,5 +59,23 @@ public class ReliabilityReportController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=rcp-reliability-report.html")
                 .header("Content-Security-Policy", "sandbox; default-src 'none'; style-src 'unsafe-inline'")
                 .body(htmlRenderer.render(report));
+    }
+
+    @GetMapping(value = "/csv", produces = "text/csv; charset=utf-8")
+    public ResponseEntity<String> csv(
+            @PathVariable UUID monitorId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
+            @RequestParam(defaultValue = "99.9") BigDecimal sloTargetPercent,
+            Authentication authentication
+    ) {
+        ReliabilityReport report = service.generate(
+                authentication.getName(), monitorId, from, to, sloTargetPercent
+        );
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/csv; charset=utf-8"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=rcp-reliability-incidents.csv")
+                .header("X-Content-Type-Options", "nosniff")
+                .body(csvWriter.write(report));
     }
 }

@@ -76,6 +76,47 @@ class ReliabilityReportApiTest {
     }
 
     @Test
+    void csvListsIncidentsAsAnAttachment() throws Exception {
+        Monitor monitor = monitor("ali-subject", "CSV target");
+        UUID down = execution(monitor, WINDOW_START, "DOWN", 503);
+        UUID up = execution(monitor, WINDOW_START.plusSeconds(60), "UP", 200);
+        incident(monitor, down, up);
+
+        var response = mockMvc.perform(get("/api/monitors/{id}/reliability-report/csv", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject")))
+                        .queryParam("from", WINDOW_START.toString())
+                        .queryParam("to", WINDOW_START.plusSeconds(120).toString()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=rcp-reliability-incidents.csv"))
+                .andReturn().getResponse();
+
+        assertThat(response.getContentType()).startsWith("text/csv");
+        String[] lines = response.getContentAsString().split("\r\n");
+        assertThat(lines).hasSize(2);
+        assertThat(lines[0]).isEqualTo("incident_id,state,opened_at,resolved_at,duration_seconds");
+        assertThat(lines[1]).matches("[0-9a-f-]{36},RESOLVED,2026-09-07T12:00:00Z,2026-09-07T12:01:00Z,60");
+    }
+
+    @Test
+    void anotherOwnerCannotExportTheCsv() throws Exception {
+        Monitor monitor = monitor("ali-subject", "Private target");
+
+        mockMvc.perform(get("/api/monitors/{id}/reliability-report/csv", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("other-subject")))
+                        .queryParam("from", WINDOW_START.toString())
+                        .queryParam("to", WINDOW_START.plusSeconds(120).toString()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void csvRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/monitors/{id}/reliability-report/csv", UUID.randomUUID())
+                        .queryParam("from", WINDOW_START.toString())
+                        .queryParam("to", WINDOW_START.plusSeconds(120).toString()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void anotherOwnerCannotGenerateTheReport() throws Exception {
         Monitor monitor = monitor("ali-subject", "Private target");
 
