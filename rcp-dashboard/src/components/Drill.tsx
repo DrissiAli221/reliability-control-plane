@@ -49,7 +49,7 @@ export function DrillPanel({ now, overview }: { now: number; overview?: MonitorO
   if (step == null) return <DrillCountdown phase={phase} now={now} />;
 
   return (
-    <section className={`panel drill${phase.active ? " drill-active" : ""}`} aria-label="Scheduled outage drill">
+    <section className={`panel drill${phase.active ? " drill-active" : ""}`} aria-label="Scheduled outage drill" data-tour="outage-drill">
       <div className="drill-head">
         <span className="drill-eyebrow"><FlaskConical size={14} aria-hidden="true" /> Scheduled outage drill</span>
         <span className="mono subtle">Every 2 h · 10 min outage · even UTC hours</span>
@@ -116,7 +116,7 @@ function DrillTrack({ track, label }: { track: Track; label: string }) {
 function DrillCountdown({ phase, now }: { phase: DrillPhase; now: number }) {
   const track = drillTrack(phase, now);
   return (
-    <section className="panel drill-countdown" aria-label="Planned outage drill">
+    <section className="panel drill-countdown" aria-label="Planned outage drill" data-tour="outage-drill">
       <div className="drill-countdown-head">
         <div className="drill-countdown-title">
           <FlaskConical size={16} aria-hidden="true" />

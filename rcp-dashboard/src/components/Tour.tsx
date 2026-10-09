@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useState, type CSSProperties } from "react"
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { listMonitors } from "../api";
+import { isDrillMonitor } from "../drill";
 import { TOUR, tour, useTourStep } from "../tour";
 import { cardWidth, CARD_HEIGHT, EDGE, GAP, PAD, placeCard, type Box, type Side } from "../tourLayout";
 
@@ -38,19 +39,22 @@ export function Tour() {
 
   // Take the operator to the step's page first.
   useEffect(() => {
-    if (!current || onRoute(pathname, current.route)) return;
+    if (!current) return;
     if (current.route !== "monitor") {
-      navigate(current.route);
+      if (!onRoute(pathname, current.route)) navigate(current.route);
       return;
     }
+    // Any monitor page serves the ordinary monitor steps; the drill step needs the drill monitor's own page.
+    if (onRoute(pathname, current.route) && !current.monitor) return;
     let active = true;
     listMonitors()
       .then((monitors) => {
         if (!active) return;
-        if (monitors[0]) navigate(`/monitors/${monitors[0].id}`);
-        else tour.go(index! + 1);
+        const pick = current.monitor === "drill" ? monitors.find((item) => item.enabled && isDrillMonitor(item.targetUrl)) : monitors[0];
+        if (!pick) tour.skip(index!);
+        else if (pathname !== `/monitors/${pick.id}`) navigate(`/monitors/${pick.id}`);
       })
-      .catch(() => { if (active) tour.go(index! + 1); });
+      .catch(() => { if (active) tour.skip(index!); });
     return () => { active = false; };
   }, [current, pathname, navigate, index]);
 
@@ -86,16 +90,18 @@ export function Tour() {
           decided = true;
           setSide(chooseSide(next));
         }
-      } else if (!decided && performance.now() - started > 1500) {
-        // The target never appeared (for example the fault drill outside the local profile): centre the card.
+      } else if (!decided && performance.now() - started > (current.monitor ? 4000 : 1500)) { // the drill step may first have to find and open its monitor
         decided = true;
-        setSide("centre");
+        // The target never appeared. A step that only makes sense with it (the fault switch for a read-only operator,
+        // the drill on a page without one) is skipped; a core step is centred so the story keeps going.
+        if (current.optional && index != null) tour.skip(index);
+        else setSide("centre");
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [current, pathname]);
+  }, [current, pathname, index]);
 
   useEffect(() => {
     if (index == null) return;
