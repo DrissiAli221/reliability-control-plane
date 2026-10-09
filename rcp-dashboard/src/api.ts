@@ -82,11 +82,14 @@ export function latencyHeatmap(monitorId: string, hours = 24): Promise<LatencyHe
   return request(`/api/monitors/${encodeURIComponent(monitorId)}/latency-heatmap?hours=${hours}`);
 }
 
-export function reliabilityReport(monitorId: string, days = 7): Promise<ReliabilityReport> {
+function reportWindow(days: number): URLSearchParams {
   const to = new Date();
   const from = new Date(to.getTime() - days * 86_400_000);
-  const query = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
-  return request(`/api/monitors/${encodeURIComponent(monitorId)}/reliability-report?${query}`);
+  return new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
+}
+
+export function reliabilityReport(monitorId: string, days = 7): Promise<ReliabilityReport> {
+  return request(`/api/monitors/${encodeURIComponent(monitorId)}/reliability-report?${reportWindow(days)}`);
 }
 
 export function executionTrace(monitorId: string, executionId: string): Promise<ExecutionTrace> {
@@ -140,12 +143,17 @@ export function availability(monitorId: string, days = 7): Promise<AvailabilityR
 }
 
 export async function reliabilityReportHtml(monitorId: string, days = 7): Promise<Blob> {
-  const to = new Date();
-  const from = new Date(to.getTime() - days * 86_400_000);
-  const query = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
   const response = await authorizedResponse(
-    `/api/monitors/${encodeURIComponent(monitorId)}/reliability-report/html?${query}`,
+    `/api/monitors/${encodeURIComponent(monitorId)}/reliability-report/html?${reportWindow(days)}`,
     { headers: { Accept: "text/html" } },
+  );
+  return response.blob();
+}
+
+export async function reliabilityReportCsv(monitorId: string, days = 7): Promise<Blob> {
+  const response = await authorizedResponse(
+    `/api/monitors/${encodeURIComponent(monitorId)}/reliability-report/csv?${reportWindow(days)}`,
+    { headers: { Accept: "text/csv" } },
   );
   return response.blob();
 }

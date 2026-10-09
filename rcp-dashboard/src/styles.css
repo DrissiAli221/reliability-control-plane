@@ -262,6 +262,27 @@ a { color: inherit; }
 .inline-action { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .inline-error { max-width: 260px; font-size: 12px; color: var(--red-text); text-align: right; }
 
+/* Export split button: two touching halves sharing one hairline; the menu is a surface panel under the chevron. */
+.split-button { position: relative; display: inline-flex; }
+.split-toggle { margin-left: -1px; padding: 0 8px; }
+.split-main:focus-visible, .split-toggle:focus-visible { position: relative; z-index: 1; }
+.split-menu {
+  position: absolute; z-index: 60; top: calc(100% + 4px); right: 0; display: flex; flex-direction: column;
+  min-width: 260px; max-width: calc(100vw - 32px); padding: 4px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface);
+  box-shadow: var(--card-shadow, 0 8px 24px rgba(0, 0, 0, 0.45)); animation: split-menu-in 140ms ease-out;
+}
+.split-menu button {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 8px 10px;
+  border: 0; border-radius: var(--radius-sm); background: none; color: var(--text); text-align: left;
+}
+.split-menu button:hover { background: var(--surface-hover); }
+.split-menu button:focus-visible { outline: none; background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+.split-label, .split-hint { font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--track-label); }
+.split-hint { color: var(--text-3); }
+@keyframes split-menu-in { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .split-menu { animation-name: fade; } }
+
 /* ---------- Status primitives ---------- */
 /* Inline status marker: the same 3×3 dot-matrix block as the live LED, static, ~9px (11px beside titles). */
 .status-dot { --dot-size: 2px; --dot-gap: 1.5px; --dot-color: var(--text-3); display: inline-grid; grid-template-columns: repeat(3, var(--dot-size)); gap: var(--dot-gap); flex: none; vertical-align: middle; }

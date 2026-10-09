@@ -7,7 +7,7 @@ import {
 import { isLocalAuth } from "../auth";
 import { ChaosPanel } from "../components/ChaosPanel";
 import { CheckTimeline } from "../components/CheckTimeline";
-import { DownloadReportButton } from "../components/DownloadReportButton";
+import { ExportReportButton } from "../components/ExportReportButton";
 import { DrillPanel, DrillTag } from "../components/Drill";
 import { EvidenceRail } from "../components/EvidenceRail";
 import { Explain, ExplainItems } from "../components/Explain";
@@ -129,7 +129,7 @@ export function MonitorDetailPage() {
             <RefreshCw size={16} className={detail.loading ? "spin" : undefined} />
           </button>
           {!readOnly && <MonitorToggleButton enabled={monitor.enabled} onToggle={toggle} />}
-          <DownloadReportButton monitorId={monitor.id} monitorName={monitor.name} />
+          <ExportReportButton monitorId={monitor.id} monitorName={monitor.name} />
         </div>
       </header>
 
