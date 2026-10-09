@@ -75,7 +75,7 @@ public class ReliabilityReportHtmlRenderer {
             .decision { padding: 14px 16px; border: 1px solid var(--border); background: var(--surface); }
             .decision p { color: var(--text-2); }
             .decision b { font-weight: 500; color: var(--text); }
-            .tag { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; font-size: 11px; letter-spacing: .04em; color: var(--text); }
+            .tag { display: inline-flex; align-items: center; gap: 7px; vertical-align: middle; line-height: 1; white-space: nowrap; font-size: 11px; letter-spacing: .04em; color: var(--text); }
             /* Status marker: a 3x3 dot-matrix block, the same shape as the dashboard's StatusDot (9px). */
             .status-dot { --dot-size: 2px; --dot-gap: 1.5px; --dot-color: var(--text-3); display: inline-grid;
               grid-template-columns: repeat(3, var(--dot-size)); gap: var(--dot-gap); flex: none; }
@@ -112,7 +112,7 @@ public class ReliabilityReportHtmlRenderer {
             .readout-row b { font-weight: 400; color: var(--text); }
             /* The dashboard's meter: a 6px track and a fill; a target is a 2px notch cut through the track, not a line over it. */
             .meter { position: relative; height: 6px; background: var(--track); }
-            .meter-fill { position: absolute; inset: 0 auto 0 0; min-width: 3px; background: var(--text-2); }
+            .meter-fill { position: absolute; inset: 0 auto 0 0; min-width: 3px; background: var(--text-3); }
             .meter-fill.good { background: var(--green); } .meter-fill.bad { background: var(--red); }
             .meter-fill.warn { background: var(--amber); }
             .meter-mark { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--surface); }
@@ -161,24 +161,24 @@ public class ReliabilityReportHtmlRenderer {
             @media print {
               :root { color-scheme: light; """ + LIGHT_TOKENS + """
                 --bg: #ffffff; }
-              body { font-size: 9pt; } .report { max-width: none; padding: 0; }
+              body { font-size: 9pt; } .report { max-width: none; padding: 0 1px; } /* keeps right-hand hairlines inside the printable area */
               .masthead { padding-bottom: 3mm; } .brand svg { width: 20px; height: 16px; }
-              .intro { margin: 6mm 0 4mm; } h1 { font-size: 22pt; }
+              .intro { margin: 4mm 0 3mm; } h1 { font-size: 22pt; }
               .figure { font-size: 19pt; }
               h2, h3, .brand { font-size: 10.5pt; }
               .label, dt, th, .section-note, .ticks, .chip, .tag, .edition, .meta-line, .readout-row, footer { font-size: 7.5pt; }
               .hint, .unit, .note, .metric-value .unit, .lines dd { font-size: 8pt; }
               .target { margin: 2mm 0 1mm; }
-              .decision { padding: 3mm; } .panel-header { min-height: 0; padding: 2mm 3mm; } .stack { margin-top: 4mm; }
+              .decision { padding: 3mm; } .panel-header { min-height: 0; padding: 1.8mm 3mm; } .stack { margin-top: 4mm; }
               .metric { gap: 1.5mm; padding: 3mm; } .metric-visual { height: 4mm; }
               .visual { padding: 3mm; } .readout-row { margin: 3mm 0 2mm; } .lines { margin-top: 3mm; }
-              .lines > div { padding: 1.5mm 0; }
-              .panel-header { break-after: avoid; } .limitations { padding: 3mm 3mm 3mm 7mm; }
+              .lines > div { padding: 1mm 0; }
+              .panel-header { break-after: avoid; } .limitations { padding: 2mm 3mm 2mm 7mm; }
               .facts > div { padding: 2mm 3mm; }
               .table-wrap { overflow: visible; }
-              th, td { padding: 1.5mm 3mm; } thead { display: table-header-group; } tr { break-inside: avoid; }
-              .masthead, .intro, .decision, .metric, .metrics, .visual, .visuals, .facts, .facts > div { break-inside: avoid; }
-              .limitations li { margin: 1mm 0; } footer { margin-top: 3mm; padding-top: 2mm; }
+              th, td { padding: 1mm 3mm; } thead { display: table-header-group; } tr { break-inside: avoid; }
+              .limits, .masthead, .intro, .decision, .metric, .metrics, .visual, .visuals, .facts, .facts > div { break-inside: avoid; }
+              .limitations li { margin: .5mm 0; } footer { margin-top: 2mm; padding-top: 1.5mm; }
               p, li { orphans: 3; widows: 3; }
             }
             """;
@@ -304,7 +304,7 @@ public class ReliabilityReportHtmlRenderer {
         html.append("</div></div><dl class=\"facts\">");
         item(html, "UP / DOWN", a.upExecutions() + " / " + a.downExecutions());
         item(html, "Disagreement / no data", a.disagreementExecutions() + " / " + a.noDataExecutions());
-        item(html, "Expected / pending / missing", a.expectedOpportunities() + " / " + a.pendingExecutions() + " / " + a.missingExecutions());
+        item(html, "Due / pending / missing", a.expectedOpportunities() + " / " + a.pendingExecutions() + " / " + a.missingExecutions());
         item(html, "Conclusive / finalized", a.conclusiveExecutions() + " / " + a.totalFinalizedExecutions());
         html.append("</dl></section>");
 
@@ -342,7 +342,7 @@ public class ReliabilityReportHtmlRenderer {
         }
         html.append("</section>");
 
-        panel(html, "What this report does not prove", "Read alongside the evidence");
+        panel(html, "What this report does not prove", "Read alongside the evidence", "limits");
         html.append("<ul class=\"limitations\">");
         for (String limitation : report.limitations()) {
             html.append("<li>").append(escape(limitation)).append("</li>");
@@ -375,7 +375,11 @@ public class ReliabilityReportHtmlRenderer {
 
     /** A module with a header row, like the dashboard's panels; the caller closes the section. */
     private void panel(StringBuilder html, String title, String note) {
-        html.append("<section class=\"panel\"><header class=\"panel-header\"><h2>").append(escape(title))
+        panel(html, title, note, "");
+    }
+
+    private void panel(StringBuilder html, String title, String note, String extraClass) {
+        html.append("<section class=\"panel").append(extraClass.isEmpty() ? "" : " " + extraClass).append("\"><header class=\"panel-header\"><h2>").append(escape(title))
                 .append("</h2><span class=\"section-note\">").append(escape(note)).append("</span></header>");
     }
 
