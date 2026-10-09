@@ -50,10 +50,16 @@ export function Tooltip({
     const parent = el.parentElement?.clientWidth ?? 0
     setBox((prev) => (prev.card === card && prev.parent === parent ? prev : { card, parent }))
   }
-  const half = box.card / 2
+  // Open towards the side with more room: right of the cursor in the left half of the chart, left of it in the right
+  // half. Unlike a centred card clamped by its measured width, this can't run past either edge when the card grows
+  // (an incident line makes it wider than the series rows alone).
+  const flip = box.parent > 0 && chart.tooltipLeft > box.parent / 2
   const left = box.parent > 0
-    ? Math.max(half + 2, Math.min(box.parent - half - 2, chart.tooltipLeft))
+    ? flip
+      ? Math.max(box.card + 2, chart.tooltipLeft - 8)
+      : Math.min(box.parent - box.card - 2, chart.tooltipLeft + 8)
     : chart.tooltipLeft
+  const shift = flip ? "-100%" : "0%"
 
   const heading = chart.heading(index, labelKey)
   const items = chart.itemsAt(index)
@@ -66,14 +72,14 @@ export function Tooltip({
           ref={measure}
           initial={{
             opacity: 0,
-            x: "-50%",
+            x: shift,
             y: "-115%",
             top: chart.tooltipTop,
             left,
           }}
           animate={{
             opacity: 1,
-            x: "-50%",
+            x: shift,
             y: "-115%",
             top: chart.tooltipTop,
             left,

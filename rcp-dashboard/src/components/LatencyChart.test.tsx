@@ -121,7 +121,7 @@ describe("incident lane", () => {
     expect(only.x).toBeCloseTo((23.5 * 852) / 47, 1);
     expect(only.width).toBeCloseTo(((600 / 1800) * 852) / 47, 1); // ten minutes, a third of a bucket
     expect(only.open).toBe(false);
-    expect(container.querySelector(".incident-lane-track")).toHaveAttribute("width", "852");
+    expect(container.querySelector(".incident-lane")).toHaveAttribute("width", "852");
   });
 
   it("keeps a one-minute incident at least 2 px wide and runs an open one to now in solid red", () => {

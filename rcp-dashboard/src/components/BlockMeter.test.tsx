@@ -1,7 +1,8 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { BlockMeter, blockSlices, budgetMeter, coverageMeter, latencyMeter } from "./BlockMeter";
+import { blockSlices, budgetMeter, coverageMeter, latencyMeter } from "../blockMeters";
+import { BlockMeter } from "./BlockMeter";
 
 afterEach(cleanup);
 

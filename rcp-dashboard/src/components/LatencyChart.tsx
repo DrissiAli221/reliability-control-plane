@@ -167,13 +167,21 @@ function xAtTime(ctx: ChartContextValue, rows: Row[], bucketMs: number, time: nu
  */
 function IncidentLane({ spans, bucketMs }: { spans: Span[]; bucketMs: number }) {
   const ctx = useChartPart("IncidentLane");
+  const hatch = `lane-hatch-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   if (!ctx.ready || spans.length === 0 || ctx.dataLength === 0) return null;
 
   const rows = ctx.data as unknown as Row[];
   const width = ctx.plot.width;
   return (
     <g pointerEvents="none" transform={`translate(0,${-(LANE_PX + LANE_GAP)})`}>
-      <rect className="incident-lane-track" x={0} y={0} width={width} height={LANE_PX} />
+      <defs>
+        <pattern id={hatch} width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="4" height="4" className="incident-lane-track" />
+          <line x1="0" y1="0" x2="0" y2="4" className="incident-lane-hatch" />
+        </pattern>
+      </defs>
+      {/* A hatched track, like the chart's no-data bands, so the lane reads as "time" rather than as an empty bar. */}
+      <rect className="incident-lane" x={0} y={0} width={width} height={LANE_PX} fill={`url(#${hatch})`} />
       {spans.map((span, index) => {
         const [x, w] = laneBounds(xAtTime(ctx, rows, bucketMs, span.start), xAtTime(ctx, rows, bucketMs, span.end), width, LANE_MIN_SPAN_PX);
         return <rect key={`${span.start}-${index}`} className={span.open ? "incident-lane-span open" : "incident-lane-span"} x={x} y={0} width={w} height={LANE_PX} />;
