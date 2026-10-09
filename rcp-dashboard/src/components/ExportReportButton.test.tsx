@@ -24,7 +24,7 @@ function renderButton() {
 async function openMenu() {
   const chevron = renderButton();
   fireEvent.click(chevron);
-  await waitFor(() => expect(screen.getByRole("menuitem", { name: /Report \(HTML\)/ })).toHaveFocus());
+  await waitFor(() => expect(screen.getByRole("menuitem", { name: /HTML report/ })).toHaveFocus());
   return chevron;
 }
 
@@ -37,17 +37,25 @@ describe("ExportReportButton", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
-  it("opens a labelled menu from the chevron and lists every format with a hint", async () => {
+  it("opens a labelled menu from the chevron and lists every format with an extension tag and a tooltip", async () => {
     const chevron = await openMenu();
 
     expect(chevron).toHaveAttribute("aria-haspopup", "menu");
     expect(chevron).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
-      "Report (HTML)Styled report, works offline",
-      "PDFOpens the report to save as PDF",
-      "JSONRaw numbers for scripts",
-      "CSVIncident list for spreadsheets",
+    const items = screen.getAllByRole("menuitem");
+    expect(items.map((item) => item.textContent)).toEqual([
+      "HTML report.html",
+      "Save as PDF.pdf",
+      "JSON data.json",
+      "CSV incidents.csv",
     ]);
+    expect(items.map((item) => item.getAttribute("title"))).toEqual([
+      "Styled report, works offline",
+      "Opens the report to save as PDF",
+      "Raw numbers for scripts",
+      "Incident list for spreadsheets",
+    ]);
+    expect(screen.getByRole("menu")).toHaveClass("menu");
   });
 
   it("opens with ArrowDown and moves with the arrow keys, Home and End, wrapping at the ends", async () => {
@@ -89,10 +97,10 @@ describe("ExportReportButton", () => {
   });
 
   it.each([
-    ["Report (HTML)", downloadReport],
-    ["PDF", printReport],
-    ["JSON", downloadReportJson],
-    ["CSV", downloadReportCsv],
+    ["HTML report", downloadReport],
+    ["Save as PDF", printReport],
+    ["JSON data", downloadReportJson],
+    ["CSV incidents", downloadReportCsv],
   ])("runs %s from its menu item", async (name, action) => {
     vi.mocked(printReport).mockResolvedValue("printed");
     await openMenu();
@@ -107,7 +115,7 @@ describe("ExportReportButton", () => {
     let finish = () => {};
     vi.mocked(downloadReportCsv).mockReturnValue(new Promise<void>((resolve) => { finish = resolve; }));
     await openMenu();
-    fireEvent.click(screen.getByRole("menuitem", { name: /^CSV/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /^CSV incidents/ }));
 
     expect(await screen.findByRole("button", { name: "Exporting…" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Choose export format" })).toBeDisabled();
@@ -127,7 +135,7 @@ describe("ExportReportButton", () => {
   it("explains the fallback when the PDF tab is blocked", async () => {
     vi.mocked(printReport).mockResolvedValue("blocked");
     await openMenu();
-    fireEvent.click(screen.getByRole("menuitem", { name: /^PDF/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /^Save as PDF/ }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Pop-ups are blocked");
   });

@@ -1,26 +1,32 @@
-import { ChevronDown } from "lucide-react";
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { Braces, ChevronDown, FileText, Printer, Table2 } from "lucide-react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { downloadReport, downloadReportCsv, downloadReportJson, printReport } from "../reportDownload";
 
 type Format = {
   label: string;
+  /** File extension shown as a muted tag. */
+  tag: string;
+  /** Longer description, shown as a tooltip. */
   hint: string;
+  icon: ReactNode;
   run: (monitorId: string, monitorName: string) => Promise<void>;
 };
 
 const POPUP_BLOCKED = "Pop-ups are blocked, so the HTML report was downloaded. Open it and print to save as PDF.";
 
 const FORMATS: Format[] = [
-  { label: "Report (HTML)", hint: "Styled report, works offline", run: downloadReport },
+  { label: "HTML report", tag: ".html", hint: "Styled report, works offline", icon: <FileText size={14} aria-hidden="true" />, run: downloadReport },
   {
-    label: "PDF",
+    label: "Save as PDF",
+    tag: ".pdf",
+    icon: <Printer size={14} aria-hidden="true" />,
     hint: "Opens the report to save as PDF",
     run: async (id, name) => {
       if ((await printReport(id, name)) === "blocked") throw new Error(POPUP_BLOCKED);
     },
   },
-  { label: "JSON", hint: "Raw numbers for scripts", run: downloadReportJson },
-  { label: "CSV", hint: "Incident list for spreadsheets", run: downloadReportCsv },
+  { label: "JSON data", tag: ".json", hint: "Raw numbers for scripts", icon: <Braces size={14} aria-hidden="true" />, run: downloadReportJson },
+  { label: "CSV incidents", tag: ".csv", hint: "Incident list for spreadsheets", icon: <Table2 size={14} aria-hidden="true" />, run: downloadReportCsv },
 ];
 
 /** Export is a split button: the main half downloads the HTML report, the chevron lists the other formats. */
@@ -120,7 +126,7 @@ export function ExportReportButton({ monitorId, monitorName }: { monitorId: stri
           <ChevronDown size={14} aria-hidden="true" />
         </button>
         {open && (
-          <div className="split-menu" role="menu" id={menuId} aria-label="Export format" onKeyDown={onMenuKeyDown}>
+          <div className="menu split-menu" role="menu" id={menuId} aria-label="Export format" onKeyDown={onMenuKeyDown}>
             {FORMATS.map((format, index) => (
               <button
                 key={format.label}
@@ -130,10 +136,12 @@ export function ExportReportButton({ monitorId, monitorName }: { monitorId: stri
                 type="button"
                 role="menuitem"
                 tabIndex={-1}
+                title={format.hint}
                 onClick={() => void run(format)}
               >
-                <span className="split-label">{format.label}</span>
-                <span className="split-hint">{format.hint}</span>
+                {format.icon}
+                {format.label}
+                <span className="menu-tag">{format.tag}</span>
               </button>
             ))}
           </div>
