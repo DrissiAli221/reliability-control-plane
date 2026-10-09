@@ -1,4 +1,4 @@
-import { AlertTriangle, ChevronLeft, ExternalLink, PauseCircle, RefreshCw } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ExternalLink, PauseCircle, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FALLBACK_CAVEATS } from "../caveats";
@@ -145,7 +145,7 @@ export function MonitorDetailPage() {
           </button>
           {!readOnly && <button type="button" className="button secondary" onClick={() => setEditingStatuses(true)}>Accepted statuses</button>}
           {!readOnly && <MonitorToggleButton enabled={monitor.enabled} onToggle={toggle} />}
-          {!readOnly && <button type="button" className="button secondary" onClick={() => setDeleting(true)}>Delete monitor</button>}
+          {!readOnly && <button type="button" className="button danger" onClick={() => setDeleting(true)}><Trash2 size={14} aria-hidden="true" />Delete monitor</button>}
           <ExportReportButton monitorId={monitor.id} monitorName={monitor.name} />
         </div>
       </header>

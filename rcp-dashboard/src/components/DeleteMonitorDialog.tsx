@@ -32,7 +32,7 @@ export function DeleteMonitorDialog({ monitorId, name, onClose, onDeleted }: {
         <label className="field"><span>Type {name} to confirm</span><input autoFocus value={confirmation} onChange={(event) => setConfirmation(event.target.value)} disabled={busy} autoComplete="off" /></label>
         {error && <p className="form-error" role="alert">{error}</p>}
         <footer className="dialog-actions"><button className="button secondary" type="button" disabled={busy} onClick={onClose}>Cancel</button>
-          <button className="button primary" type="submit" disabled={busy || confirmation !== name}>{busy ? "Deleting…" : "Delete monitor"}</button></footer>
+          <button className="button danger" type="submit" disabled={busy || confirmation !== name}>{busy ? "Deleting…" : "Delete monitor"}</button></footer>
       </form>
     </section>
   </div>;

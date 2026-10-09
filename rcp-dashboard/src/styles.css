@@ -244,6 +244,9 @@ a { color: inherit; }
 .button.primary:hover:not(:disabled) { background-color: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent-strong); }
 .button.secondary { background: var(--surface); color: var(--text); }
 .button.secondary:hover:not(:disabled) { background-color: var(--surface-hover); }
+/* Destructive but quiet: a neutral key with danger-hue text; the red wash appears only on hover. */
+.button.danger { background: var(--surface); color: var(--red-text); }
+.button.danger:hover:not(:disabled) { background-color: var(--red-bg); }
 .icon-button {
   display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid transparent;
   border-radius: var(--radius-md); background: none; color: var(--text-2); transition: background 120ms, color 120ms, transform 100ms ease-out;
