@@ -1773,12 +1773,24 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .monitor-settings { max-height: calc(100dvh - 40px); overflow-y: auto; overflow-wrap: anywhere; }
 .monitor-settings .field input { width: 100%; min-width: 0; }
 
-/* A footer row inside a panel: a hairline above, the panel's own padding, an icon and a short explanation. */
-.panel-note { display: flex; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--border); color: var(--text); }
-.panel-note > svg { flex: none; margin-top: 1px; color: var(--text-2); }
-.panel-note strong { font-size: 13px; font-weight: 500; }
+/* Blocked: the probes were challenged, not absent. The same thin 135deg diagonal as the incident lane and the block meters,
+   in neutral ink, so it reads as "something is in the way" without a new colour. */
+:root { --blocked-hatch: repeating-linear-gradient(135deg, color-mix(in srgb, var(--text-3) 32%, transparent) 0 1px, transparent 1px 7px); }
+:root:root .fanout-node.blocked, .badge.blocked { background-image: var(--blocked-hatch); }
+.fanout-region.blocked .fanout-status, .fanout-region.blocked .fanout-latency .mono, .fanout-region.blocked .fanout-of { color: var(--text-2); }
+.fanout-verdict.blocked { --hue: var(--text); }
+.badge.blocked { color: var(--text); box-shadow: inset 0 0 0 1px var(--border-strong); }
+.badge.blocked svg { flex: none; color: var(--text-2); }
+
+/* The bot-challenge note sits right under the check card's header: a shield, one line, the regions and the fix. */
+.bot-note { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text); }
+.bot-note > svg { flex: none; color: var(--text-2); }
+.bot-note-text { flex: 1; min-width: 0; }
+.bot-note strong { font-size: 13px; font-weight: 500; }
 .panel-note-tag { margin-left: 8px; font-size: 11px; color: var(--text-3); }
-.panel-note p { margin-top: 4px; max-width: 72ch; font-size: 12px; line-height: 1.5; color: var(--text-2); }
+.bot-note p { margin-top: 2px; font-size: 12px; line-height: 1.5; color: var(--text-2); }
+.bot-note-action { flex: none; height: 28px; padding: 0 10px; font-size: 12.5px; }
+@media (max-width: 600px) { .bot-note { flex-wrap: wrap; } .bot-note-text { flex-basis: calc(100% - 40px); } .bot-note-action { margin-left: 32px; } }
 
 /* ---------- Capacity (how many monitors this demo has room for) ---------- */
 .page-header .capacity-line, .dialog .capacity-line {
@@ -1792,7 +1804,12 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 
 /* ---------- Report period (drives the tiles, evidence, incidents and exports) ---------- */
 .period-select { display: inline-flex; align-items: center; gap: 8px; }
-.period-bar { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-height: 18px; margin: 0 0 8px; }
+/* The report period is the header of the tiles' module: the title and since-note left, the segmented control right. */
+.period-panel > .metric-grid { border: 0; box-shadow: none; }
+:root[data-theme="light"] .period-panel > .metric-grid { border: 0; box-shadow: none; }
+.period-header { flex-wrap: wrap; }
+.period-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; min-width: 0; }
+.period-note { font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--track-label); color: var(--text-3); }
 .period-state { font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--track-label); color: var(--text-2); }
 .period-state[role="alert"] { color: var(--amber-text); }
 .link-button { padding: 0; border: 0; background: none; color: var(--accent-text); font: inherit; text-decoration: underline; text-underline-offset: 2px; }

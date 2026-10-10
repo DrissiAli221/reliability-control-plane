@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../apiError";
-import { availability, getMonitor, latencyHeatmap, reliabilityReport } from "../api";
+import { availability, getMonitor, latencyHeatmap, listMonitors, monitorHistory, reliabilityReport } from "../api";
 import { rememberReturnPath } from "../returnPath";
 import { useReadOnly } from "../session";
 import { MonitorDetailPage } from "./MonitorDetailPage";
@@ -162,6 +162,63 @@ describe("report period", () => {
     const group = screen.getByRole("group", { name: "Report period" });
     expect(group).toHaveAccessibleDescription(/summary tiles, evidence, incidents and exports.*latency chart.*45-day availability bar/);
     expect(screen.queryByText("History window")).not.toBeInTheDocument();
+  });
+});
+
+describe("report period row", () => {
+  it("heads the tiles with the period and the selector, and keeps the selector out of the page header", async () => {
+    page("/monitors/id?window=30d");
+    const title = await screen.findByRole("heading", { name: "Summary · last 30 days" });
+    const row = title.closest("header") as HTMLElement;
+    expect(within(row).getByRole("group", { name: "Report period" })).toBeInTheDocument();
+    expect(screen.queryByText("Report period")).not.toBeInTheDocument();
+    const pageHeader = screen.getByRole("heading", { name: "Checkout" }).closest("header") as HTMLElement;
+    expect(within(pageHeader).queryByRole("group", { name: "Report period" })).not.toBeInTheDocument();
+    expect(within(pageHeader).getByRole("button", { name: "Export" })).toBeInTheDocument();
+    expect(within(pageHeader).getByRole("button", { name: "Refresh" })).toBeInTheDocument();
+  });
+});
+
+describe("a Cloudflare challenge", () => {
+  const challenged = (region: string) => ({ region, outcome: "HTTP_RESPONSE", httpStatus: 403, latencyMs: 80, botProtection: "CLOUDFLARE_CHALLENGE" });
+  beforeEach(() => {
+    vi.mocked(listMonitors).mockResolvedValue([{ id: "id", name: "Checkout", targetUrl: "https://example.com", enabled: true, nextCheckAt: null, incidentStatus: "HEALTHY", latestVerdict: "NO_DATA", latestCheckedAt: null }] as never);
+    vi.mocked(monitorHistory).mockResolvedValue({ regions: [], days: [], recentChecks: [
+      { executionId: "abcdef123456", scheduledAt: new Date().toISOString(), verdict: "NO_DATA", results: [challenged("eu-west-1"), challenged("us-east-1")] },
+    ] } as never);
+  });
+
+  it("shows Blocked on the badge and the verdict, with the note above the diagram", async () => {
+    page();
+    expect(await screen.findByText("BLOCKED")).toBeInTheDocument();
+    expect(screen.queryByText("NO DATA")).not.toBeInTheDocument();
+    expect(screen.getByText("Blocked")).toBeInTheDocument();
+    const note = screen.getByRole("note");
+    const diagram = screen.getByLabelText("What each region saw");
+    expect(note.compareDocumentPosition(diagram) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("opens the statuses dialog prefilled with the default range plus 403", async () => {
+    page();
+    fireEvent.click(await screen.findByRole("button", { name: "Accept 403" }));
+    expect(await screen.findByRole("dialog", { name: "Accepted HTTP statuses" })).toBeInTheDocument();
+    expect(screen.getByDisplayValue("200-399,403")).toBeInTheDocument();
+  });
+
+  it("offers no Accept 403 to a read-only viewer", async () => {
+    vi.mocked(useReadOnly).mockReturnValue(true);
+    page();
+    await screen.findByText("BLOCKED");
+    expect(screen.queryByRole("button", { name: "Accept 403" })).not.toBeInTheDocument();
+  });
+
+  it("keeps NO DATA when the probes simply did not run", async () => {
+    vi.mocked(monitorHistory).mockResolvedValue({ regions: [], days: [], recentChecks: [
+      { executionId: "abcdef123456", scheduledAt: new Date().toISOString(), verdict: "NO_DATA", results: [{ region: "eu-west-1", outcome: "UNSAFE_TARGET", httpStatus: null, latencyMs: 0 }] },
+    ] } as never);
+    page();
+    expect(await screen.findByText("NO DATA")).toBeInTheDocument();
+    expect(screen.queryByText("BLOCKED")).not.toBeInTheDocument();
   });
 });
 

@@ -33,7 +33,7 @@ import { StatusBadge, StatusDot } from "../components/StatusBadge";
 import { TraceView } from "../components/TraceView";
 import { Tracker } from "../components/Tracker";
 import {
-  absoluteTime, compactUrl, count, interval, milliseconds, monitorState, outcomeLabel, outcomeTone, percent,
+  absoluteTime, compactUrl, count, interval, isBlockedCheck, milliseconds, monitorState, outcomeLabel, outcomeTone, percent,
   relativeTime,
 } from "../format";
 import type { AvailabilityReport, IncidentStateView, MonitorDetail, MonitorHistory, MonitorOverview, RecentCheck, ReliabilityReport } from "../types";
@@ -70,6 +70,7 @@ export function MonitorDetailPage() {
   const { monitorId = "" } = useParams();
   const navigate = useNavigate();
   const [editingStatuses, setEditingStatuses] = useState(false);
+  const [acceptingChallenge, setAcceptingChallenge] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [latencyRange, setLatencyRange] = useState<LatencyWindow>(24);
   const [params, setParams] = useSearchParams();
@@ -178,12 +179,15 @@ export function MonitorDetailPage() {
     updated.set("check", executionId);
     return updated;
   }, { replace: true });
-  const state = overview ? monitorState(overview) : { label: monitor.enabled ? "Awaiting evidence" : "Paused", tone: "muted" as const };
+  const latest = history?.recentChecks[0];
+  // The overview does not say why a check had no data; the latest check's results do. All regions challenged means blocked.
+  const blocked = Boolean(overview && monitor.enabled && overview.incidentStatus !== "OPEN" && overview.latestVerdict === "NO_DATA" && latest && isBlockedCheck(latest));
+  const state = blocked ? { label: "Blocked", tone: "muted" as const }
+    : overview ? monitorState(overview) : { label: monitor.enabled ? "Awaiting evidence" : "Paused", tone: "muted" as const };
   const ongoing = incidents.find((incident) => !incident.resolvedAt);
   const machineOpen = machineToggle ?? (incident ? machineNode(incident) !== "healthy" : false);
   const setMachineOpen = (open: boolean) => setMachineToggle(open);
   const drill = isDrillMonitor(monitor.targetUrl);
-  const latest = history?.recentChecks[0];
 
   async function toggle() {
     await setMonitorEnabled(monitor.id, !monitor.enabled);
@@ -193,7 +197,14 @@ export function MonitorDetailPage() {
   return (
     <>
       <Breadcrumb name={monitor.name} />
-      {editingStatuses && !readOnly && <AcceptedStatusCodesDialog monitorId={monitor.id} codes={monitor.acceptedHttpStatuses} onClose={() => setEditingStatuses(false)} onSaved={detail.refresh} />}
+      {(editingStatuses || acceptingChallenge) && !readOnly && (
+        <AcceptedStatusCodesDialog
+          monitorId={monitor.id}
+          codes={acceptingChallenge ? withChallengeStatus(monitor.acceptedHttpStatuses) : monitor.acceptedHttpStatuses}
+          onClose={() => { setEditingStatuses(false); setAcceptingChallenge(false); }}
+          onSaved={detail.refresh}
+        />
+      )}
       {deleting && !readOnly && <DeleteMonitorDialog monitorId={monitor.id} name={monitor.name} onClose={() => setDeleting(false)} onDeleted={() => navigate("/monitors", { replace: true })} />}
 
       <header className="page-header detail-header">
@@ -201,7 +212,7 @@ export function MonitorDetailPage() {
           <div className="title-row">
             <StatusDot tone={state.tone} pulse={state.tone === "fault"} />
             <h1>{monitor.name}</h1>
-            <StatusBadge label={state.label} tone={state.tone} />
+            <StatusBadge label={state.label} tone={state.tone} blocked={blocked} />
             {drill && <DrillTag />}
           </div>
           <div className="meta-row">
@@ -230,7 +241,6 @@ export function MonitorDetailPage() {
               ]}
             />
           )}
-          <PeriodSelect value={windowDays} onChange={setWindow} />
           <ExportReportButton monitorId={monitor.id} monitorName={monitor.name} days={windowDays} />
         </div>
       </header>
@@ -266,6 +276,7 @@ export function MonitorDetailPage() {
           timeoutMs={monitor.timeoutMs}
           intervalLabel={interval(monitor.checkIntervalSeconds)}
           now={now}
+          onAcceptChallenge={readOnly ? undefined : () => setAcceptingChallenge(true)}
           onTrace={() => {
             selectCheck(latest.executionId);
             document.querySelector('[data-tour="machine"]')?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -273,11 +284,15 @@ export function MonitorDetailPage() {
         />
       )}
 
-      <div className="period-bar">
-        <span className="period-note lbl" data-testid="period-since">{sinceNote(evidence, now)}</span>
-        <span className="period-state-slot">{stale ? periodState : null}</span>
-      </div>
-
+      <div className="panel period-panel">
+      <header className="panel-header period-header">
+        <div className="period-title">
+          <h2>Summary · last {windowInfo(windowDays).words}</h2>
+          <span className="period-note" data-testid="period-since">{sinceNote(evidence, now)}</span>
+          {stale ? periodState : null}
+        </div>
+        <PeriodSelect value={windowDays} onChange={setWindow} />
+      </header>
       <section className="metric-grid" aria-label={`${shown.words} summary`} aria-busy={updating || undefined} data-stale={stale || undefined} data-tour="metrics">
         <Metric
           label={`Uptime · ${shown.short}`}
@@ -328,6 +343,7 @@ export function MonitorDetailPage() {
           tone={report && report.errorBudget.remainingExecutions < 0 ? "fault" : "good"}
         />
       </section>
+      </div>
 
       <section className="panel">
         <header className="panel-header">
@@ -515,14 +531,19 @@ function MonitorGone() {
   );
 }
 
+/** The monitor's current accepted set (default 200-399) plus 403, so the dialog opens ready to count a Cloudflare challenge as UP. */
+function withChallengeStatus(accepted: number[] | null | undefined): number[] {
+  const base = accepted ?? Array.from({ length: 200 }, (_, index) => 200 + index);
+  return [...new Set([...base, 403])].sort((a, b) => a - b);
+}
+
 const PERIOD_SCOPE = "Sets the summary tiles, evidence, incidents and exports. The latency chart and the 45-day availability bar keep their own ranges.";
 
 /** The report period, in the same segmented style as the latency chart's toggle. It drives the tiles, evidence, incidents and exports only. */
 function PeriodSelect({ value, onChange }: { value: WindowDays; onChange: (days: WindowDays) => void }) {
   return (
     <div className="period-select" title={PERIOD_SCOPE}>
-      <span className="lbl" id="report-period-label">Report period</span>
-      <div className="segmented" role="group" aria-labelledby="report-period-label" aria-describedby="report-period-scope">
+      <div className="segmented" role="group" aria-label="Report period" aria-describedby="report-period-scope">
         {WINDOWS.map((item) => (
           <button key={item.days} type="button" aria-pressed={value === item.days} title={`Report on the last ${item.words}`} onClick={() => onChange(item.days)}>{item.label}</button>
         ))}
