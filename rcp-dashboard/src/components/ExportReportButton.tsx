@@ -1,5 +1,6 @@
 import { Braces, ChevronDown, FileText, Printer, Table2 } from "lucide-react";
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { windowInfo, type WindowDays } from "../reportWindow";
 import { downloadReport, downloadReportCsv, downloadReportJson, printReport } from "../reportDownload";
 
 type Format = {
@@ -9,7 +10,7 @@ type Format = {
   /** Longer description, shown as a tooltip. */
   hint: string;
   icon: ReactNode;
-  run: (monitorId: string, monitorName: string) => Promise<void>;
+  run: (monitorId: string, monitorName: string, days: WindowDays) => Promise<void>;
 };
 
 const POPUP_BLOCKED = "Pop-ups are blocked, so the HTML report was downloaded. Open it and print to save as PDF.";
@@ -21,16 +22,16 @@ const FORMATS: Format[] = [
     tag: ".pdf",
     icon: <Printer size={14} aria-hidden="true" />,
     hint: "Opens the report to save as PDF",
-    run: async (id, name) => {
-      if ((await printReport(id, name)) === "blocked") throw new Error(POPUP_BLOCKED);
+    run: async (id, name, days) => {
+      if ((await printReport(id, name, days)) === "blocked") throw new Error(POPUP_BLOCKED);
     },
   },
   { label: "JSON data", tag: ".json", hint: "Raw numbers for scripts", icon: <Braces size={14} aria-hidden="true" />, run: downloadReportJson },
   { label: "CSV incidents", tag: ".csv", hint: "Incident list for spreadsheets", icon: <Table2 size={14} aria-hidden="true" />, run: downloadReportCsv },
 ];
 
-/** Export is a split button: the main half downloads the HTML report, the chevron lists the other formats. */
-export function ExportReportButton({ monitorId, monitorName }: { monitorId: string; monitorName: string }) {
+/** Export is a split button: the main half downloads the HTML report, the chevron lists the other formats. All of them cover the page's selected window. */
+export function ExportReportButton({ monitorId, monitorName, days = 7 }: { monitorId: string; monitorName: string; days?: WindowDays }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +60,7 @@ export function ExportReportButton({ monitorId, monitorName }: { monitorId: stri
     setBusy(true);
     setError(null);
     try {
-      await format.run(monitorId, monitorName);
+      await format.run(monitorId, monitorName, days);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "The report could not be exported");
     } finally {
@@ -105,7 +106,7 @@ export function ExportReportButton({ monitorId, monitorName }: { monitorId: stri
         <button
           type="button"
           className="button secondary split-main"
-          title="Download the 7-day report as HTML"
+          title={`Download the ${windowInfo(days).words} report as HTML`}
           onClick={() => void run(FORMATS[0])}
           disabled={busy}
         >

@@ -1,11 +1,14 @@
 import { AlertTriangle, ChevronLeft, ExternalLink, ListChecks, PauseCircle, RefreshCw, Trash2 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FALLBACK_CAVEATS } from "../caveats";
 import {
   availability, executionTrace, getMonitor, incidentState, latencyHeatmap, listMonitors, monitorHistory, reliabilityReport, setMonitorEnabled,
 } from "../api";
+import { isNotFound } from "../apiError";
 import { isLocalAuth } from "../auth";
+import { parseWindow, windowInfo, WINDOWS, type WindowDays } from "../reportWindow";
+import { takeReturnPath } from "../returnPath";
 import { ActionMenu } from "../components/ActionMenu";
 import { AcceptedStatusCodesDialog } from "../components/AcceptedStatusCodesDialog";
 import { formatStatusCodes } from "../statusCodes";
@@ -40,16 +43,27 @@ import { useReadOnly } from "../session";
 import { useLiveData, useNow } from "../useLiveData";
 import { CoverageNote, ErrorState, LiveIndicator, Metric } from "./MonitorsPage";
 
+/** The availability panel shows this many days; the history is fetched for the longest window so the tiles can use it too. */
 const HISTORY_DAYS = 45;
+const HISTORY_FETCH_DAYS = 90;
 const INCIDENT_LIMIT = 5;
 
-type DetailData = {
+type FoundDetail = {
+  missing?: false;
   monitor: MonitorDetail;
   overview?: MonitorOverview;
   history?: MonitorHistory;
+  incident?: IncidentStateView;
+};
+/** The control plane answered 404: the monitor was deleted, or belongs to another account. That is not an outage. */
+type DetailData = FoundDetail | { missing: true };
+
+/** What the metric tiles and the report cover; `days` says which window these numbers are for. */
+type WindowData = {
+  monitorId: string;
+  days: WindowDays;
   availability?: AvailabilityReport;
   report?: ReliabilityReport;
-  incident?: IncidentStateView;
 };
 
 export function MonitorDetailPage() {
@@ -58,25 +72,51 @@ export function MonitorDetailPage() {
   const [editingStatuses, setEditingStatuses] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [latencyRange, setLatencyRange] = useState<LatencyWindow>(24);
+  const [params, setParams] = useSearchParams();
+  // The window lives in the URL (?window=30d) so a reload or a shared link keeps it; the default needs no parameter.
+  const windowDays = parseWindow(params.get("window"));
+  const setWindow = (next: WindowDays) => setParams((current) => {
+    const updated = new URLSearchParams(current);
+    if (next === 7) updated.delete("window");
+    else updated.set("window", windowInfo(next).param);
+    return updated;
+  }, { replace: true });
   const load = useCallback(async (): Promise<DetailData> => {
-    const monitor = await getMonitor(monitorId);
-    const [overviews, history, report7d, report, incident] = await Promise.allSettled([
+    let monitor: MonitorDetail;
+    try {
+      monitor = await getMonitor(monitorId);
+    } catch (reason) {
+      if (isNotFound(reason)) return { missing: true };
+      throw reason;
+    }
+    const [overviews, history, incident] = await Promise.allSettled([
       listMonitors(),
-      monitorHistory(monitorId, HISTORY_DAYS),
-      availability(monitorId),
-      reliabilityReport(monitorId),
+      monitorHistory(monitorId, HISTORY_FETCH_DAYS),
       incidentState(monitorId),
     ]);
     return {
       monitor,
       overview: overviews.status === "fulfilled" ? overviews.value.find((item) => item.id === monitorId) : undefined,
       history: history.status === "fulfilled" ? history.value : undefined,
-      availability: report7d.status === "fulfilled" ? report7d.value : undefined,
-      report: report.status === "fulfilled" ? report.value : undefined,
       incident: incident.status === "fulfilled" ? incident.value : undefined,
     };
   }, [monitorId]);
   const detail = useLiveData(load, 10_000);
+  // Its own loader as well: switching the window refetches only the tiles and the report, and the previous window's
+  // numbers stay (labelled with their own window) until the new ones arrive.
+  const loadWindow = useCallback(async (): Promise<WindowData> => {
+    const [evidence, full] = await Promise.allSettled([availability(monitorId, windowDays), reliabilityReport(monitorId, windowDays)]);
+    return {
+      monitorId,
+      days: windowDays,
+      availability: evidence.status === "fulfilled" ? evidence.value : undefined,
+      report: full.status === "fulfilled" ? full.value : undefined,
+    };
+  }, [monitorId, windowDays]);
+  const windowed = useLiveData(loadWindow, 10_000);
+  const windowData = windowed.data?.monitorId === monitorId ? windowed.data : null;
+  const shown = windowInfo(windowData?.days ?? windowDays);
+  const switching = windowData != null && windowData.days !== windowDays;
   // Its own loader: switching 24 h / 7 d refetches only the latency window, not the whole page, and the chart keeps
   // showing the previous window (dimmed) until the new one arrives instead of mixing the two.
   const loadHeatmap = useCallback(() => latencyHeatmap(monitorId, latencyRange), [monitorId, latencyRange]);
@@ -84,12 +124,32 @@ export function MonitorDetailPage() {
   const heatmap = heat.data ?? undefined;
   const now = useNow();
   // Rebuilt only when the report changes (every 10 s), not on each one-second tick, so the chart's incident spans stay stable.
-  const report = detail.data?.report;
+  const report = windowData?.report;
   const incidents = useMemo(() => pairIncidents(report), [report]);
-  const [params, setParams] = useSearchParams();
+  const location = useLocation();
+  const missing = detail.data?.missing === true;
+  const found = detail.data && !detail.data.missing;
+  // A sign-in that restored this very page may have brought the visitor to a monitor that is not theirs (another
+  // account, or the shared demo). That is not worth an error page: drop it and show the list, with one line of why.
+  useEffect(() => {
+    const here = `${location.pathname}${location.search}`;
+    if (found) takeReturnPath(here);
+    else if (missing && takeReturnPath(here)) {
+      navigate("/monitors", { replace: true, state: { notice: "That monitor is not on this account, so you are on the list instead." } });
+    }
+  }, [missing, found, location.pathname, location.search, navigate]);
   const readOnly = useReadOnly();
   // The full state machine opens by itself whenever the monitor leaves Healthy; a manual toggle overrides that.
   const [machineToggle, setMachineToggle] = useState<boolean | null>(null);
+
+  if (detail.data?.missing) {
+    return (
+      <>
+        <Breadcrumb name="Not found" />
+        <MonitorGone />
+      </>
+    );
+  }
 
   if (!detail.data) {
     return (
@@ -100,9 +160,14 @@ export function MonitorDetailPage() {
     );
   }
 
-  const { monitor, overview, history, availability: evidence, incident } = detail.data;
+  const { monitor, overview, history, incident } = detail.data;
+  const evidence = windowData?.availability;
   const selectedCheck = params.get("check") ?? history?.recentChecks[0]?.executionId ?? null;
-  const selectCheck = (executionId: string) => setParams({ check: executionId }, { replace: true });
+  const selectCheck = (executionId: string) => setParams((current) => {
+    const updated = new URLSearchParams(current);
+    updated.set("check", executionId);
+    return updated;
+  }, { replace: true });
   const state = overview ? monitorState(overview) : { label: monitor.enabled ? "Awaiting evidence" : "Paused", tone: "muted" as const };
   const ongoing = incidents.find((incident) => !incident.resolvedAt);
   const machineOpen = machineToggle ?? (incident ? machineNode(incident) !== "healthy" : false);
@@ -155,7 +220,8 @@ export function MonitorDetailPage() {
               ]}
             />
           )}
-          <ExportReportButton monitorId={monitor.id} monitorName={monitor.name} />
+          <WindowSelect value={windowDays} onChange={setWindow} />
+          <ExportReportButton monitorId={monitor.id} monitorName={monitor.name} days={windowDays} />
         </div>
       </header>
 
@@ -197,18 +263,18 @@ export function MonitorDetailPage() {
         />
       )}
 
-      <section className="metric-grid" aria-label="Seven-day summary" data-tour="metrics">
+      <section className="metric-grid" aria-label={`${shown.words} summary`} aria-busy={switching || undefined} data-tour="metrics">
         <Metric
-          label="Uptime · 7d"
-          explain={evidence && <UptimeExplain report={evidence} />}
-          visual={history && <Tracker days={history.days.slice(-7)} size="compact" label="Uptime by day, last 7 days" />}
+          label={`Uptime · ${shown.short}`}
+          explain={evidence && <UptimeExplain report={evidence} words={shown.words} />}
+          visual={history && shown.days > 1 && <Tracker days={history.days.slice(-shown.days)} size="compact" label={`Uptime by day, last ${shown.words}`} />}
           value={percent(evidence?.measuredAvailabilityPercent, 3)}
           hint={evidence ? `${percent(evidence.evidenceCoveragePercent, 1)} of expected checks were conclusive` : undefined}
           tone={evidence?.measuredAvailabilityPercent == null ? "muted" : evidence.measuredAvailabilityPercent >= evidence.sloTargetPercent ? "good" : "fault"}
         />
         <SloMetric report={evidence} />
         <Metric
-          label="Latency · 7d"
+          label={`Latency · ${shown.short}`}
           visual={report?.latency.p50Ms != null && report.latency.p95Ms != null && <BlockMeter {...latencyMeter(report.latency.p50Ms, report.latency.p95Ms)} />}
           explain={report && (
             <Explain
@@ -228,7 +294,7 @@ export function MonitorDetailPage() {
           tone="muted"
         />
         <Metric
-          label="Error budget · 7d"
+          label={`Error budget · ${shown.short}`}
           visual={report && <BlockMeter {...budgetMeter(report.errorBudget.observedBadExecutions, Number(report.errorBudget.allowedBadExecutions))} />}
           explain={report && (
             <Explain
@@ -256,7 +322,7 @@ export function MonitorDetailPage() {
         <div className="panel-body">
           {history ? (
             <>
-              <Tracker days={history.days} label={`${monitor.name}, last ${HISTORY_DAYS} days`} />
+              <Tracker days={history.days.slice(-HISTORY_DAYS)} label={`${monitor.name}, last ${HISTORY_DAYS} days`} />
               <div className="tracker-axis"><span>{HISTORY_DAYS} days ago</span><span>today</span></div>
               <ul className="tracker-legend">
                 <li><i className="operational" />Operational</li>
@@ -355,7 +421,7 @@ export function MonitorDetailPage() {
         <section className="panel">
           <header className="panel-header">
             <h2>Evidence</h2>
-            <span className="subtle">Last 7 days</span>
+            <span className="subtle">Last {shown.words}</span>
           </header>
           <div className="panel-body">
             {evidence ? (
@@ -374,7 +440,7 @@ export function MonitorDetailPage() {
       <section className="panel">
         <header className="panel-header">
           <h2>Incidents</h2>
-          <span className="subtle">Last 7 days</span>
+          <span className="subtle">Last {shown.words}</span>
         </header>
         {incidents.length > 0 ? (
           <div className="table-scroll">
@@ -401,7 +467,7 @@ export function MonitorDetailPage() {
               </tbody>
             </table>
           </div>
-        ) : <p className="panel-body subtle">No incident transitions in the last 7 days.</p>}
+        ) : <p className="panel-body subtle">No incident transitions in the last {shown.words}.</p>}
         {incidents.length > INCIDENT_LIMIT && (
           <p className="panel-more subtle">{incidents.length - INCIDENT_LIMIT} earlier incidents are in the downloadable report.</p>
         )}
@@ -418,6 +484,28 @@ export function MonitorDetailPage() {
         </details>
       )}
     </>
+  );
+}
+
+/** Shown when the monitor does not exist for this account. A 404 is an answer, not the control plane failing. */
+function MonitorGone() {
+  return (
+    <div className="empty" role="status">
+      <h2>This monitor no longer exists</h2>
+      <p>It was deleted, or it belongs to another account.</p>
+      <Link className="button secondary" to="/monitors">Back to monitors</Link>
+    </div>
+  );
+}
+
+/** The window the tiles and the export cover, in the same segmented style as the latency chart's toggle. */
+function WindowSelect({ value, onChange }: { value: WindowDays; onChange: (days: WindowDays) => void }) {
+  return (
+    <div className="segmented" role="group" aria-label="History window">
+      {WINDOWS.map((item) => (
+        <button key={item.days} type="button" aria-pressed={value === item.days} title={`Show the last ${item.words}`} onClick={() => onChange(item.days)}>{item.label}</button>
+      ))}
+    </div>
   );
 }
 
@@ -443,7 +531,7 @@ function CheckTrace({ monitorId, executionId }: { monitorId: string; executionId
   );
 }
 
-function UptimeExplain({ report }: { report: AvailabilityReport }) {
+function UptimeExplain({ report, words }: { report: AvailabilityReport; words: string }) {
   // Zero-count parts are left out so the line stays short.
   const excluded = [
     [report.disagreementExecutions, "disagree"],
@@ -455,7 +543,7 @@ function UptimeExplain({ report }: { report: AvailabilityReport }) {
       title="Uptime"
       lines={[
         { label: "Formula", value: "UP ÷ (UP + DOWN)" },
-        { label: "This week", value: `${count(report.upExecutions)} ÷ (${count(report.upExecutions)} + ${count(report.downExecutions)})` },
+        { label: `Last ${words}`, value: `${count(report.upExecutions)} ÷ (${count(report.upExecutions)} + ${count(report.downExecutions)})` },
         { label: "Excluded", value: <ExplainItems items={excluded} /> },
         { label: "Result", value: percent(report.measuredAvailabilityPercent, 3), strong: true },
       ]}

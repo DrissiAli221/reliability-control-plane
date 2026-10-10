@@ -33,8 +33,16 @@ describe("ExportReportButton", () => {
     renderButton();
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
 
-    await waitFor(() => expect(downloadReport).toHaveBeenCalledWith("monitor-1", "Checkout API"));
+    await waitFor(() => expect(downloadReport).toHaveBeenCalledWith("monitor-1", "Checkout API", 7));
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("exports the window the page has selected", async () => {
+    render(<ExportReportButton monitorId="monitor-1" monitorName="Checkout API" days={30} />);
+    expect(screen.getByRole("button", { name: "Export" })).toHaveAttribute("title", "Download the 30 days report as HTML");
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+
+    await waitFor(() => expect(downloadReport).toHaveBeenCalledWith("monitor-1", "Checkout API", 30));
   });
 
   it("opens a labelled menu from the chevron and lists every format with an extension tag and a tooltip", async () => {
@@ -107,7 +115,7 @@ describe("ExportReportButton", () => {
     const items = screen.getAllByRole("menuitem");
     fireEvent.click(items.find((item) => item.textContent?.startsWith(name))!);
 
-    await waitFor(() => expect(action).toHaveBeenCalledWith("monitor-1", "Checkout API"));
+    await waitFor(() => expect(action).toHaveBeenCalledWith("monitor-1", "Checkout API", 7));
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 

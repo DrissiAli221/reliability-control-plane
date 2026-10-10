@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { reliabilityReport, reliabilityReportCsv, reliabilityReportHtml } from "./api";
-import { downloadReportCsv, downloadReportJson, printReport, reportFilename } from "./reportDownload";
+import { downloadReport, downloadReportCsv, downloadReportJson, printReport, reportFilename } from "./reportDownload";
 
 vi.mock("./api", () => ({
   reliabilityReport: vi.fn(),
@@ -45,17 +45,23 @@ describe("reportFilename", () => {
   const day = new Date("2026-09-30T12:00:00Z");
 
   it("names the file after the monitor and defaults to HTML", () => {
-    expect(reportFilename("SpectraTV (EU)", "id-1", "html", day)).toBe("rcp-reliability-spectratv-eu-2026-09-30.html");
-    expect(reportFilename("SpectraTV (EU)", "id-1", undefined, day)).toBe("rcp-reliability-spectratv-eu-2026-09-30.html");
+    expect(reportFilename("SpectraTV (EU)", "id-1", "html", day)).toBe("rcp-reliability-spectratv-eu-7d-2026-09-30.html");
+    expect(reportFilename("SpectraTV (EU)", "id-1", undefined, day)).toBe("rcp-reliability-spectratv-eu-7d-2026-09-30.html");
   });
 
   it("uses the extension of the chosen format", () => {
-    expect(reportFilename("Checkout API", "id-1", "json", day)).toBe("rcp-reliability-checkout-api-2026-09-30.json");
-    expect(reportFilename("Checkout API", "id-1", "csv", day)).toBe("rcp-reliability-checkout-api-2026-09-30.csv");
+    expect(reportFilename("Checkout API", "id-1", "json", day)).toBe("rcp-reliability-checkout-api-7d-2026-09-30.json");
+    expect(reportFilename("Checkout API", "id-1", "csv", day)).toBe("rcp-reliability-checkout-api-7d-2026-09-30.csv");
+  });
+
+  it("names the chosen window so a 30-day export is not mistaken for a 7-day one", () => {
+    expect(reportFilename("Checkout API", "id-1", "html", day, 30)).toBe("rcp-reliability-checkout-api-30d-2026-09-30.html");
+    expect(reportFilename("Checkout API", "id-1", "csv", day, 1)).toBe("rcp-reliability-checkout-api-24h-2026-09-30.csv");
+    expect(reportFilename("Checkout API", "id-1", "json", day, 90)).toBe("rcp-reliability-checkout-api-90d-2026-09-30.json");
   });
 
   it("falls back to the id when the name has no usable characters", () => {
-    expect(reportFilename("???", "id-1", "csv", day)).toBe("rcp-reliability-id-1-2026-09-30.csv");
+    expect(reportFilename("???", "id-1", "csv", day)).toBe("rcp-reliability-id-1-7d-2026-09-30.csv");
   });
 });
 
@@ -66,7 +72,7 @@ describe("report exports", () => {
 
     await downloadReportJson("monitor-1", "Checkout API");
 
-    expect(downloads[0]).toMatch(/^rcp-reliability-checkout-api-\d{4}-\d{2}-\d{2}\.json$/);
+    expect(downloads[0]).toMatch(/^rcp-reliability-checkout-api-7d-\d{4}-\d{2}-\d{2}\.json$/);
     expect(blobs[0].type).toBe("application/json");
     expect(await readText(blobs[0])).toBe('{\n  "schemaVersion": "rcp-report-v1"\n}');
   });
@@ -77,8 +83,24 @@ describe("report exports", () => {
 
     await downloadReportCsv("monitor-1", "Checkout API");
 
-    expect(reliabilityReportCsv).toHaveBeenCalledWith("monitor-1");
+    expect(reliabilityReportCsv).toHaveBeenCalledWith("monitor-1", 7);
     expect(downloads[0]).toMatch(/\.csv$/);
+  });
+
+  it("exports the selected window in every format", async () => {
+    const { downloads } = captureDownloads();
+    vi.mocked(reliabilityReport).mockResolvedValue({} as never);
+    vi.mocked(reliabilityReportCsv).mockResolvedValue(new Blob(["x"]));
+    vi.mocked(reliabilityReportHtml).mockResolvedValue(new Blob(["x"]));
+
+    await downloadReport("monitor-1", "Checkout API", 30);
+    await downloadReportJson("monitor-1", "Checkout API", 30);
+    await downloadReportCsv("monitor-1", "Checkout API", 30);
+
+    expect(reliabilityReportHtml).toHaveBeenCalledWith("monitor-1", 30);
+    expect(reliabilityReport).toHaveBeenCalledWith("monitor-1", 30);
+    expect(reliabilityReportCsv).toHaveBeenCalledWith("monitor-1", 30);
+    expect(downloads.every((name) => name.includes("-30d-"))).toBe(true);
   });
 
   it("opens the report in a tab and prints it once it has loaded", async () => {
