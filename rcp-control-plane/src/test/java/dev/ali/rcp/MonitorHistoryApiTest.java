@@ -205,15 +205,80 @@ class MonitorHistoryApiTest {
                 .andExpect(status().isBadRequest());
     }
 
-    private record Fact(String region, String outcome, Integer httpStatus, long latencyMs) {
+    @Test
+    void challengedResponsesStayOutOfLatencyStatisticsAndTheSampleThreshold() throws Exception {
+        // Cloudflare challenge pages answer 403 with multi-second latency that measures the edge, not the target.
+        // They must not move percentiles or sample counts in the heatmap, the history or the report.
+        monitor = monitorRepository.saveAndFlush(Monitor.create(
+                "ali-subject", "Challenged monitor", "https://example.com", 60, 5_000,
+                todayStart.minus(Duration.ofDays(3))
+        ));
+        execution(todayStart.plusSeconds(60), "UP", http(EU, 200, 100), http(US, 200, 300));
+        execution(todayStart.plusSeconds(120), "UP", http(EU, 200, 200), http(US, 200, 400));
+        // Eight more checks add 16 challenged HTTP responses: 20 raw HTTP responses, but only 4 real ones.
+        for (int check = 0; check < 8; check++) {
+            execution(todayStart.plusSeconds(300 + check * 60L), "DOWN",
+                    challenged(EU, 403, 9_000), challenged(US, 403, 8_000));
+        }
+
+        mockMvc.perform(get("/api/monitors/{id}/latency-heatmap", monitor.getId())
+                        .queryParam("hours", "24")
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.regions[0].region").value(EU))
+                .andExpect(jsonPath("$.regions[0].samples").value(2))
+                .andExpect(jsonPath("$.regions[0].p95Ms[*]", hasItem(200)))
+                .andExpect(jsonPath("$.regions[0].p95Ms[*]", not(hasItem(9000))))
+                .andExpect(jsonPath("$.regions[0].windowP50Ms").value(100))
+                .andExpect(jsonPath("$.regions[0].windowP95Ms").value(200))
+                .andExpect(jsonPath("$.regions[1].samples").value(2))
+                .andExpect(jsonPath("$.regions[1].windowP95Ms").value(400));
+
+        mockMvc.perform(get("/api/monitors/{id}/history", monitor.getId())
+                        .queryParam("days", "7")
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.regions[0].httpSamples").value(2))
+                .andExpect(jsonPath("$.regions[0].p95Ms").value(200));
+
+        // Raw HTTP responses reach 20, but the filtered count is 4, so the report publishes no percentiles.
+        mockMvc.perform(get("/api/monitors/{id}/reliability-report", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject")))
+                        .queryParam("from", todayStart.toString())
+                        .queryParam("to", todayStart.plusSeconds(3_600).toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latency.sampleCount").value(4))
+                .andExpect(jsonPath("$.latency.p50Ms").value(nullValue()))
+                .andExpect(jsonPath("$.latency.p95Ms").value(nullValue()));
+
+        // Sixteen more real responses reach the threshold; the percentiles then exclude the challenged 8-9 seconds.
+        for (int check = 0; check < 8; check++) {
+            execution(todayStart.plusSeconds(900 + check * 60L), "UP", http(EU, 200, 100), http(US, 200, 300));
+        }
+        mockMvc.perform(get("/api/monitors/{id}/reliability-report", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject")))
+                        .queryParam("from", todayStart.toString())
+                        .queryParam("to", todayStart.plusSeconds(3_600).toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latency.sampleCount").value(20))
+                .andExpect(jsonPath("$.latency.p50Ms").value(200))
+                // Nine of 20 real samples are 100 ms, nine are 300 ms: nearest-rank p95 is the 19th, 300 ms.
+                .andExpect(jsonPath("$.latency.p95Ms").value(300));
+    }
+
+    private record Fact(String region, String outcome, Integer httpStatus, long latencyMs, String botProtection) {
     }
 
     private static Fact http(String region, int httpStatus, long latencyMs) {
-        return new Fact(region, "HTTP_RESPONSE", httpStatus, latencyMs);
+        return new Fact(region, "HTTP_RESPONSE", httpStatus, latencyMs, null);
+    }
+
+    private static Fact challenged(String region, int httpStatus, long latencyMs) {
+        return new Fact(region, "HTTP_RESPONSE", httpStatus, latencyMs, "CLOUDFLARE_CHALLENGE");
     }
 
     private static Fact failure(String region) {
-        return new Fact(region, "CONNECT_TIMEOUT", null, 5_000);
+        return new Fact(region, "CONNECT_TIMEOUT", null, 5_000, null);
     }
 
     private void execution(Instant scheduledAt, String verdict, Fact... facts) {
@@ -241,12 +306,13 @@ class MonitorHistoryApiTest {
                     INSERT INTO probe_results
                     (job_id, execution_id, monitor_id, probe_region, scheduled_at, started_at,
                      completed_at, outcome, http_status, latency_ms, response_bytes,
-                     monitor_behavior_version)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+                     monitor_behavior_version, bot_protection)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                     """,
                     jobId, executionId, monitor.getId(), fact.region(), timestamp(scheduledAt),
                     timestamp(scheduledAt.plusSeconds(1)), timestamp(scheduledAt.plusSeconds(2)),
-                    fact.outcome(), fact.httpStatus(), fact.latencyMs(), monitor.getBehaviorVersion()
+                    fact.outcome(), fact.httpStatus(), fact.latencyMs(), monitor.getBehaviorVersion(),
+                    fact.botProtection()
             );
         }
     }
