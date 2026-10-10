@@ -305,6 +305,7 @@ export function SignInPage() {
         <DemoStatus />
         <a href="https://github.com/DrissiAli221/reliability-control-plane" target="_blank" rel="noreferrer">Source</a>
       </footer>
+      <p className="signin-shutdown">This is a demo deployment. It will be shut down once the author&rsquo;s internship search is over.</p>
     </main>
   );
 }
