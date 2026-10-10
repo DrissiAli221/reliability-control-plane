@@ -101,7 +101,7 @@ export function DrillPanel({ now, overview }: { now: number; overview?: MonitorO
 }
 
 /**
- * Twelve ten-minute cells; an overlay marks the exact planned window instead of rounding to a cell.
+ * A quiet continuous well; ticks sit underneath and the overlay marks the exact planned window.
  */
 function DrillTrack({ track, label }: { track: Track; label: string }) {
   const ticks = [0, 30, 60, 90, 120].map((minutes) => track.start + minutes * 60_000);
@@ -109,11 +109,6 @@ function DrillTrack({ track, label }: { track: Track; label: string }) {
     <div className="drill-meter" role="img" aria-label={label}>
       <span className="drill-meter-tag lbl" aria-hidden="true">Planned drill</span>
       <div className="drill-meter-cells">
-        {track.fills.map((fill, index) => (
-          <i key={index}>
-            {fill > 0 && <b style={{ width: `${fill * 100}%` }} />}
-          </i>
-        ))}
         <span className="drill-meter-window" style={{ left: `${track.windowStart * 100}%`, width: `${(track.windowEnd - track.windowStart) * 100}%` }} />
         <span className="drill-meter-now" style={{ left: `${track.position * 100}%` }} />
       </div>
