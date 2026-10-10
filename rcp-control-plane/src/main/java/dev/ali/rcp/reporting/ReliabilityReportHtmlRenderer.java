@@ -71,6 +71,7 @@ public class ReliabilityReportHtmlRenderer {
               align-self: center; margin: 0 .15em; font-size: 30px; }
             .arrow i.on { background: var(--text-2); }
             .window-meta { margin-top: 8px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em; color: var(--text-3); }
+            .window-meta .since { display: block; }
             .title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; }
             .chip { display: inline-flex; align-items: center; gap: 7px; height: 24px; padding: 0 9px; white-space: nowrap;
               border: 1px solid var(--border); background: var(--surface); color: var(--text); }
@@ -193,7 +194,7 @@ public class ReliabilityReportHtmlRenderer {
                 --bg: #ffffff; }
               body { font-size: 9pt; line-height: 1.35; } .notice, .more { padding: 1mm 3mm; } .report { max-width: none; padding: 0 1px; } /* keeps right-hand hairlines inside the printable area */
               .masthead { padding-bottom: 3mm; } .brand svg { width: 20px; height: 16px; }
-              .intro { margin: 3mm 0 2mm; flex-wrap: nowrap; } h1 { font-size: 22pt; }
+              .intro { margin: 3mm 0 2mm; flex-wrap: nowrap; } .title-row { flex-wrap: nowrap; } h1 { font-size: 22pt; }
               .figure { font-size: 19pt; }
               h2, h3, .brand { font-size: 10.5pt; }
               .label, dt, th, .section-note, .ticks, .chip, .tag, .edition, .window-meta, .readout-row, footer { font-size: 7.5pt; } .dots, .arrow { font-size: 19pt; }
@@ -721,7 +722,7 @@ public class ReliabilityReportHtmlRenderer {
         if (a.monitoringSince() == null || !a.monitoringSince().isAfter(a.from())) {
             return "";
         }
-        return " · <span class=\"since\">data from " + DAY.format(a.monitoringSince()) + "</span>";
+        return "<span class=\"since\">data from " + DAY.format(a.monitoringSince()) + "</span>";
     }
 
     /** The quiet line under the window: "2026 · 21:39 UTC", or both times and years when they differ. */
