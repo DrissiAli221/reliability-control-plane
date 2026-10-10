@@ -267,7 +267,8 @@ public class ReliabilityReportHtmlRenderer {
                 .append("\" title=\"").append(window(a.from(), a.to())).append("\"><p class=\"window-days\">")
                 .append("<span class=\"dots\">").append(day(a.from())).append("</span>").append(ARROW)
                 .append("<span class=\"dots\">").append(day(a.to())).append("</span></p><p class=\"window-meta\">")
-                .append(windowMeta(a.from(), a.to())).append(" · <span>").append(span(a.from(), a.to())).append("</span></p></div></section>")
+                .append(windowMeta(a.from(), a.to())).append(" · <span>").append(span(a.from(), a.to())).append("</span>")
+                .append(dataFrom(a)).append("</p></div></section>")
                 .append("<div class=\"stack\"><div class=\"decision lit\" data-tone=\"").append(tone).append("\"><p>");
         if (a.sloMet() == null) {
             html.append("<b>Not enough evidence to judge this SLO.</b> Observed availability is not an SLO pass.");
@@ -713,6 +714,14 @@ public class ReliabilityReportHtmlRenderer {
     /** A window end as the dot face shows it: "1 OCT". */
     String day(Instant instant) {
         return DAY.format(instant).toUpperCase(Locale.ROOT);
+    }
+
+    /** " · data from 1 Oct" when the monitor was first scheduled after the period began, so a short history is never read as a long one. */
+    String dataFrom(AvailabilityReport a) {
+        if (a.monitoringSince() == null || !a.monitoringSince().isAfter(a.from())) {
+            return "";
+        }
+        return " · <span class=\"since\">data from " + DAY.format(a.monitoringSince()) + "</span>";
     }
 
     /** The quiet line under the window: "2026 · 21:39 UTC", or both times and years when they differ. */

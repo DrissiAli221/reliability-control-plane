@@ -831,6 +831,12 @@ components:
           format: int64
         denominatorPolicy:
           type: string
+        monitoringSince:
+          type: string
+          format: date-time
+          description: >-
+            When the monitor was first scheduled. Expected checks are counted only from then, so a period that starts
+            earlier (a 90-day period for a 9-day-old monitor) is not diluted; clients should say where the data starts.
     ReliabilityReport:
       type: object
       required: [schemaVersion, generatedAt, monitorName, targetUrl, availability, errorBudget, latency, incidentTimeline, incidentTimelineTruncated, limitations]

@@ -212,6 +212,39 @@ class ReliabilityReportApiTest {
         assertThat(html).contains("30 days");
     }
 
+    @Test
+    void aNinetyDayPeriodForAYoungMonitorOnlyExpectsChecksFromItsFirstSchedule() throws Exception {
+        // Created 9 days ago, hourly: 216 expected checks in a 90-day period, not 2160, so coverage is not diluted.
+        Instant created = Instant.now().minus(java.time.Duration.ofDays(9));
+        Monitor monitor = monitorRepository.saveAndFlush(Monitor.create(
+                "ali-subject", "Young monitor", "https://example.com", 3600, 5_000, created));
+        for (int hour = 0; hour < 9 * 24; hour++) {
+            execution(monitor, created.plusSeconds(hour * 3600L), "UP", 200);
+        }
+
+        String body = mockMvc.perform(get("/api/monitors/{id}/reliability-report", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject")))
+                        .queryParam("days", "90"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.availability.expectedOpportunities").value(org.hamcrest.Matchers.allOf(
+                        org.hamcrest.Matchers.greaterThanOrEqualTo(215), org.hamcrest.Matchers.lessThanOrEqualTo(217))))
+                .andExpect(jsonPath("$.availability.evidenceCoveragePercent").value(org.hamcrest.Matchers.greaterThan(95.0)))
+                .andExpect(jsonPath("$.availability.sloMet").value(true))
+                .andReturn().getResponse().getContentAsString();
+        Instant since = Instant.parse(com.jayway.jsonpath.JsonPath.read(body, "$.availability.monitoringSince"));
+        assertThat(java.time.Duration.between(created, since).abs().toMillis()).isLessThan(1000);
+
+        String html = mockMvc.perform(get("/api/monitors/{id}/reliability-report/html", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))).queryParam("days", "90"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("90 days", "data from ");
+        // A period the monitor fully covers carries no such note.
+        String sevenDays = mockMvc.perform(get("/api/monitors/{id}/reliability-report/html", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))).queryParam("days", "7"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(sevenDays).doesNotContain("data from ");
+    }
+
     private static long windowDays(String json) {
         Instant from = Instant.parse(com.jayway.jsonpath.JsonPath.read(json, "$.availability.from"));
         Instant to = Instant.parse(com.jayway.jsonpath.JsonPath.read(json, "$.availability.to"));

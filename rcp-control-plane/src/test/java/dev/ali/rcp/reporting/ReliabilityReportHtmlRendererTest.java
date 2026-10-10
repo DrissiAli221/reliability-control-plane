@@ -167,7 +167,7 @@ class ReliabilityReportHtmlRendererTest {
                 a.measuredAvailabilityPercent(), a.evidenceCoveragePercent(), a.minimumEvidenceCoveragePercent(),
                 a.sloMet(), a.upExecutions(), a.downExecutions(), a.disagreementExecutions(), a.noDataExecutions(),
                 a.conclusiveExecutions(), a.totalFinalizedExecutions(), a.pendingExecutions(), a.missingExecutions(),
-                a.expectedOpportunities(), input);
+                a.expectedOpportunities(), input, a.monitoringSince());
         ReliabilityReport malicious = new ReliabilityReport(input, sample.generatedAt(), null, input, input,
                 withPolicy, sample.errorBudget(), sample.latency(),
                 List.of(new ReportIncidentEvent(UUID.randomUUID(), input, a.from())), false, List.of(input),
@@ -292,6 +292,22 @@ class ReliabilityReportHtmlRendererTest {
         assertThat(renderer.render(sampleReport())).doesNotContain("earlier incident");
     }
 
+    @Test
+    void saysWhereDataStartsOnlyWhenTheMonitorIsYoungerThanThePeriod() {
+        ReliabilityReport base = sampleReport();
+        AvailabilityReport a = base.availability();
+        assertThat(renderer.render(base)).doesNotContain("data from");
+        AvailabilityReport young = new AvailabilityReport(a.monitorId(), a.from(), a.to(), a.sloTargetPercent(),
+                a.measuredAvailabilityPercent(), a.evidenceCoveragePercent(), a.minimumEvidenceCoveragePercent(), a.sloMet(),
+                a.upExecutions(), a.downExecutions(), a.disagreementExecutions(), a.noDataExecutions(), a.conclusiveExecutions(),
+                a.totalFinalizedExecutions(), a.pendingExecutions(), a.missingExecutions(), a.expectedOpportunities(),
+                a.denominatorPolicy(), Instant.parse("2026-10-06T12:00:00Z"));
+        ReliabilityReport report = new ReliabilityReport(base.schemaVersion(), base.generatedAt(), base.sourceDataWatermark(),
+                base.monitorName(), base.targetUrl(), young, base.errorBudget(), base.latency(), base.incidentTimeline(),
+                false, base.limitations(), base.caveats());
+        assertThat(renderer.render(report)).contains("data from 6 Oct");
+    }
+
     static ReliabilityReport sampleReport() {
         Instant from = Instant.parse("2026-10-06T00:00:00Z");
         Instant to = Instant.parse("2026-10-07T00:00:00Z");
@@ -299,7 +315,7 @@ class ReliabilityReportHtmlRendererTest {
         UUID second = UUID.fromString("c822245b-f2c7-408a-9572-1a91d891682a");
         AvailabilityReport availability = new AvailabilityReport(first, from, to, new BigDecimal("99.5"),
                 new BigDecimal("99.72222"), new BigDecimal("100.00000"), new BigDecimal("95"), true,
-                1436, 4, 0, 0, 1440, 1440, 0, 0, 1440, "UP_PLUS_DOWN");
+                1436, 4, 0, 0, 1440, 1440, 0, 0, 1440, "UP_PLUS_DOWN", from);
         return new ReliabilityReport("rcp-report-v1", to.plusSeconds(300), to.minusSeconds(30),
                 "Demo API", "https://example.com/health", availability,
                 new ReportErrorBudget(new BigDecimal("7.20000"), 4, new BigDecimal("3.20000")),
@@ -322,7 +338,7 @@ class ReliabilityReportHtmlRendererTest {
                 allowed.signum() == 0 ? new BigDecimal("100") : a.sloTargetPercent(),
                 measured, coverage, a.minimumEvidenceCoveragePercent(), sloMet,
                 measured == null ? 0 : 1, down, 0, 0, conclusive, conclusive, 0,
-                sloMet == null ? 10 - conclusive : 0, sloMet == null ? 10 : conclusive, a.denominatorPolicy());
+                sloMet == null ? 10 - conclusive : 0, sloMet == null ? 10 : conclusive, a.denominatorPolicy(), a.monitoringSince());
         return new ReliabilityReport(sample.schemaVersion(), sample.generatedAt(), null, sample.monitorName(),
                 sample.targetUrl(), evidence, new ReportErrorBudget(allowed, down, remaining),
                 new ReportLatency(2, null, null, 20), List.of(), false, sample.limitations(), sample.caveats());
