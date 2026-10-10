@@ -199,7 +199,11 @@ Estimate both Lambda requests and GB-seconds. At 8 monitors (the original demo s
 691,200 checks/invocations before retries. Average billed duration must include
 probe time, DNS/TLS setup, result publishing, cold starts, and failures.
 
-`cost-estimate.py` is an explicit illustrative model, defaulting to 256 MiB, ARM duration
+`cost-estimate.py` is an explicit illustrative model, not a worst-case ceiling. It accepts 0 to 30
+monitors (the demo's global cap), takes the average billed duration as `--duration-ms` (default 500, printed as
+an assumption), and prints what it includes (Lambda requests and GB-seconds, SQS requests) and what it does not
+model (CloudWatch Logs, cross-region data transfer, S3 and CloudFront, Cognito, budget services, VM and domain).
+It defaults to to 256 MiB, ARM duration
 at $0.0000133334/GB-second, requests at $0.20/million, standard SQS at $0.40/million,
 and available account-wide allowances of 1M Lambda requests, 400k GB-seconds and
 1M SQS requests. It conservatively counts six SQS calls/check plus up to five idle
@@ -207,9 +211,9 @@ pollers per region and one result consumer at 20 seconds. Actual receive/delete
 batching and busy/idle overlap change this; retries increase it.
 
 ```sh
-python3 infra/aws-demo/cost-estimate.py --monitors 8 --seconds 0.5
-python3 infra/aws-demo/cost-estimate.py --monitors 8 --seconds 5 --retry-percent 10
-python3 infra/aws-demo/cost-estimate.py --monitors 8 --seconds 5 --retry-percent 10 --memory-mb 512
+python3 infra/aws-demo/cost-estimate.py --monitors 8 --duration-ms 500
+python3 infra/aws-demo/cost-estimate.py --monitors 8 --duration-ms 5000 --retry-percent 10
+python3 infra/aws-demo/cost-estimate.py --monitors 8 --duration-ms 5000 --retry-percent 10 --memory-mb 512
 ```
 
 S3 storage/requests, CloudFront requests/transfer/functions, cross-region result
@@ -221,8 +225,8 @@ cap, that is about $1.83/month. An average of 5 seconds with 10% retries gives
 about $9.33/month at 256 MiB, compared with $22.01 at 512 MiB for the same billed
 duration. The fast-check estimates are unchanged because Lambda usage already
 fits within its monthly allowance; reducing memory does not halve the total bill.
-The 5-second probe timeout reduces the
-worst case, but does not cap total Lambda billed duration: startup, DNS/TLS, and
+The 5-second probe timeout limits how long one
+check can run, but does not cap total Lambda billed duration: startup, DNS/TLS, and
 result publishing also contribute. Sustained outages can still cost substantially
 more than fast successful checks.
 The $1 alarm is an early warning, not a promise to remain below $1.
