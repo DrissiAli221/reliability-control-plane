@@ -2,7 +2,7 @@ import { BotProtectionHint } from "./BotProtectionHint";
 import { formatStatusCodes } from "../statusCodes";
 import { ArrowRight } from "lucide-react";
 import { BlockMeter } from "./BlockMeter";
-import { milliseconds, outcomeLabel, outcomeTone, relativeTime, type Tone } from "../format";
+import { isBlockedCheck, isChallenged, milliseconds, outcomeLabel, outcomeTone, relativeTime, type Tone } from "../format";
 import type { RecentCheck, Verdict } from "../types";
 
 /** Where the demo's probe regions are; other region names show their code only. */
@@ -38,12 +38,14 @@ function verdictSentence(verdict: Verdict, regions: number, challenged: string[]
  * One check fanned out the way the system runs it: the control plane sends a job to every region, each region
  * reports what it saw, and the verdict needs them to agree. The connectors redraw whenever a new check arrives.
  */
-export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
+export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace, onAcceptChallenge }: {
   check: RecentCheck;
   timeoutMs: number;
   intervalLabel: string;
   now: number;
   onTrace: () => void;
+  /** Opens the accepted-statuses editor with 403 added; omitted when the viewer cannot edit. */
+  onAcceptChallenge?: () => void;
 }) {
   const results = check.results;
   const n = Math.max(results.length, 1);
@@ -51,6 +53,7 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
   const mid = height / 2;
   const center = (i: number) => i * (NODE_HEIGHT + NODE_GAP) + NODE_HEIGHT / 2;
   const tone = VERDICT_TONE[check.verdict];
+  const blocked = isBlockedCheck(check);
   const scheduledClock = `${new Date(check.scheduledAt).toISOString().slice(11, 19)} UTC`;
   const timeoutLabel = timeoutMs % 1000 === 0 ? `${timeoutMs / 1000} s` : milliseconds(timeoutMs);
   const curve = (from: number, to: number) => `M0 ${from} C ${LINK_WIDTH / 2} ${from}, ${LINK_WIDTH / 2} ${to}, ${LINK_WIDTH} ${to}`;
@@ -64,6 +67,7 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
           <button type="button" className="text-button" onClick={onTrace}>Trace <ArrowRight size={14} aria-hidden="true" /></button>
         </span>
       </header>
+      <BotProtectionHint results={results} onAccept={onAcceptChallenge} />
       <div className="fanout" style={{ ["--fanout-height" as string]: `${height}px` }}>
         <div className="fanout-node fanout-source">
           <span className="fanout-label">Control plane</span>
@@ -83,7 +87,7 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
             const share = Math.min(1, result.latencyMs / Math.max(timeoutMs, 1));
             const meterTone = resultTone === "fault" ? "fault" : resultTone === "muted" ? "muted" : share > 0.5 ? "warn" : "good";
             return (
-              <li key={result.region} className={`fanout-node fanout-region ${resultTone}`}>
+              <li key={result.region} className={`fanout-node fanout-region ${resultTone}${isChallenged(result, check.acceptedHttpStatuses) ? " blocked" : ""}`}>
                 <div className="fanout-region-top">
                   <span className="fanout-region-name">
                     <span className="mono">{result.region}</span>
@@ -116,14 +120,13 @@ export function CheckFanout({ check, timeoutMs, intervalLabel, now, onTrace }: {
           ))}
         </svg>
 
-        <div className={`fanout-node fanout-verdict lit ${tone}`}>
+        <div className={`fanout-node fanout-verdict lit ${tone}${blocked ? " blocked" : ""}`}>
           <span className="fanout-label">Verdict</span>
-          <strong className="fanout-verdict-word">{VERDICT_WORD[check.verdict]}</strong>
+          <strong className="fanout-verdict-word">{blocked ? "BLOCKED" : VERDICT_WORD[check.verdict]}</strong>
           <span className="fanout-sentence">{verdictSentence(check.verdict, results.length, results.filter((result) => result.botProtection === "CLOUDFLARE_CHALLENGE" && outcomeTone(result.outcome, result.httpStatus, check.acceptedHttpStatuses, result.botProtection) === "muted").map((result) => result.region))}</span>
         </div>
       </div>
       {check.acceptedHttpStatuses && <p className="trace-note">Accepted statuses for this check: {formatStatusCodes(check.acceptedHttpStatuses)}.</p>}
-      <BotProtectionHint results={results} />
     </section>
   );
 }
