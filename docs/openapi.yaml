@@ -776,6 +776,9 @@ components:
           type: string
           format: date-time
           nullable: true
+        latestBlocked:
+          type: boolean
+          description: Latest finalized check is NO_DATA with an unaccepted Cloudflare challenge in every expected region; uses the check's saved status policy.
     Availability:
       type: object
       required: [monitorId, from, to, sloTargetPercent, evidenceCoveragePercent, minimumEvidenceCoveragePercent, upExecutions, downExecutions, disagreementExecutions, noDataExecutions, conclusiveExecutions, totalFinalizedExecutions, pendingExecutions, missingExecutions, expectedOpportunities, denominatorPolicy]

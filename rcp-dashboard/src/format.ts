@@ -54,6 +54,7 @@ export function count(value: number): string {
 export function monitorState(monitor: MonitorOverview): { label: string; tone: Tone } {
   if (!monitor.enabled) return { label: "Paused", tone: "muted" };
   if (monitor.incidentStatus === "OPEN") return { label: "Incident", tone: "fault" };
+  if (monitor.latestVerdict === "NO_DATA" && monitor.latestBlocked) return { label: "Blocked", tone: "muted" };
   return verdictState(monitor.latestVerdict);
 }
 
