@@ -162,6 +162,16 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
   const theme = useTheme();
   const session = useSession();
   const readOnly = session?.readOnly ?? false;
+  const header = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const element = header.current;
+    if (!element) return;
+    const measure = () => document.documentElement.style.setProperty("--shell-header-height", `${element.getBoundingClientRect().height}px`);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => { observer.disconnect(); document.documentElement.style.removeProperty("--shell-header-height"); };
+  }, [readOnly]);
   // One poll feeds the top bar, the status strip and (below) the region lights.
   const snapshot = useLiveData(pipelineSnapshot, 15_000);
 
@@ -234,16 +244,18 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
         <MobileMenu local={local} readOnly={readOnly} theme={theme} onLogout={onLogout} />
       </aside>
       <div className="column">
-        <TopBar pathname={pathname} updatedAt={snapshot.updatedAt} stale={snapshot.error !== null} />
-        {/* Keyed by path so each page enters with the same short settle, including monitor-to-monitor moves. */}
-        <div className="main" key={pathname}>
+        <div className="shell-header" ref={header}>
+          <TopBar pathname={pathname} updatedAt={snapshot.updatedAt} stale={snapshot.error !== null} />
           {readOnly && (
             <div className="demo-banner" role="note">
               <Eye size={16} aria-hidden="true" />
-              <span><strong>You're exploring the live demo.</strong> Everything is real and running; changes are switched off.</span>
+              <span><strong>You're exploring the live demo.</strong><span className="demo-banner-detail"> Everything is real and running; changes are switched off.</span></span>
               <button type="button" className="demo-banner-cta" onClick={onLogout}>Monitor your own site <ArrowRight size={14} aria-hidden="true" /></button>
             </div>
           )}
+        </div>
+        {/* Keyed by path so each page enters with the same short settle, including monitor-to-monitor moves. */}
+        <div className="main" key={pathname}>
           {children}
         </div>
       </div>

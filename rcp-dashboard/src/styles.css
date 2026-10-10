@@ -1819,3 +1819,14 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 /* Previous numbers stay in place, dimmed, so the page does not jump while a period loads or after a failed refresh. */
 .metric-grid, .panel-body, .table-scroll, .panel-body.subtle { transition: opacity 120ms; }
 [data-stale="true"] { opacity: 0.55; }
+
+/* One sticky stack; its measured height keeps anchors below both the bar and the wrapping demo notice. */
+:root { scroll-padding-top: calc(var(--shell-header-height, var(--bar-h)) + 12px); }
+.shell-header { position: sticky; top: 0; z-index: 30; background: var(--bg); }
+.shell-header .topbar { position: relative; top: auto; }
+.shell-header:has(.demo-banner) .topbar::after { display: none; }
+.shell-header .demo-banner { margin: 0; border-left: 0; border-right: 0; padding: 10px clamp(20px, 4vw, 48px); }
+@media (max-width: 600px) {
+  .shell-header .demo-banner { padding: 8px 16px; gap: 8px; }
+  .demo-banner-detail { display: none; }
+}
