@@ -1,3 +1,4 @@
+import { rememberReturnPath } from "./returnPath";
 import {
   AuthenticationDetails,
   CognitoUser,
@@ -125,7 +126,9 @@ export function completeLogin(): Promise<string> {
     clearSessionMarks();
     try {
       const user = await cognitoManager().signinRedirectCallback();
-      return safeNext(typeof user.state === "string" ? user.state : "/");
+      const next = safeNext(typeof user.state === "string" ? user.state : "/");
+      rememberReturnPath(next);
+      return next;
     } catch (reason) {
       try {
         sessionStorage.setItem(ERROR_KEY, describeCallbackError(reason));
