@@ -265,6 +265,33 @@ class ReliabilityReportHtmlRendererTest {
         assertThat(renderer.denominator("ALL_REGIONS_AGREED")).isEqualTo("All regions agreed");
     }
 
+    @Test
+    void listsOnlyTheTenMostRecentIncidentsAndSummarisesTheRest() {
+        ReliabilityReport base = sampleReport();
+        Instant from = base.availability().from();
+        List<ReportIncidentEvent> timeline = new java.util.ArrayList<>();
+        for (int i = 0; i < 47; i++) {
+            UUID id = new UUID(0, i + 1);
+            timeline.add(new ReportIncidentEvent(id, "OPENED", from.plusSeconds(i * 1000L)));
+            timeline.add(new ReportIncidentEvent(id, "RESOLVED", from.plusSeconds(i * 1000L + 300)));
+        }
+        ReliabilityReport report = new ReliabilityReport(base.schemaVersion(), base.generatedAt(), base.sourceDataWatermark(),
+                base.monitorName(), base.targetUrl(), base.availability(), base.errorBudget(), base.latency(), timeline, false,
+                base.limitations(), base.caveats());
+
+        String html = renderer.render(report);
+        String table = html.substring(html.indexOf("<th scope=\"col\">Incident</th>"));
+        table = table.substring(0, table.indexOf("</table>"));
+
+        assertThat(Pattern.compile("<tr><td class=\"mono\">").matcher(table).results().count()).isEqualTo(10);
+        assertThat(table).contains("title=\"00000000-0000-0000-0000-00000000002f\"").doesNotContain("-000000000001\"")
+                .doesNotContain("-000000000025\"");
+        assertThat(html).contains("and 37 earlier incidents &middot; full list in the CSV export", "47 incidents")
+                .doesNotContain("timeline truncated");
+        // Nothing to summarise with ten or fewer.
+        assertThat(renderer.render(sampleReport())).doesNotContain("earlier incident");
+    }
+
     static ReliabilityReport sampleReport() {
         Instant from = Instant.parse("2026-10-06T00:00:00Z");
         Instant to = Instant.parse("2026-10-07T00:00:00Z");

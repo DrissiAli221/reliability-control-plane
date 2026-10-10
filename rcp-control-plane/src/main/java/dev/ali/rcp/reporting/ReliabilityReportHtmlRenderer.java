@@ -170,6 +170,7 @@ public class ReliabilityReportHtmlRenderer {
             td.num .hint { margin-left: 6px; }
             .table-wrap { overflow-x: auto; }
             .empty { padding: 18px 16px; color: var(--text-2); }
+            .more { margin: 0; padding: 10px 16px; border-top: 1px solid var(--border); }
             .notice { color: var(--amber-text); padding: 10px 16px; border-top: 1px solid var(--border); }
             /* One row per topic, label left and the limit right; rows touch, as in the explain lines. */
             .caveats { margin: 0; }
@@ -186,29 +187,29 @@ public class ReliabilityReportHtmlRenderer {
               .window { text-align: left; } .window-days { justify-content: flex-start; }
             }
             @media (max-width: 520px) { .caveats > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
-            @page { size: A4; margin: 12mm; }
+            @page { size: A4; margin: 10mm 12mm; }
             @media print {
               :root { color-scheme: light; """ + LIGHT_TOKENS + """
                 --bg: #ffffff; }
-              body { font-size: 9pt; } .report { max-width: none; padding: 0 1px; } /* keeps right-hand hairlines inside the printable area */
+              body { font-size: 9pt; line-height: 1.35; } .notice, .more { padding: 1mm 3mm; } .report { max-width: none; padding: 0 1px; } /* keeps right-hand hairlines inside the printable area */
               .masthead { padding-bottom: 3mm; } .brand svg { width: 20px; height: 16px; }
-              .intro { margin: 4mm 0 3mm; flex-wrap: nowrap; } h1 { font-size: 22pt; }
+              .intro { margin: 3mm 0 2mm; flex-wrap: nowrap; } h1 { font-size: 22pt; }
               .figure { font-size: 19pt; }
               h2, h3, .brand { font-size: 10.5pt; }
               .label, dt, th, .section-note, .ticks, .chip, .tag, .edition, .window-meta, .readout-row, footer { font-size: 7.5pt; } .dots, .arrow { font-size: 19pt; }
               .hint, .unit, .note, .metric-value .unit, .lines dd { font-size: 8pt; }
               .target { margin: 2mm 0 1mm; }
-              .decision { padding: 3mm; } .panel-header { min-height: 0; padding: 1.8mm 3mm; } .stack { margin-top: 4mm; }
-              .metric { gap: 1.5mm; padding: 3mm; } .metric-visual { height: 4mm; } .blocks { height: 3mm; gap: 1mm; }
+              .decision { padding: 3mm; } .panel-header { min-height: 0; padding: 1.8mm 3mm; } .stack { margin-top: 3mm; }
+              .metric { gap: 1.5mm; padding: 2.5mm 3mm; } .metric-visual { height: 4mm; } .blocks { height: 3mm; gap: 1mm; }
               .blocks i.short, .blocks i.fill { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-              .visual { padding: 3mm; } .readout-row { margin: 3mm 0 2mm; } .lines { margin-top: 3mm; }
+              .visual { padding: 2.5mm 3mm; } .readout-row { margin: 3mm 0 2mm; } .lines { margin-top: 3mm; }
               .lines > div { padding: 1mm 0; }
-              .panel-header { break-after: avoid; } .caveats > div { padding: 1mm 3mm; }
-              .breakdown { padding: 3mm; } .composition { height: 2.5mm; margin: 2.5mm 0; } .legend dd span { font-size: 8pt; }
+              .panel-header { break-after: avoid; } .caveats > div { padding: .6mm 3mm; } .caveats dd, .caveats dt { line-height: 1.2; }
+              .breakdown { padding: 2.5mm 3mm; } .composition { height: 2.5mm; margin: 2.5mm 0; } .legend dd span { font-size: 8pt; }
               .table-wrap { overflow: visible; }
-              th, td { padding: 1mm 3mm; } thead { display: table-header-group; } tr { break-inside: avoid; }
+              th, td { padding: .3mm 3mm; line-height: 1.15; } thead { display: table-header-group; } tr { break-inside: avoid; }
               .limits, .masthead, .intro, .decision, .metric, .metrics, .visual, .visuals, .breakdown { break-inside: avoid; }
-              footer { margin-top: 2mm; padding-top: 1.5mm; }
+              footer { margin-top: 1mm; padding-top: 1mm; }
               p, li { orphans: 3; widows: 3; }
             }
             """;
@@ -238,6 +239,9 @@ public class ReliabilityReportHtmlRenderer {
         }
         return html.append("</span>").toString();
     }
+
+    /** Incident rows shown in the table; the rest are summarised in one line and live in the CSV export. */
+    static final int MAX_INCIDENT_ROWS = 10;
 
     public String render(ReliabilityReport report) {
         AvailabilityReport a = report.availability();
@@ -357,7 +361,7 @@ public class ReliabilityReportHtmlRenderer {
             html.append("<div class=\"table-wrap\"><table><thead><tr><th scope=\"col\">Incident</th>")
                     .append("<th scope=\"col\">State</th><th scope=\"col\">Opened · UTC</th><th scope=\"col\">Resolved · UTC</th>")
                     .append("<th scope=\"col\" class=\"num\">Duration</th></tr></thead><tbody>");
-            for (Incident incident : incidents) {
+            for (Incident incident : incidents.subList(Math.max(0, incidents.size() - MAX_INCIDENT_ROWS), incidents.size())) {
                 boolean resolved = incident.resolved() != null;
                 html.append("<tr><td class=\"mono\"><span title=\"").append(incident.id()).append("\">").append(shortId(incident.id()))
                         .append("</span></td><td><span class=\"tag\">");
@@ -378,6 +382,12 @@ public class ReliabilityReportHtmlRenderer {
                 html.append("</td></tr>");
             }
             html.append("</tbody></table></div>");
+            // The table keeps the most recent incidents so the report stays one printed page; the CSV and JSON have them all.
+            int earlier = incidents.size() - MAX_INCIDENT_ROWS;
+            if (earlier > 0) {
+                html.append("<p class=\"note more\">and ").append(earlier).append(earlier == 1 ? " earlier incident" : " earlier incidents")
+                        .append(" &middot; full list in the CSV export</p>");
+            }
         }
         if (report.incidentTimelineTruncated()) {
             html.append("<p class=\"notice\">Incident timeline truncated at 100 transitions. The incident count is a lower bound.</p>");
