@@ -1,9 +1,9 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../apiError";
-import { availability, getMonitor, reliabilityReport } from "../api";
+import { availability, getMonitor, latencyHeatmap, reliabilityReport } from "../api";
 import { rememberReturnPath } from "../returnPath";
 import { useReadOnly } from "../session";
 import { MonitorDetailPage } from "./MonitorDetailPage";
@@ -43,6 +43,7 @@ beforeEach(() => {
   vi.mocked(getMonitor).mockResolvedValue(FOUND as never);
   vi.mocked(availability).mockImplementation((async (_id: string, days = 7) => evidence(days)) as never);
   vi.mocked(reliabilityReport).mockImplementation((async (_id: string, days = 7) => report(days)) as never);
+  vi.mocked(latencyHeatmap).mockRejectedValue(new Error("No evidence"));
   vi.mocked(useReadOnly).mockReturnValue(false);
 });
 
@@ -244,5 +245,92 @@ describe("loading, failing and empty states", () => {
     page();
     expect(await screen.findByText("10m 0s")).toBeInTheDocument();
     expect(screen.queryByText("No incidents recorded in this period")).not.toBeInTheDocument();
+  });
+});
+
+describe("latency chart incident markers", () => {
+  const heat = (hours: number) => {
+    const to = Date.now();
+    const columns = Array(48).fill(120);
+    return {
+      monitorId: "id", from: new Date(to - hours * 3_600_000).toISOString(), to: new Date(to).toISOString(), bucketSeconds: 1800,
+      latencyBoundsMs: [50, 100, 200, 400, 800],
+      regions: [{ region: "eu-west-1", samples: 10, counts: [], p50Ms: columns, p95Ms: columns, windowP50Ms: 120, windowP95Ms: 120 }],
+    };
+  };
+  // One incident three days ago: inside the chart's 7 d range, outside a 24 h report period.
+  const threeDaysAgo = (days: number) => report(days, days >= 7
+    ? [
+      { incidentId: "i1", eventType: "OPENED", occurredAt: new Date(Date.now() - 3 * 86_400_000).toISOString() },
+      { incidentId: "i1", eventType: "RESOLVED", occurredAt: new Date(Date.now() - 3 * 86_400_000 + 600_000).toISOString() },
+    ]
+    : []);
+
+  it("keeps markers older than the report period when the chart shows 7 d", async () => {
+    vi.mocked(latencyHeatmap).mockImplementation((async (_id: string, hours = 24) => heat(hours)) as never);
+    vi.mocked(reliabilityReport).mockImplementation((async (_id: string, days = 7) => threeDaysAgo(days)) as never);
+    page("/monitors/id?window=24h");
+
+    fireEvent.click(within(await screen.findByRole("group", { name: "Window" })).getByRole("button", { name: "7 d" }));
+
+    // The period is 24 h (no incidents in it), but the chart is on 7 d and still has its incident.
+    expect(await screen.findByText("1 incident")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "24 h", pressed: true })).toBeInTheDocument();
+    expect(screen.getByText("No incidents recorded in this period")).toBeInTheDocument();
+    expect(reliabilityReport).toHaveBeenCalledWith("id", 7);
+  });
+
+  it("does not change the chart's markers when the report period changes", async () => {
+    vi.mocked(latencyHeatmap).mockImplementation((async (_id: string, hours = 24) => heat(hours)) as never);
+    vi.mocked(reliabilityReport).mockImplementation((async (_id: string, days = 7) => threeDaysAgo(days)) as never);
+    page("/monitors/id?window=30d");
+    fireEvent.click(within(await screen.findByRole("group", { name: "Window" })).getByRole("button", { name: "7 d" }));
+    expect(await screen.findByText("1 incident")).toBeInTheDocument();
+
+    fireEvent.click(within(screen.getByRole("group", { name: "Report period" })).getByRole("button", { name: "24 h" }));
+    await screen.findByText("Uptime · 24h");
+
+    expect(screen.getByText("1 incident")).toBeInTheDocument();
+  });
+});
+
+describe("retrying a failed refresh", () => {
+  async function failedPage() {
+    page();
+    await screen.findByText("Uptime · 7d");
+    vi.mocked(availability).mockRejectedValue(new Error("boom"));
+    fireEvent.click(screen.getByRole("button", { name: "30 d" }));
+    await screen.findByText(/Couldn.t refresh/);
+  }
+
+  it("keeps the warning and the dimming while the retry is in flight, and clears them only on success", async () => {
+    await failedPage();
+    expect(screen.getByLabelText("7 days summary")).toHaveAttribute("data-stale", "true");
+    let release: (value: unknown) => void = () => {};
+    vi.mocked(availability).mockImplementation(() => new Promise((resolve) => { release = resolve; }) as never);
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByText("Retrying…")).toBeInTheDocument();
+    expect(screen.getByLabelText("7 days summary")).toHaveAttribute("data-stale", "true");
+    release(evidence(30));
+    await waitFor(() => expect(screen.queryByText("Retrying…")).not.toBeInTheDocument());
+    expect(screen.queryByText(/Couldn.t refresh/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("30 days summary")).not.toHaveAttribute("data-stale");
+  });
+
+  it("returns to Couldn't refresh when the retry fails too, still dimmed", async () => {
+    await failedPage();
+    let fail: (reason: unknown) => void = () => {};
+    vi.mocked(availability).mockImplementation(() => new Promise((_resolve, reject) => { fail = reject; }) as never);
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Retrying…")).toBeInTheDocument();
+    fail(new Error("still down"));
+
+    expect(await screen.findByText(/Couldn.t refresh/)).toBeInTheDocument();
+    expect(screen.queryByText("Retrying…")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("7 days summary")).toHaveAttribute("data-stale", "true");
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 });

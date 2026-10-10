@@ -115,18 +115,27 @@ export function MonitorDetailPage() {
   const shown = windowInfo(windowData?.days ?? windowDays);
   // Only a change of period counts as "updating"; the ten-second refresh of the same period stays quiet.
   const updating = windowed.loading && (windowData == null ? windowed.data == null : windowData.days !== windowDays);
-  const failed = windowed.error != null && !windowed.loading;
+  // A failure stays on screen (and the numbers stay dimmed) until a response actually succeeds; a retry in flight
+  // only changes the wording, so "Try again" never makes stale numbers look current.
+  const failed = windowed.error != null;
+  const retrying = failed && windowed.loading;
   const stale = updating || failed;
-  const periodState = <PeriodState updating={updating} failed={failed} retry={windowed.refresh} />;
+  const periodState = <PeriodState updating={updating} failed={failed} retrying={retrying} retry={windowed.refresh} />;
   // Its own loader: switching 24 h / 7 d refetches only the latency window, not the whole page, and the chart keeps
   // showing the previous window (dimmed) until the new one arrives instead of mixing the two.
   const loadHeatmap = useCallback(() => latencyHeatmap(monitorId, latencyRange), [monitorId, latencyRange]);
   const heat = useLiveData(loadHeatmap, 10_000);
   const heatmap = heat.data ?? undefined;
+  // The latency chart's incident lane covers the chart's own range, so it has its own report and does not follow
+  // the report period (a shorter period would otherwise drop the markers the chart still has room for).
+  const loadChartIncidents = useCallback(() => reliabilityReport(monitorId, latencyRange === 24 ? 1 : 7), [monitorId, latencyRange]);
+  const chartReport = useLiveData(loadChartIncidents, 10_000);
   const now = useNow();
   // Rebuilt only when the report changes (every 10 s), not on each one-second tick, so the chart's incident spans stay stable.
   const report = windowData?.report;
   const incidents = useMemo(() => pairIncidents(report), [report]);
+  const chartData = chartReport.data;
+  const chartIncidents = useMemo(() => pairIncidents(chartData ?? undefined), [chartData]);
   const location = useLocation();
   const missing = detail.data?.missing === true;
   const found = detail.data && !detail.data.missing;
@@ -349,7 +358,7 @@ export function MonitorDetailPage() {
         {heatmap ? (
           <>
             <ChartBoundary>
-              <LatencyChart heatmap={heatmap} range={latencyRange} onRangeChange={setLatencyRange} incidents={incidents} now={now} />
+              <LatencyChart heatmap={heatmap} range={latencyRange} onRangeChange={setLatencyRange} incidents={chartIncidents} now={now} />
             </ChartBoundary>
             <div className="panel-section">
               <header className="section-header">
@@ -524,7 +533,8 @@ function PeriodSelect({ value, onChange }: { value: WindowDays; onChange: (days:
 }
 
 /** What the period-driven panels are doing, said plainly: still loading the new period, or unable to refresh. */
-function PeriodState({ updating, failed, retry }: { updating: boolean; failed: boolean; retry: () => Promise<void> }) {
+function PeriodState({ updating, failed, retrying, retry }: { updating: boolean; failed: boolean; retrying: boolean; retry: () => Promise<void> }) {
+  if (retrying) return <span className="period-state" role="status">Retrying…</span>;
   if (failed) {
     return (
       <span className="period-state" role="alert">
