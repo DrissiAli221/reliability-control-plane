@@ -42,6 +42,15 @@ public class MonitorService {
         return limits;
     }
 
+    /** Live monitors the owner has and live monitors on the whole deployment, for showing remaining capacity. */
+    @Transactional(readOnly = true)
+    public MonitorUsage usage(String ownerSubject) {
+        Long owned = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM monitors WHERE owner_subject = ? AND deleted_at IS NULL", Long.class, ownerSubject);
+        Long total = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM monitors WHERE deleted_at IS NULL", Long.class);
+        return new MonitorUsage(owned == null ? 0 : owned, total == null ? 0 : total);
+    }
+
     @Transactional
     public MonitorResponse create(
             String ownerSubject,

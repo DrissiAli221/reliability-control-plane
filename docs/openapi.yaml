@@ -311,7 +311,8 @@ paths:
       summary: The caller's session as this deployment sees it
       description: >-
         Whether the caller is in the read-only group (`rcp.identity.read-only-group`, the public demo account),
-        and the monitor limits this deployment enforces, so clients offer only choices that will be accepted.
+        the monitor limits this deployment enforces, so clients offer only choices that will be accepted, and how much of
+        those limits is in use.
         Members of the read-only group receive 403 "Read-only account" on every POST, PUT, PATCH or DELETE under /api.
       responses:
         '200':
@@ -330,6 +331,12 @@ paths:
                       maxTotal: { type: integer, description: 0 means no deployment-wide cap }
                       minIntervalSeconds: { type: integer }
                       maxTimeoutMs: { type: integer }
+                  usage:
+                    type: object
+                    description: Live monitors counted against the limits; deleted monitors are not counted
+                    properties:
+                      ownedMonitors: { type: integer, description: Monitors owned by the caller, compare with limits.maxPerOwner }
+                      totalMonitors: { type: integer, description: Monitors across every account, compare with limits.maxTotal }
         '401':
           $ref: '#/components/responses/Unauthorized'
   /api/overview:
