@@ -82,7 +82,7 @@ export function MonitorDetailPage() {
     if (next === 7) updated.delete("window");
     else updated.set("window", windowInfo(next).param);
     return updated;
-  }, { replace: true });
+  });
   const load = useCallback(async (): Promise<DetailData> => {
     let monitor: MonitorDetail;
     try {
@@ -219,6 +219,7 @@ export function MonitorDetailPage() {
             <a className="mono" href={monitor.targetUrl} target="_blank" rel="noreferrer">
               {compactUrl(monitor.targetUrl)} <ExternalLink size={14} aria-hidden="true" />
             </a>
+            {monitor.createdAt && <span title={absoluteTime(monitor.createdAt)}>Created {new Date(monitor.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}</span>}
             <span>Every {interval(monitor.checkIntervalSeconds)}</span>
             <span>Timeout {monitor.timeoutMs / 1000} s</span>
             {monitor.acceptedHttpStatuses && <span>Accepts {formatStatusCodes(monitor.acceptedHttpStatuses)}</span>}
@@ -287,7 +288,7 @@ export function MonitorDetailPage() {
       <div className="panel period-panel">
       <header className="panel-header period-header">
         <div className="period-title">
-          <h2>Summary · last {windowInfo(windowDays).words}</h2>
+          <h2>Summary · last {shown.words}</h2>
           <span className="period-note" data-testid="period-since">{sinceNote(evidence, now)}</span>
           {stale ? periodState : null}
         </div>

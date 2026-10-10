@@ -194,16 +194,16 @@ public class ReliabilityReportHtmlRenderer {
                 --bg: #ffffff; }
               body { font-size: 9pt; line-height: 1.35; } .notice, .more { padding: 1mm 3mm; } .report { max-width: none; padding: 0 1px; } /* keeps right-hand hairlines inside the printable area */
               .masthead { padding-bottom: 3mm; } .brand svg { width: 20px; height: 16px; }
-              .intro { margin: 3mm 0 2mm; flex-wrap: nowrap; } .title-row { flex-wrap: nowrap; } h1 { font-size: 22pt; }
+              .intro { margin: 3mm 0 2mm; flex-wrap: nowrap; } .title-row { flex-wrap: nowrap; } h1 { font-size: 14pt; }
               .figure { font-size: 19pt; }
               h2, h3, .brand { font-size: 10.5pt; }
               .label, dt, th, .section-note, .ticks, .chip, .tag, .edition, .window-meta, .readout-row, footer { font-size: 7.5pt; } .dots, .arrow { font-size: 19pt; }
               .hint, .unit, .note, .metric-value .unit, .lines dd { font-size: 8pt; }
-              .target { margin: 2mm 0 1mm; }
-              .decision { padding: 3mm; } .panel-header { min-height: 0; padding: 1.8mm 3mm; } .stack { margin-top: 3mm; }
-              .metric { gap: 1.5mm; padding: 2.5mm 3mm; } .metric-visual { height: 4mm; } .blocks { height: 3mm; gap: 1mm; }
+              .target { margin: 2mm 0 1mm; font-size: 7.5pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+              .decision { padding: 2mm; } .panel-header { min-height: 0; padding: 1.8mm 3mm; } .stack { margin-top: 3mm; }
+              .metric { gap: 1mm; padding: 2mm 3mm; } .metric-visual { height: 4mm; } .blocks { height: 3mm; gap: 1mm; }
               .blocks i.short, .blocks i.fill { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-              .visual { padding: 2.5mm 3mm; } .readout-row { margin: 3mm 0 2mm; } .lines { margin-top: 3mm; }
+              .visual { padding: 2mm 3mm; } .readout-row { margin: 2mm 0 1.5mm; } .lines { margin-top: 3mm; }
               .lines > div { padding: 1mm 0; }
               .panel-header { break-after: avoid; } .caveats > div { padding: .6mm 3mm; } .caveats dd, .caveats dt { line-height: 1.2; }
               .breakdown { padding: 2.5mm 3mm; } .composition { height: 2.5mm; margin: 2.5mm 0; } .legend dd span { font-size: 8pt; }
@@ -392,7 +392,7 @@ public class ReliabilityReportHtmlRenderer {
             }
         }
         if (report.incidentTimelineTruncated()) {
-            html.append("<p class=\"notice\">Incident timeline truncated at 100 transitions. The incident count is a lower bound.</p>");
+            html.append("<p class=\"notice\">Incident timeline is incomplete. The incident count is a lower bound.</p>");
         }
         html.append("</section>");
 

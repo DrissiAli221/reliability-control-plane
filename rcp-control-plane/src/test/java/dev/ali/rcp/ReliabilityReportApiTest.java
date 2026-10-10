@@ -310,7 +310,40 @@ class ReliabilityReportApiTest {
         return executionId;
     }
 
+    @Test
+    void aBusyReportExportsAllTransitionsAndPrintsOnlyTheLatestTenIncidents() throws Exception {
+        Instant busyStart = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS).minus(java.time.Duration.ofDays(90));
+        Monitor monitor = monitorRepository.saveAndFlush(Monitor.create("ali-subject", "Busy drill", "https://example.com", 60, 5000, busyStart));
+        for (int i = 0; i < 1080; i++) {
+            Instant start = busyStart.plusSeconds(i * 7200L);
+            UUID down = execution(monitor, start, "DOWN", 503);
+            UUID up = execution(monitor, start.plusSeconds(60), "UP", 200);
+            incident(monitor, down, up, start);
+        }
+        var request = get("/api/monitors/{id}/reliability-report", monitor.getId())
+                .with(jwt().jwt(token -> token.subject("ali-subject")))
+                .queryParam("from", busyStart.toString()).queryParam("to", busyStart.plusSeconds(90 * 86400L).toString());
+        mockMvc.perform(request).andExpect(status().isOk())
+                .andExpect(jsonPath("$.incidentTimeline.length()").value(2160))
+                .andExpect(jsonPath("$.incidentTimelineTruncated").value(false))
+                .andExpect(jsonPath("$.incidentTimeline[2159].occurredAt").value(busyStart.plusSeconds(1079 * 7200L + 60).toString()));
+        String csv = mockMvc.perform(get("/api/monitors/{id}/reliability-report/csv", monitor.getId())
+                .with(jwt().jwt(token -> token.subject("ali-subject")))
+                .queryParam("from", busyStart.toString()).queryParam("to", busyStart.plusSeconds(90 * 86400L).toString()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(csv.lines().count()).isEqualTo(1081);
+        String html = mockMvc.perform(get("/api/monitors/{id}/reliability-report/html", monitor.getId())
+                .with(jwt().jwt(token -> token.subject("ali-subject")))
+                .queryParam("from", busyStart.toString()).queryParam("to", busyStart.plusSeconds(90 * 86400L).toString()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("1070 earlier incidents");
+    }
+
     private void incident(Monitor monitor, UUID down, UUID up) {
+        incident(monitor, down, up, WINDOW_START);
+    }
+
+    private void incident(Monitor monitor, UUID down, UUID up, Instant start) {
         UUID incidentId = UUID.randomUUID();
         jdbcTemplate.update(
                 """
@@ -319,8 +352,8 @@ class ReliabilityReportApiTest {
                  resolved_by_execution_id, resolved_at)
                 VALUES (?, ?, 'RESOLVED', ?, ?, ?, ?)
                 """,
-                incidentId, monitor.getId(), down, timestamp(WINDOW_START),
-                up, timestamp(WINDOW_START.plusSeconds(60))
+                incidentId, monitor.getId(), down, timestamp(start),
+                up, timestamp(start.plusSeconds(60))
         );
         jdbcTemplate.update(
                 """
@@ -328,8 +361,8 @@ class ReliabilityReportApiTest {
                 (event_id, incident_id, execution_id, event_type, occurred_at)
                 VALUES (?, ?, ?, 'OPENED', ?), (?, ?, ?, 'RESOLVED', ?)
                 """,
-                UUID.randomUUID(), incidentId, down, timestamp(WINDOW_START),
-                UUID.randomUUID(), incidentId, up, timestamp(WINDOW_START.plusSeconds(60))
+                UUID.randomUUID(), incidentId, down, timestamp(start),
+                UUID.randomUUID(), incidentId, up, timestamp(start.plusSeconds(60))
         );
     }
 

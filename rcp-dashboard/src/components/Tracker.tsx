@@ -72,7 +72,7 @@ export function Tracker({ days, size = "large", label }: TrackerProps) {
 
   return (
     <div className={`tracker ${size}`} ref={root} onMouseLeave={() => setHover(null)}>
-      <div className="tracker-bars" role="list" aria-label={label}>
+      <div className="tracker-bars" data-dense={days.length >= 12 || undefined} role="list" aria-label={label}>
         {days.map((day, index) => (
           <span
             key={day.day}

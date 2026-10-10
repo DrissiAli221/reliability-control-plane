@@ -16,7 +16,6 @@ import java.util.UUID;
 
 @Service
 public class ReliabilityReportService {
-    private static final int MAX_INCIDENT_EVENTS = 100;
     private static final int MINIMUM_LATENCY_SAMPLES = 20;
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
     /** The one place the report's stated limits live; `limitations` in the JSON is derived from these texts. */
@@ -59,13 +58,10 @@ public class ReliabilityReportService {
             throw new dev.ali.rcp.availability.AvailabilityMonitorNotFoundException();
         }
 
-        List<ReportIncidentEvent> events = repository.incidentTimeline(
-                monitorId, from, to, MAX_INCIDENT_EVENTS + 1
-        );
-        boolean truncated = events.size() > MAX_INCIDENT_EVENTS;
-        List<ReportIncidentEvent> timeline = truncated
-                ? List.copyOf(events.subList(0, MAX_INCIDENT_EVENTS))
-                : List.copyOf(events);
+        // Exports contain every retained transition in the requested period. HTML chooses its ten rows later;
+        // truncating here would also lose the latest incidents on the page and in JSON/CSV.
+        List<ReportIncidentEvent> timeline = List.copyOf(repository.incidentTimeline(monitorId, from, to));
+        boolean truncated = false;
 
         ReliabilityReportRepository.LatencySamples samples = repository.latencySamples(monitorId, from, to);
         ReportLatency latency = new ReportLatency(

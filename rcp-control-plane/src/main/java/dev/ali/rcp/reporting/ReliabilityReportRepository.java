@@ -60,7 +60,7 @@ public class ReliabilityReportRepository {
         return watermark == null ? null : watermark.toInstant();
     }
 
-    public List<ReportIncidentEvent> incidentTimeline(UUID monitorId, Instant from, Instant to, int limit) {
+    public List<ReportIncidentEvent> incidentTimeline(UUID monitorId, Instant from, Instant to) {
         return jdbcTemplate.query(
                 """
                 SELECT events.incident_id, events.event_type, events.occurred_at
@@ -69,7 +69,6 @@ public class ReliabilityReportRepository {
                 WHERE incidents.monitor_id = ?
                   AND events.occurred_at >= ? AND events.occurred_at < ?
                 ORDER BY events.occurred_at, events.event_id
-                LIMIT ?
                 """,
                 (resultSet, rowNumber) -> new ReportIncidentEvent(
                         resultSet.getObject("incident_id", UUID.class),
@@ -78,8 +77,7 @@ public class ReliabilityReportRepository {
                 ),
                 monitorId,
                 timestamp(from),
-                timestamp(to),
-                limit
+                timestamp(to)
         );
     }
 
