@@ -31,7 +31,7 @@ export const ALL_STEPS: TourStep[] = [
   { route: "/", target: "regions", title: "Probes in every region",
     body: "Each check fans out to a queue per region. Each cell is one job sent in the last 5 minutes; a filled cell has reported back, and the meter turns amber when fewer than 90% have." },
   { route: "monitor", target: "metrics", title: "A monitor's numbers",
-    body: "Uptime, the 99.9% SLO, latency and error budget for the window you pick, from 24 hours to 90 days. The SLO is reported as unproven when too few checks were conclusive, rather than passed on thin evidence." },
+    body: "Uptime, the 99.9% SLO, latency and error budget for the report period you pick, from 24 hours to 90 days. The SLO is reported as unproven when too few checks were conclusive, rather than passed on thin evidence." },
   { route: "monitor", target: "heatmap", title: "Latency, not just an average",
     body: "Every HTTP response by time and latency band, per region. Hover a cell to read it; clusters show where each region really sits." },
   { route: "monitor", target: "machine", title: "Decisions, in one line",

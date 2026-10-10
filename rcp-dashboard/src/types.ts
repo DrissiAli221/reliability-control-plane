@@ -57,6 +57,8 @@ export type AvailabilityReport = {
   missingExecutions: number;
   expectedOpportunities: number;
   denominatorPolicy: string;
+  /** When the monitor was first scheduled; absent from older servers. */
+  monitoringSince?: string;
 };
 
 export type DayStatus = "OPERATIONAL" | "DEGRADED" | "OUTAGE" | "NO_DATA";

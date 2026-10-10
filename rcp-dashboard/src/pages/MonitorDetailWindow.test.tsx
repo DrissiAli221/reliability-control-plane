@@ -10,6 +10,10 @@ import { MonitorDetailPage } from "./MonitorDetailPage";
 import { MonitorsPage } from "./MonitorsPage";
 
 const FOUND = { id: "id", name: "Checkout", targetUrl: "https://example.com", checkIntervalSeconds: 60, timeoutMs: 5000, enabled: true };
+const report = (days: number, timeline: unknown[] = []) => ({
+  availability: evidence(days), errorBudget: { allowedBadExecutions: "1", observedBadExecutions: 0, remainingExecutions: 1 },
+  latency: { sampleCount: 0, p50Ms: null, p95Ms: null, minimumSamples: 20 }, incidentTimeline: timeline, caveats: [],
+});
 const evidence = (days: number) => ({
   monitorId: "id", from: "", to: "", sloTargetPercent: 99.9, measuredAvailabilityPercent: 99.95, evidenceCoveragePercent: 100,
   minimumEvidenceCoveragePercent: 95, sloMet: true, upExecutions: days * 10, downExecutions: 0, disagreementExecutions: 0,
@@ -22,7 +26,7 @@ vi.mock("../api", () => ({
   listMonitors: vi.fn(async () => []),
   monitorHistory: vi.fn(async () => ({ regions: [], recentChecks: [], days: [] })),
   availability: vi.fn(async (_id: string, days = 7) => evidence(days)),
-  reliabilityReport: vi.fn(async () => { throw new Error("No report"); }),
+  reliabilityReport: vi.fn(async (_id: string, days = 7) => report(days)),
   incidentState: vi.fn(async () => { throw new Error("No evidence"); }),
   latencyHeatmap: vi.fn(async () => { throw new Error("No evidence"); }),
   deleteMonitor: vi.fn(), setAcceptedHttpStatuses: vi.fn(),
@@ -37,6 +41,8 @@ afterEach(() => {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getMonitor).mockResolvedValue(FOUND as never);
+  vi.mocked(availability).mockImplementation((async (_id: string, days = 7) => evidence(days)) as never);
+  vi.mocked(reliabilityReport).mockImplementation((async (_id: string, days = 7) => report(days)) as never);
   vi.mocked(useReadOnly).mockReturnValue(false);
 });
 
@@ -103,12 +109,12 @@ describe("a monitor that is not there", () => {
   });
 });
 
-describe("history window", () => {
+describe("report period", () => {
   it("defaults to 7 days, offers 24 h, 7 d, 30 d and 90 d, and labels the tiles", async () => {
     page();
 
     expect(await screen.findByText("Uptime · 7d")).toBeInTheDocument();
-    const group = screen.getByRole("group", { name: "History window" });
+    const group = screen.getByRole("group", { name: "Report period" });
     expect(Array.from(group.querySelectorAll("button")).map((item) => item.textContent)).toEqual(["24 h", "7 d", "30 d", "90 d"]);
     expect(screen.getByRole("button", { name: "7 d" })).toHaveAttribute("aria-pressed", "true");
     expect(availability).toHaveBeenCalledWith("id", 7);
@@ -123,7 +129,7 @@ describe("history window", () => {
     expect(screen.getByText("Error budget · 30d")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "30 d" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByLabelText("30 days summary")).toBeInTheDocument();
-    expect(screen.getByText("No incident transitions in the last 30 days.")).toBeInTheDocument();
+    expect(screen.getByText("No incidents recorded in this period")).toBeInTheDocument();
     expect(availability).toHaveBeenCalledWith("id", 30);
     expect(screen.getByRole("button", { name: "Export" })).toHaveAttribute("title", "Download the 30 days report as HTML");
   });
@@ -147,5 +153,96 @@ describe("history window", () => {
   it("treats an unknown window as the default", async () => {
     page("/monitors/id?window=14d");
     expect(await screen.findByText("Uptime · 7d")).toBeInTheDocument();
+  });
+
+  it("also reads the ?period= spelling and says what the period drives", async () => {
+    page("/monitors/id?period=90d");
+    expect(await screen.findByText("Uptime · 90d")).toBeInTheDocument();
+    const group = screen.getByRole("group", { name: "Report period" });
+    expect(group).toHaveAccessibleDescription(/summary tiles, evidence, incidents and exports.*latency chart.*45-day availability bar/);
+    expect(screen.queryByText("History window")).not.toBeInTheDocument();
+  });
+});
+
+describe("monitoring history shorter than the period", () => {
+  const young = (days: number) => ({ ...evidence(days), from: new Date(Date.now() - days * 86_400_000).toISOString(),
+    monitoringSince: new Date(Date.now() - 9.5 * 86_400_000).toISOString() });
+
+  it("says where the data starts when a 90 d period reaches back before the first check", async () => {
+    vi.mocked(availability).mockImplementation(async (_id: string, days = 7) => young(days) as never);
+    page("/monitors/id?window=90d");
+    await waitFor(() => expect(screen.getByTestId("period-since")).toHaveTextContent(/^Monitoring since \d+ \w+ · 9 days of data$/));
+  });
+
+  it("says nothing when the monitor covers the whole period", async () => {
+    vi.mocked(availability).mockImplementation(async (_id: string, days = 7) => young(days) as never);
+    page("/monitors/id?window=24h");
+    await screen.findByText("Uptime · 24h");
+    expect(screen.getByTestId("period-since")).toBeEmptyDOMElement();
+  });
+});
+
+describe("loading, failing and empty states", () => {
+  it("shows Updating… with the previous numbers kept but dimmed while a new period loads", async () => {
+    page();
+    await screen.findByText("Uptime · 7d");
+    let release: (value: unknown) => void = () => {};
+    vi.mocked(availability).mockImplementation(() => new Promise((resolve) => { release = resolve; }) as never);
+
+    fireEvent.click(screen.getByRole("button", { name: "30 d" }));
+
+    expect(await screen.findByText("Updating…")).toBeInTheDocument();
+    // The old numbers are still there, still labelled with their own period, and dimmed.
+    const tiles = screen.getByLabelText("7 days summary");
+    expect(tiles).toHaveAttribute("data-stale", "true");
+    expect(tiles).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByText("Uptime · 7d")).toBeInTheDocument();
+
+    release(evidence(30));
+    expect(await screen.findByText("Uptime · 30d")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("Updating…")).not.toBeInTheDocument());
+    expect(screen.getByLabelText("30 days summary")).not.toHaveAttribute("data-stale");
+  });
+
+  it("says it could not refresh, keeps the last numbers dimmed, and retries on request", async () => {
+    page();
+    await screen.findByText("Uptime · 7d");
+    vi.mocked(availability).mockRejectedValue(new Error("boom"));
+
+    fireEvent.click(screen.getByRole("button", { name: "30 d" }));
+
+    const alert = await screen.findByText(/Couldn.t refresh/);
+    expect(alert.closest("[role=alert]")).toBeInTheDocument();
+    expect(screen.getByLabelText("7 days summary")).toHaveAttribute("data-stale", "true");
+    expect(screen.queryByText("Updating…")).not.toBeInTheDocument();
+
+    vi.mocked(availability).mockImplementation(async (_id: string, days = 7) => evidence(days) as never);
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Uptime · 30d")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(/Couldn.t refresh/)).not.toBeInTheDocument());
+  });
+
+  it("does not show an unavailable report as empty", async () => {
+    vi.mocked(reliabilityReport).mockRejectedValue(new Error("down"));
+    page();
+
+    expect(await screen.findByText("Incidents unavailable.")).toBeInTheDocument();
+    expect(screen.queryByText("No incidents recorded in this period")).not.toBeInTheDocument();
+    expect(await screen.findByText(/Couldn.t refresh/)).toBeInTheDocument();
+  });
+
+  it("says plainly when a period really has no incidents, and lists them when it has some", async () => {
+    page();
+    expect(await screen.findByText("No incidents recorded in this period")).toBeInTheDocument();
+    expect(screen.queryByText(/Updating|Couldn.t refresh/)).not.toBeInTheDocument();
+    cleanup();
+
+    vi.mocked(reliabilityReport).mockImplementation(async (_id: string, days = 7) => report(days, [
+      { incidentId: "i1", eventType: "OPENED", occurredAt: "2026-10-01T10:00:00Z" },
+      { incidentId: "i1", eventType: "RESOLVED", occurredAt: "2026-10-01T10:10:00Z" },
+    ]) as never);
+    page();
+    expect(await screen.findByText("10m 0s")).toBeInTheDocument();
+    expect(screen.queryByText("No incidents recorded in this period")).not.toBeInTheDocument();
   });
 });

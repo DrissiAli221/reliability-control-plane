@@ -73,10 +73,11 @@ export function MonitorDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [latencyRange, setLatencyRange] = useState<LatencyWindow>(24);
   const [params, setParams] = useSearchParams();
-  // The window lives in the URL (?window=30d) so a reload or a shared link keeps it; the default needs no parameter.
-  const windowDays = parseWindow(params.get("window"));
+  // The report period lives in the URL (?window=30d, ?period=30d is read too) so a reload or a shared link keeps it; the default needs no parameter.
+  const windowDays = parseWindow(params.get("window") ?? params.get("period"));
   const setWindow = (next: WindowDays) => setParams((current) => {
     const updated = new URLSearchParams(current);
+    updated.delete("period"); // the older spelling; ?window= is the one we write
     if (next === 7) updated.delete("window");
     else updated.set("window", windowInfo(next).param);
     return updated;
@@ -102,21 +103,21 @@ export function MonitorDetailPage() {
     };
   }, [monitorId]);
   const detail = useLiveData(load, 10_000);
-  // Its own loader as well: switching the window refetches only the tiles and the report, and the previous window's
-  // numbers stay (labelled with their own window) until the new ones arrive.
+  // Its own loader as well: changing the report period refetches only what the period drives (the tiles, the evidence
+  // and the incidents), and the previous period's numbers stay, labelled with their own period, until the new ones
+  // arrive. A failure is thrown rather than swallowed so the page can say it could not refresh.
   const loadWindow = useCallback(async (): Promise<WindowData> => {
-    const [evidence, full] = await Promise.allSettled([availability(monitorId, windowDays), reliabilityReport(monitorId, windowDays)]);
-    return {
-      monitorId,
-      days: windowDays,
-      availability: evidence.status === "fulfilled" ? evidence.value : undefined,
-      report: full.status === "fulfilled" ? full.value : undefined,
-    };
+    const [evidence, full] = await Promise.all([availability(monitorId, windowDays), reliabilityReport(monitorId, windowDays)]);
+    return { monitorId, days: windowDays, availability: evidence, report: full };
   }, [monitorId, windowDays]);
   const windowed = useLiveData(loadWindow, 10_000);
   const windowData = windowed.data?.monitorId === monitorId ? windowed.data : null;
   const shown = windowInfo(windowData?.days ?? windowDays);
-  const switching = windowData != null && windowData.days !== windowDays;
+  // Only a change of period counts as "updating"; the ten-second refresh of the same period stays quiet.
+  const updating = windowed.loading && (windowData == null ? windowed.data == null : windowData.days !== windowDays);
+  const failed = windowed.error != null && !windowed.loading;
+  const stale = updating || failed;
+  const periodState = <PeriodState updating={updating} failed={failed} retry={windowed.refresh} />;
   // Its own loader: switching 24 h / 7 d refetches only the latency window, not the whole page, and the chart keeps
   // showing the previous window (dimmed) until the new one arrives instead of mixing the two.
   const loadHeatmap = useCallback(() => latencyHeatmap(monitorId, latencyRange), [monitorId, latencyRange]);
@@ -220,7 +221,7 @@ export function MonitorDetailPage() {
               ]}
             />
           )}
-          <WindowSelect value={windowDays} onChange={setWindow} />
+          <PeriodSelect value={windowDays} onChange={setWindow} />
           <ExportReportButton monitorId={monitor.id} monitorName={monitor.name} days={windowDays} />
         </div>
       </header>
@@ -263,7 +264,12 @@ export function MonitorDetailPage() {
         />
       )}
 
-      <section className="metric-grid" aria-label={`${shown.words} summary`} aria-busy={switching || undefined} data-tour="metrics">
+      <div className="period-bar">
+        <span className="period-note lbl" data-testid="period-since">{sinceNote(evidence, now)}</span>
+        <span className="period-state-slot">{stale ? periodState : null}</span>
+      </div>
+
+      <section className="metric-grid" aria-label={`${shown.words} summary`} aria-busy={updating || undefined} data-stale={stale || undefined} data-tour="metrics">
         <Metric
           label={`Uptime · ${shown.short}`}
           explain={evidence && <UptimeExplain report={evidence} words={shown.words} />}
@@ -423,7 +429,7 @@ export function MonitorDetailPage() {
             <h2>Evidence</h2>
             <span className="subtle">Last {shown.words}</span>
           </header>
-          <div className="panel-body">
+          <div className="panel-body" data-stale={stale || undefined}>
             {evidence ? (
               <>
                 <div className="evidence-headline">
@@ -432,7 +438,7 @@ export function MonitorDetailPage() {
                 </div>
                 <EvidenceRail report={evidence} />
               </>
-            ) : <p className="subtle">Evidence unavailable.</p>}
+            ) : <p className="subtle">{windowed.error ? "Evidence unavailable." : "Loading evidence…"}</p>}
           </div>
         </section>
       </div>
@@ -443,7 +449,7 @@ export function MonitorDetailPage() {
           <span className="subtle">Last {shown.words}</span>
         </header>
         {incidents.length > 0 ? (
-          <div className="table-scroll">
+          <div className="table-scroll" data-stale={stale || undefined}>
             <table className="table compact incident-table">
               <thead>
                 <tr><th scope="col">Opened</th><th scope="col">Resolved</th><th scope="col" className="num">Duration</th></tr>
@@ -467,7 +473,9 @@ export function MonitorDetailPage() {
               </tbody>
             </table>
           </div>
-        ) : <p className="panel-body subtle">No incident transitions in the last {shown.words}.</p>}
+        ) : report
+          ? <p className="panel-body subtle" data-stale={stale || undefined}>No incidents recorded in this period</p>
+          : <p className="panel-body subtle">{windowed.error ? "Incidents unavailable." : "Loading incidents…"}</p>}
         {incidents.length > INCIDENT_LIMIT && (
           <p className="panel-more subtle">{incidents.length - INCIDENT_LIMIT} earlier incidents are in the downloadable report.</p>
         )}
@@ -498,15 +506,42 @@ function MonitorGone() {
   );
 }
 
-/** The window the tiles and the export cover, in the same segmented style as the latency chart's toggle. */
-function WindowSelect({ value, onChange }: { value: WindowDays; onChange: (days: WindowDays) => void }) {
+const PERIOD_SCOPE = "Sets the summary tiles, evidence, incidents and exports. The latency chart and the 45-day availability bar keep their own ranges.";
+
+/** The report period, in the same segmented style as the latency chart's toggle. It drives the tiles, evidence, incidents and exports only. */
+function PeriodSelect({ value, onChange }: { value: WindowDays; onChange: (days: WindowDays) => void }) {
   return (
-    <div className="segmented" role="group" aria-label="History window">
-      {WINDOWS.map((item) => (
-        <button key={item.days} type="button" aria-pressed={value === item.days} title={`Show the last ${item.words}`} onClick={() => onChange(item.days)}>{item.label}</button>
-      ))}
+    <div className="period-select" title={PERIOD_SCOPE}>
+      <span className="lbl" id="report-period-label">Report period</span>
+      <div className="segmented" role="group" aria-labelledby="report-period-label" aria-describedby="report-period-scope">
+        {WINDOWS.map((item) => (
+          <button key={item.days} type="button" aria-pressed={value === item.days} title={`Report on the last ${item.words}`} onClick={() => onChange(item.days)}>{item.label}</button>
+        ))}
+      </div>
+      <span className="sr-only" id="report-period-scope">{PERIOD_SCOPE}</span>
     </div>
   );
+}
+
+/** What the period-driven panels are doing, said plainly: still loading the new period, or unable to refresh. */
+function PeriodState({ updating, failed, retry }: { updating: boolean; failed: boolean; retry: () => Promise<void> }) {
+  if (failed) {
+    return (
+      <span className="period-state" role="alert">
+        Couldn&rsquo;t refresh · <button type="button" className="link-button" onClick={() => void retry()}>Try again</button>
+      </span>
+    );
+  }
+  return updating ? <span className="period-state" role="status">Updating…</span> : null;
+}
+
+/** "Monitoring since 1 Oct · 9 days of data", only when the period reaches back before the monitor's first schedule. */
+function sinceNote(report: AvailabilityReport | undefined, now: number): string {
+  if (!report?.monitoringSince || new Date(report.monitoringSince) <= new Date(report.from)) return "";
+  const since = new Date(report.monitoringSince);
+  const days = Math.floor((now - since.getTime()) / 86_400_000);
+  const day = since.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+  return `Monitoring since ${day} · ${days < 1 ? "under a day" : days === 1 ? "1 day" : `${days} days`} of data`;
 }
 
 function Breadcrumb({ name }: { name: string }) {

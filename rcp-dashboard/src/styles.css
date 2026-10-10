@@ -1789,3 +1789,13 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .dialog .capacity-why { max-width: none; margin-top: 0; padding: 10px 12px; border-radius: var(--radius-md); background: var(--surface-2); }
 .notice.info { background: var(--surface-2); color: var(--text-2); }
 .signin-shutdown { max-width: 420px; margin: 4px auto 0; text-align: center; font-size: 12px; line-height: 1.5; color: var(--text-3); }
+
+/* ---------- Report period (drives the tiles, evidence, incidents and exports) ---------- */
+.period-select { display: inline-flex; align-items: center; gap: 8px; }
+.period-bar { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-height: 18px; margin: 0 0 8px; }
+.period-state { font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--track-label); color: var(--text-2); }
+.period-state[role="alert"] { color: var(--amber-text); }
+.link-button { padding: 0; border: 0; background: none; color: var(--accent-text); font: inherit; text-decoration: underline; text-underline-offset: 2px; }
+/* Previous numbers stay in place, dimmed, so the page does not jump while a period loads or after a failed refresh. */
+.metric-grid, .panel-body, .table-scroll, .panel-body.subtle { transition: opacity 120ms; }
+[data-stale="true"] { opacity: 0.55; }
