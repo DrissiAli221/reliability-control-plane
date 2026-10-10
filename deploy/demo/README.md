@@ -13,7 +13,7 @@ half is documented in [`infra/aws-demo`](../../infra/aws-demo/README.md).
 
 - Deploy an application release that supports expired-session handling,
   stale public status data, backend read-only `demo` group, 60-second minimum,
-  8 global/5 owner monitor caps, maximum 5-second check timeout, example seeding,
+  30 global/5 owner monitor caps, maximum 5-second check timeout, example seeding,
   and `/api/demo/session`. Verify backend group enforcement, concurrent quota
   protection, and the 30/minute demo-login limit for the single backend.
   Stock Caddy does not add another login rate limiter here.
@@ -81,7 +81,7 @@ in Compose, build arguments, or Vite.
    region environment names.
 
    The global cap is a backend setting, with no application source change. This
-   deployment supplies `rcp.monitors.max-total=8` in the generated JSON. Change
+   deployment supplies `rcp.monitors.max-total=30` in the generated JSON. Change
    that JSON and restart the backend to revise the cap; a conflicting
    `RCP_MONITORS_MAX_TOTAL` environment variable does not override
    `SPRING_APPLICATION_JSON`.
@@ -319,9 +319,37 @@ Obtain deployment approval **before apply**; server installation alone does not
 update those probes. Publish the rebuilt dashboard using the next section so
 its schedule agrees with the server.
 
+### Raise the global cap
+
+The global cap was 8 and is now 30 (5 per owner is unchanged). An existing VM
+keeps `max-total: 8` in its private `application.json` until you change it. The
+`configure-variety.py` helper accepts a cap of 8 or 30 and raises 8 to 30; it is
+idempotent and keeps its private-permission and atomic-write behaviour. Back up
+the file first, as in the next section, then:
+
+```sh
+set -e
+cd /opt/rcp
+sudo test ! -e deploy/demo/secrets/application.before-cap30.json
+sudo install -m 600 deploy/demo/secrets/application.json deploy/demo/secrets/application.before-cap30.json
+sudo chmod 600 deploy/demo/secrets/application.json
+if ! sudo python3 deploy/demo/scripts/configure-variety.py deploy/demo/secrets/application.json; then
+  sudo chmod 444 deploy/demo/secrets/application.json
+  exit 1
+fi
+sudo chmod 444 deploy/demo/secrets/application.json
+cd deploy/demo
+docker compose --profile monitoring up -d --no-deps --force-recreate --wait --wait-timeout 180 control-plane
+curl -fsS https://rcp-ali.duckdns.org/healthz
+```
+
+Check that `/api/me` now reports `maxTotal: 30`. More monitors mean more probe
+invocations in both Regions; re-run `infra/aws-demo/cost-estimate.py` with
+`--monitors 30` before inviting people.
+
 ### Upgrade the existing demo fleet without losing history
 
-New generated configuration seeds **five** monitors and sets **5 per owner / 8
+New generated configuration seeds **five** monitors and sets **5 per owner / 30
 globally**, with the same 60-second minimum interval and 5-second maximum timeout.
 The owner limit applies to every owner, not only the shared account. Example
 Domain, Wikipedia and our drill remain; GitHub Status and Cloudflare Status are
@@ -390,7 +418,7 @@ quota counts, workspace validation and URL deduplication consider only rows with
 `deleted_at IS NULL`. A deleted target is replaced by a new monitor ID; its
 tombstone and schedule history remain intact. An owner with only deleted rows
 does not satisfy the existing-workspace check. The transaction keeps live limits
-at five per owner and eight globally, and rolls back every addition on failure.
+at five per owner and thirty globally, and rolls back every addition on failure.
 
 For configuration rollback, disable the drill timer and restore the endpoint
 first. Restore `application.before-variety.json` with private permissions, set

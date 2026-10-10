@@ -73,9 +73,9 @@ class DrillMonitorSQL(unittest.TestCase):
         self.sql(script, success=False)
         self.assertEqual(self.sql("SELECT count(*) FROM monitors"), "5")
         self.setUp()
-        self.add_monitors(6, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+        self.add_monitors(28, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
         self.sql(script, success=False)
-        self.assertEqual(self.sql("SELECT count(*) FROM monitors"), "8")
+        self.assertEqual(self.sql("SELECT count(*) FROM monitors"), "30")
 
     def test_variety_is_idempotent_preserves_history_and_has_atomic_caps(self):
         script = (DEMO / "scripts/add-demo-variety.sql").read_text()
@@ -89,9 +89,9 @@ class DrillMonitorSQL(unittest.TestCase):
         self.sql(script, success=False)
         self.assertEqual(self.sql("SELECT count(*) FROM monitors"), "4")
         self.setUp()
-        self.add_monitors(5, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+        self.add_monitors(27, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
         self.sql(script, success=False)
-        self.assertEqual(self.sql("SELECT count(*) FROM monitors"), "7")
+        self.assertEqual(self.sql("SELECT count(*) FROM monitors"), "29")
 
     def test_unknown_or_invalid_subject_cannot_create_workspace(self):
         for subject in ["not-a-subject", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"]:
@@ -158,7 +158,7 @@ class DrillMonitorSQL(unittest.TestCase):
                     if cap == 'owner':
                         self.add_monitors(4 - additions, SUBJECT)
                     else:
-                        self.add_monitors(7 - additions, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+                        self.add_monitors(29 - additions, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
                     before = self.sql("SELECT monitor_id FROM monitors ORDER BY monitor_id")
                     self.sql((DEMO / 'scripts' / helper).read_text(), success=False)
                     self.assertEqual(self.sql("SELECT monitor_id FROM monitors ORDER BY monitor_id"), before)

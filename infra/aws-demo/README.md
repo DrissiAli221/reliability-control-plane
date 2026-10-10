@@ -47,7 +47,7 @@ costs. Local validation proves configuration, not AWS deployment or availability
 - Runtime IAM: send only to two job queues; receive/delete/change visibility/read
   attributes only on the result queue; `AdminInitiateAuth` only on this user pool.
 - The output `server_application_json` preserves the region keys exactly. It also
-  wires 5 monitors/owner, 60-second minimum interval, 8 monitors globally, demo
+  wires 5 monitors/owner, 60-second minimum interval, 30 monitors globally, demo
   group enforcement, and a 5,000 ms maximum timeout. `rcp.demo.monitors` seeds
   Example Domain, Wikipedia, Scheduled outage drill, GitHub Status and Cloudflare
   Status for the shared account, and
@@ -194,7 +194,7 @@ includes provider checksums for Linux and both Mac architectures.
 current regional prices, and usage shared with other projects. Credits are
 finite; free-tier allowances are account-wide and not doubled by two regions.
 
-Estimate both Lambda requests and GB-seconds. At 8 monitors,
+Estimate both Lambda requests and GB-seconds. At 8 monitors (the original demo size; the cap is now 30),
 60 seconds, two regions and 30 days, the configured one-job batches produce
 691,200 checks/invocations before retries. Average billed duration must include
 probe time, DNS/TLS setup, result publishing, cold starts, and failures.

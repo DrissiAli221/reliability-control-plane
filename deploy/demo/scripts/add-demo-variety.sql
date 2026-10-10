@@ -28,8 +28,8 @@ BEGIN
   END IF;
   SELECT count(*) INTO missing FROM variety_targets t WHERE NOT EXISTS
     (SELECT 1 FROM variety_live_monitors m WHERE m.owner_subject = subject AND m.target_url = t.url);
-  IF (SELECT count(*) FROM variety_live_monitors) + missing > 8 THEN
-    RAISE EXCEPTION 'Global monitor cap of 8 would be exceeded';
+  IF (SELECT count(*) FROM variety_live_monitors) + missing > 30 THEN
+    RAISE EXCEPTION 'Global monitor cap of 30 would be exceeded';
   END IF;
   IF (SELECT count(*) FROM variety_live_monitors WHERE owner_subject = subject) + missing > 5 THEN
     RAISE EXCEPTION 'Owner quota of 5 would be exceeded';

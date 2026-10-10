@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Opt an existing private application configuration into the five-monitor demo."""
+"""Opt an existing private application configuration into the five-monitor demo
+and the 30-monitor global cap (an existing cap of 8 is raised; 30 is kept)."""
 import argparse
 import json
 import os
@@ -18,8 +19,8 @@ def update(path):
     config = json.loads(path.read_text())
     rcp = config['rcp']
     limits = rcp['monitors']
-    if limits.get('max-per-owner') not in (3, 5) or limits.get('max-total') != 8 or limits.get('min-interval-seconds') != 60 or limits.get('max-timeout-ms') != 5000:
-        raise ValueError('Expected the reviewed demo limits: owner 3 or 5, total 8, interval 60, timeout 5000')
+    if limits.get('max-per-owner') not in (3, 5) or limits.get('max-total') not in (8, 30) or limits.get('min-interval-seconds') != 60 or limits.get('max-timeout-ms') != 5000:
+        raise ValueError('Expected the reviewed demo limits: owner 3 or 5, total 8 or 30, interval 60, timeout 5000')
     entries = [entry.strip() for entry in rcp['demo']['monitors'].split(',') if entry.strip()]
     urls = {entry.partition('|')[2] for entry in entries}
     for target in TARGETS:
@@ -28,6 +29,7 @@ def update(path):
     if len(entries) > 5:
         raise ValueError('Configured demo targets would exceed the approved quota of 5; review existing targets')
     limits['max-per-owner'] = 5
+    limits['max-total'] = 30
     rcp['demo']['monitors'] = ', '.join(entries)
     fd, temporary = tempfile.mkstemp(prefix='.variety-', dir=path.parent)
     try:
@@ -50,4 +52,4 @@ if __name__ == '__main__':
         update(args.configuration)
     except (OSError, ValueError, KeyError):
         parser.exit(1, 'Could not update configuration. Check private permissions, limits and target count. No configuration values were printed.\n')
-    print('Updated demo quota and targets. Recreate the backend container to load the configuration.')
+    print('Updated demo quotas (5 per owner, 30 in total) and targets. Recreate the backend container to load the configuration.')
