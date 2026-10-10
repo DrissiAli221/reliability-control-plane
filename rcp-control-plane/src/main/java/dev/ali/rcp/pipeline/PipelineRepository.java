@@ -182,7 +182,7 @@ public class PipelineRepository {
                 SELECT results.probe_region AS region,
                        COUNT(*) AS received,
                        percentile_disc(0.5) WITHIN GROUP (ORDER BY results.latency_ms)
-                           FILTER (WHERE results.outcome = 'HTTP_RESPONSE') AS p50_ms
+                           FILTER (WHERE results.outcome = 'HTTP_RESPONSE' AND results.bot_protection IS NULL) AS p50_ms
                 FROM monitors
                 JOIN probe_results results ON results.monitor_id = monitors.monitor_id
                 WHERE monitors.owner_subject = ? AND monitors.deleted_at IS NULL

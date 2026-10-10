@@ -112,7 +112,7 @@ public class MonitorHistoryRepository {
                        percentile_disc(0.5) WITHIN GROUP (ORDER BY latency_ms) AS p50_ms,
                        percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_ms
                 FROM probe_results
-                WHERE monitor_id = ? AND scheduled_at >= ? AND outcome = 'HTTP_RESPONSE'
+                WHERE monitor_id = ? AND scheduled_at >= ? AND outcome = 'HTTP_RESPONSE' AND bot_protection IS NULL
                 GROUP BY probe_region
                 """,
                 resultSet -> {
@@ -188,7 +188,7 @@ public class MonitorHistoryRepository {
                        width_bucket(latency_ms, ARRAY[%s]::bigint[]) AS band,
                        COUNT(*) AS samples
                 FROM probe_results
-                WHERE monitor_id = ? AND scheduled_at >= ? AND scheduled_at < ? AND outcome = 'HTTP_RESPONSE'
+                WHERE monitor_id = ? AND scheduled_at >= ? AND scheduled_at < ? AND outcome = 'HTTP_RESPONSE' AND bot_protection IS NULL
                 GROUP BY 1, 2, 3
                 """.formatted(bounds),
                 (resultSet, rowNumber) -> new LatencyCell(
@@ -213,7 +213,7 @@ public class MonitorHistoryRepository {
                        percentile_disc(0.5) WITHIN GROUP (ORDER BY latency_ms) AS p50_ms,
                        percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_ms
                 FROM probe_results
-                WHERE monitor_id = ? AND scheduled_at >= ? AND scheduled_at < ? AND outcome = 'HTTP_RESPONSE'
+                WHERE monitor_id = ? AND scheduled_at >= ? AND scheduled_at < ? AND outcome = 'HTTP_RESPONSE' AND bot_protection IS NULL
                 GROUP BY 1, 2
                 """,
                 (resultSet, rowNumber) -> new ColumnPercentiles(
@@ -238,7 +238,7 @@ public class MonitorHistoryRepository {
                        percentile_disc(0.5) WITHIN GROUP (ORDER BY latency_ms) AS p50_ms,
                        percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_ms
                 FROM probe_results
-                WHERE monitor_id = ? AND scheduled_at >= ? AND scheduled_at < ? AND outcome = 'HTTP_RESPONSE'
+                WHERE monitor_id = ? AND scheduled_at >= ? AND scheduled_at < ? AND outcome = 'HTTP_RESPONSE' AND bot_protection IS NULL
                 GROUP BY probe_region
                 """,
                 (RowCallbackHandler) resultSet -> byRegion.put(

@@ -93,6 +93,7 @@ public class ReliabilityReportRepository {
                 WHERE monitor_id = ?
                   AND scheduled_at >= ? AND scheduled_at < ?
                   AND outcome = 'HTTP_RESPONSE'
+                  AND bot_protection IS NULL
                 """,
                 (resultSet, rowNumber) -> new LatencySamples(
                         resultSet.getLong("sample_count"),
