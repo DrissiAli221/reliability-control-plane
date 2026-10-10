@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { elapsed, monitorState, outcomeTone, relativeTime } from "./format";
+import { elapsed, isBlockedCheck, monitorState, outcomeTone, relativeTime } from "./format";
 import type { MonitorOverview } from "./types";
 
 const monitor: MonitorOverview = {
@@ -42,5 +42,16 @@ describe("format", () => {
     expect(elapsed(3_725_000)).toBe("1:02:05");
     expect(elapsed(2 * 86_400_000 + 3 * 3_600_000)).toBe("2d 03h");
     expect(elapsed(-5)).toBe("00:00");
+  });
+});
+
+describe("isBlockedCheck", () => {
+  const challenge = { outcome: "HTTP_RESPONSE", httpStatus: 403, botProtection: "CLOUDFLARE_CHALLENGE" };
+  it("is blocked only when NO_DATA and every region was an unaccepted challenge", () => {
+    expect(isBlockedCheck({ verdict: "NO_DATA", results: [challenge, challenge] })).toBe(true);
+    expect(isBlockedCheck({ verdict: "DISAGREEMENT", results: [challenge, { outcome: "HTTP_RESPONSE", httpStatus: 200 }] })).toBe(false);
+    expect(isBlockedCheck({ verdict: "NO_DATA", results: [challenge, { outcome: "UNSAFE_TARGET", httpStatus: null }] })).toBe(false);
+    expect(isBlockedCheck({ verdict: "NO_DATA", acceptedHttpStatuses: [200, 403], results: [challenge] })).toBe(false);
+    expect(isBlockedCheck({ verdict: "NO_DATA", results: [] })).toBe(false);
   });
 });

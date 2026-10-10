@@ -1,3 +1,4 @@
+import { ShieldAlert } from "lucide-react";
 import type { Tone } from "../format";
 
 const CELLS = [0, 1, 2, 3, 4, 5, 6, 7, 8];
@@ -11,10 +12,11 @@ export function StatusDot({ tone, pulse = false }: { tone: Tone; pulse?: boolean
   );
 }
 
-export function StatusBadge({ label, tone }: { label: string; tone: Tone }) {
+/** `blocked` swaps the dot for a shield and hatches the badge: the probes were challenged by bot protection, not absent. */
+export function StatusBadge({ label, tone, blocked = false }: { label: string; tone: Tone; blocked?: boolean }) {
   return (
-    <span className={`badge ${tone}`}>
-      <StatusDot tone={tone} />
+    <span className={`badge ${tone}${blocked ? " blocked" : ""}`}>
+      {blocked ? <ShieldAlert size={13} aria-hidden="true" /> : <StatusDot tone={tone} />}
       {label}
     </span>
   );

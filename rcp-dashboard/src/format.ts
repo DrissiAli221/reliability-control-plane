@@ -92,6 +92,18 @@ export function outcomeTone(outcome: string, httpStatus: number | null, accepted
   return TARGET_FAILURES.has(outcome) ? "fault" : "muted";
 }
 
+export type CheckResultLike = { outcome: string; httpStatus: number | null; botProtection?: string | null };
+
+/** True for a result that is a Cloudflare challenge nobody accepted: the probe was stopped, not the site down. */
+export function isChallenged(result: CheckResultLike, acceptedHttpStatuses?: number[] | null): boolean {
+  return result.botProtection === "CLOUDFLARE_CHALLENGE" && outcomeTone(result.outcome, result.httpStatus, acceptedHttpStatuses, result.botProtection) === "muted";
+}
+
+/** A NO_DATA verdict where every region was challenged is "blocked", not "the probes did not run". */
+export function isBlockedCheck(check: { verdict: Verdict; acceptedHttpStatuses?: number[] | null; results: CheckResultLike[] }): boolean {
+  return check.verdict === "NO_DATA" && check.results.length > 0 && check.results.every((result) => isChallenged(result, check.acceptedHttpStatuses));
+}
+
 export function ordinal(value: number): string {
   const tens = value % 100;
   if (tens >= 11 && tens <= 13) return `${value}th`;
