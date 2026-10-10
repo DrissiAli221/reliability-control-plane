@@ -247,7 +247,8 @@ public class ReliabilityReportHtmlRenderer {
         StringBuilder html = new StringBuilder(96000);
         html.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
-                .append("<title>").append(escape(report.monitorName())).append(" · RCP reliability report</title>")
+                .append("<title>").append(escape(report.monitorName())).append(" · RCP reliability report · ")
+                .append(span(a.from(), a.to())).append("</title>")
                 .append("<style>").append(STYLES).append("</style></head><body><div class=\"report\">")
                 .append("<header class=\"masthead\"><div class=\"brand\">")
                 .append(LOGO)

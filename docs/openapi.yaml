@@ -430,6 +430,7 @@ paths:
       - $ref: '#/components/parameters/MonitorId'
       - $ref: '#/components/parameters/From'
       - $ref: '#/components/parameters/To'
+      - $ref: '#/components/parameters/Days'
       - $ref: '#/components/parameters/SloTarget'
     get:
       operationId: getAvailability
@@ -452,6 +453,7 @@ paths:
       - $ref: '#/components/parameters/MonitorId'
       - $ref: '#/components/parameters/From'
       - $ref: '#/components/parameters/To'
+      - $ref: '#/components/parameters/Days'
       - $ref: '#/components/parameters/SloTarget'
     get:
       operationId: getReliabilityReport
@@ -474,6 +476,7 @@ paths:
       - $ref: '#/components/parameters/MonitorId'
       - $ref: '#/components/parameters/From'
       - $ref: '#/components/parameters/To'
+      - $ref: '#/components/parameters/Days'
       - $ref: '#/components/parameters/SloTarget'
     get:
       operationId: downloadReliabilityReportHtml
@@ -616,19 +619,30 @@ components:
     From:
       name: from
       in: query
-      required: true
-      description: UTC inclusive start instant
+      required: false
+      description: UTC inclusive start instant; give it together with `to`, and not with `days`
       schema:
         type: string
         format: date-time
     To:
       name: to
       in: query
-      required: true
-      description: UTC exclusive end instant
+      required: false
+      description: UTC exclusive end instant; give it together with `from`, and not with `days`
       schema:
         type: string
         format: date-time
+    Days:
+      name: days
+      in: query
+      required: false
+      description: >-
+        A preset window ending now: 1, 7, 30 or 90 days (checks are kept 90 days). Any other value, or combining it
+        with `from` or `to`, is a 400. With none of `days`, `from` and `to` the window is the last 7 days. Downloads
+        from a preset window are named with it, for example `rcp-reliability-report-30d.html`.
+      schema:
+        type: integer
+        enum: [1, 7, 30, 90]
     SloTarget:
       name: sloTargetPercent
       in: query

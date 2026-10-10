@@ -155,6 +155,70 @@ class ReliabilityReportApiTest {
     }
 
     @Test
+    void presetWindowsAreNamedByDaysAndTheDefaultIsSevenDays() throws Exception {
+        Monitor monitor = monitor("ali-subject", "Window target");
+        for (int days : new int[]{1, 7, 30, 90}) {
+            String body = mockMvc.perform(get("/api/monitors/{id}/reliability-report", monitor.getId())
+                            .with(jwt().jwt(token -> token.subject("ali-subject")))
+                            .queryParam("days", Integer.toString(days)))
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(windowDays(body)).isEqualTo(days);
+        }
+        String defaulted = mockMvc.perform(get("/api/monitors/{id}/reliability-report", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(windowDays(defaulted)).isEqualTo(7);
+    }
+
+    @Test
+    void rejectsWindowsOutsideThePresetsAndMixedWindowParameters() throws Exception {
+        Monitor monitor = monitor("ali-subject", "Window target");
+        for (String path : new String[]{"", "/html", "/csv"}) {
+            for (String days : new String[]{"0", "2", "14", "91", "365", "-7"}) {
+                mockMvc.perform(get("/api/monitors/{id}/reliability-report" + path, monitor.getId())
+                                .with(jwt().jwt(token -> token.subject("ali-subject")))
+                                .queryParam("days", days))
+                        .andExpect(status().isBadRequest());
+            }
+            mockMvc.perform(get("/api/monitors/{id}/reliability-report" + path, monitor.getId())
+                            .with(jwt().jwt(token -> token.subject("ali-subject")))
+                            .queryParam("days", "30")
+                            .queryParam("from", WINDOW_START.toString())
+                            .queryParam("to", WINDOW_START.plusSeconds(60).toString()))
+                    .andExpect(status().isBadRequest());
+            mockMvc.perform(get("/api/monitors/{id}/reliability-report" + path, monitor.getId())
+                            .with(jwt().jwt(token -> token.subject("ali-subject")))
+                            .queryParam("from", WINDOW_START.toString()))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test
+    void downloadsNameTheirPresetWindow() throws Exception {
+        Monitor monitor = monitor("ali-subject", "Window target");
+        mockMvc.perform(get("/api/monitors/{id}/reliability-report/html", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))).queryParam("days", "30"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=rcp-reliability-report-30d.html"));
+        mockMvc.perform(get("/api/monitors/{id}/reliability-report/csv", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))).queryParam("days", "90"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=rcp-reliability-incidents-90d.csv"));
+        String html = mockMvc.perform(get("/api/monitors/{id}/reliability-report/html", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))).queryParam("days", "30"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("30 days");
+    }
+
+    private static long windowDays(String json) {
+        Instant from = Instant.parse(com.jayway.jsonpath.JsonPath.read(json, "$.availability.from"));
+        Instant to = Instant.parse(com.jayway.jsonpath.JsonPath.read(json, "$.availability.to"));
+        return java.time.Duration.between(from, to).toDays();
+    }
+
+    @Test
     void publishesLatencyPercentilesOnlyWithEnoughHttpSamples() throws Exception {
         Monitor monitor = monitor("ali-subject", "Latency target");
         for (int minute = 0; minute < 10; minute++) {
