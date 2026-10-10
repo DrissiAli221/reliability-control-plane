@@ -1,6 +1,6 @@
 import { ArrowUpRight, Download, Pause, Play, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { availability, createMonitor, listMonitors, monitorHistory, setMonitorEnabled } from "../api";
 import { LoadingNote, SkLine, SkRows } from "../components/Skeleton";
 import { DeleteMonitorDialog } from "../components/DeleteMonitorDialog";
@@ -15,7 +15,8 @@ import { downloadReport } from "../reportDownload";
 import { Tracker } from "../components/Tracker";
 import { compactUrl, milliseconds, monitorState, percent, relativeTime, type Tone } from "../format";
 import type { AvailabilityReport, CreateMonitorInput, MonitorHistory, MonitorOverview } from "../types";
-import { useReadOnly } from "../session";
+import { capacityLine, capacityOf, capacityReason } from "../capacity";
+import { refreshSession, useReadOnly, useSession } from "../session";
 import { useLiveData, useNow } from "../useLiveData";
 
 const TRACKER_DAYS = 30;
@@ -49,6 +50,12 @@ export function MonitorsPage() {
   const navigate = useNavigate();
   const readOnly = useReadOnly();
   const [params, setParams] = useSearchParams();
+  const session = useSession();
+  const capacity = capacityOf(session);
+  const capacityNote = capacityLine(capacity, readOnly);
+  const createBlocked = capacityReason(capacity);
+  // A redirect from a monitor page that no longer exists leaves a one-line explanation here.
+  const arrivalNotice = (useLocation().state as { notice?: string } | null)?.notice ?? null;
   const [showCreate, setShowCreate] = useState(() => params.get("create") === "1");
   const [query, setQuery] = useState("");
   const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null);
@@ -72,6 +79,10 @@ export function MonitorsPage() {
     if (!readOnly) setShowCreate(true);
     setParams({}, { replace: true });
   }, [params, setParams, readOnly]);
+
+  useEffect(() => {
+    if (fleet.data) void refreshSession();
+  }, [fleet.data]);
 
   useEffect(() => {
     if (fleet.data) previousStates.current = new Map(fleet.data.map(({ monitor }) => [monitor.id, monitorState(monitor).label]));
@@ -102,7 +113,10 @@ export function MonitorsPage() {
   });
 
   async function handleCreate(input: CreateMonitorInput) {
-    const created = await createMonitor(input);
+    const created = await createMonitor(input).catch((reason: unknown) => {
+      void refreshSession(); // a capacity refusal means the counters shown were stale
+      throw reason;
+    });
     setShowCreate(false);
     navigate(`/monitors/${created.id}`);
   }
@@ -123,6 +137,8 @@ export function MonitorsPage() {
         <div>
           <h1>Monitors</h1>
           <p><strong>HTTP(S) targets, checked from every region.</strong> A verdict needs the regions to agree.</p>
+          {capacityNote && <p className="capacity-line" data-testid="capacity-line">{capacityNote}</p>}
+          {!readOnly && createBlocked && <p className="capacity-why" id="monitors-capacity-why">{createBlocked}</p>}
         </div>
         <div className="page-actions">
           <LiveIndicator updatedAt={fleet.updatedAt} now={now} error={fleet.error} />
@@ -130,7 +146,8 @@ export function MonitorsPage() {
             <RefreshCw size={16} className={fleet.loading ? "spin" : undefined} />
           </button>
           {!readOnly && (
-            <button type="button" className="button primary" onClick={() => setShowCreate(true)}>
+            <button type="button" className="button primary" onClick={() => setShowCreate(true)} disabled={createBlocked != null}
+              aria-describedby={createBlocked ? "monitors-capacity-why" : undefined} title={createBlocked ?? undefined}>
               <Plus size={16} aria-hidden="true" /> Create monitor
             </button>
           )}
@@ -148,6 +165,7 @@ export function MonitorsPage() {
           visual={<FleetCells rows={rows} lit={(monitor) => !monitor.enabled} tone="muted" />} />
       </section>
 
+      {arrivalNotice && <p className="notice info" role="status">{arrivalNotice}</p>}
       {notice && <p className="notice fault" role="alert">{notice}</p>}
 
       <section className="panel">
@@ -165,7 +183,7 @@ export function MonitorsPage() {
 
         {fleet.error && !fleet.data && <ErrorState message={fleet.error} retry={fleet.refresh} />}
         {!fleet.data && !fleet.error && <SkeletonRows />}
-        {fleet.data && rows.length === 0 && <EmptyState onCreate={readOnly ? undefined : () => setShowCreate(true)} />}
+        {fleet.data && rows.length === 0 && <EmptyState onCreate={readOnly || createBlocked ? undefined : () => setShowCreate(true)} />}
         {fleet.data && rows.length > 0 && (
           <div className="table-scroll">
             <table className="table fleet">

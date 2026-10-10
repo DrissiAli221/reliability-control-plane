@@ -236,7 +236,10 @@ export type PipelineEvent = {
 
 export type MonitorLimits = { maxPerOwner: number; maxTotal: number; minIntervalSeconds: number; maxTimeoutMs: number };
 
-export type Session = { subject: string; readOnly: boolean; limits: MonitorLimits };
+/** Live monitors counted against the limits; `usage` is absent from servers that predate it. */
+export type MonitorUsage = { ownedMonitors: number; totalMonitors: number };
+
+export type Session = { subject: string; readOnly: boolean; limits: MonitorLimits; usage?: MonitorUsage };
 
 export type VerdictBucket = { up: number; down: number; disagreement: number; noData: number };
 

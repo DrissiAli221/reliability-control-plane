@@ -1779,3 +1779,13 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .panel-note strong { font-size: 13px; font-weight: 500; }
 .panel-note-tag { margin-left: 8px; font-size: 11px; color: var(--text-3); }
 .panel-note p { margin-top: 4px; max-width: 72ch; font-size: 12px; line-height: 1.5; color: var(--text-2); }
+
+/* ---------- Capacity (how many monitors this demo has room for) ---------- */
+.page-header .capacity-line, .dialog .capacity-line {
+  margin-top: 8px; font-family: var(--font-mono); font-size: 11px; font-weight: 400; letter-spacing: var(--track-label); color: var(--text-3);
+}
+.dialog .capacity-line { margin-top: 0; }
+.page-header .capacity-why, .dialog .capacity-why { margin-top: 4px; max-width: 520px; font-size: 12.5px; line-height: 1.5; color: var(--text-2); }
+.dialog .capacity-why { max-width: none; margin-top: 0; padding: 10px 12px; border-radius: var(--radius-md); background: var(--surface-2); }
+.notice.info { background: var(--surface-2); color: var(--text-2); }
+.signin-shutdown { max-width: 420px; margin: 4px auto 0; text-align: center; font-size: 12px; line-height: 1.5; color: var(--text-3); }

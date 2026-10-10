@@ -1,3 +1,4 @@
+import { ApiError } from "./apiError";
 import { accessToken, redirectToSignIn, sessionRejected } from "./auth";
 import type {
   AvailabilityReport,
@@ -48,7 +49,7 @@ async function authorizedResponse(path: string, init: RequestInit = {}, retried 
     const problem = (await response.json().catch(() => null)) as
       | { detail?: string; title?: string }
       | null;
-    throw new Error(problem?.detail ?? problem?.title ?? `Request failed (${response.status})`);
+    throw new ApiError(problem?.detail ?? problem?.title ?? `Request failed (${response.status})`, response.status, problem?.title);
   }
   return response;
 }
@@ -82,10 +83,9 @@ export function latencyHeatmap(monitorId: string, hours = 24): Promise<LatencyHe
   return request(`/api/monitors/${encodeURIComponent(monitorId)}/latency-heatmap?hours=${hours}`);
 }
 
+/** The server resolves a preset window (1, 7, 30 or 90 days) to the instants itself, so its clock decides what "now" is. */
 function reportWindow(days: number): URLSearchParams {
-  const to = new Date();
-  const from = new Date(to.getTime() - days * 86_400_000);
-  return new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
+  return new URLSearchParams({ days: String(days) });
 }
 
 export function reliabilityReport(monitorId: string, days = 7): Promise<ReliabilityReport> {
@@ -133,13 +133,7 @@ export async function setMonitorEnabled(monitorId: string, enabled: boolean): Pr
 }
 
 export function availability(monitorId: string, days = 7): Promise<AvailabilityReport> {
-  const to = new Date();
-  const from = new Date(to.getTime() - days * 86_400_000);
-  const query = new URLSearchParams({
-    from: from.toISOString(),
-    to: to.toISOString(),
-  });
-  return request(`/api/monitors/${encodeURIComponent(monitorId)}/availability?${query}`);
+  return request(`/api/monitors/${encodeURIComponent(monitorId)}/availability?${reportWindow(days)}`);
 }
 
 export async function reliabilityReportHtml(monitorId: string, days = 7): Promise<Blob> {

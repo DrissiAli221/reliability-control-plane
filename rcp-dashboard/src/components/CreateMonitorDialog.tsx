@@ -2,6 +2,7 @@ import { AcceptedStatusCodesField } from "./AcceptedStatusCodesField";
 import { parseStatusCodes } from "../statusCodes";
 import { X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { capacityLine, capacityOf, capacityReason, createErrorMessage } from "../capacity";
 import { useSession } from "../session";
 import type { CreateMonitorInput } from "../types";
 import { useFocusTrap } from "../useFocusTrap";
@@ -17,7 +18,11 @@ export function CreateMonitorDialog({ onClose, onCreate }: {
   const [error, setError] = useState<string | null>(null);
   const dialog = useFocusTrap<HTMLElement>();
   // Offer only what this deployment accepts; the server enforces the same limits either way.
-  const limits = useSession()?.limits;
+  const session = useSession();
+  const limits = session?.limits;
+  const capacity = capacityOf(session);
+  const full = capacityReason(capacity);
+  const usage = capacityLine(capacity);
   const intervals = INTERVALS.filter(([seconds]) => !limits || seconds >= limits.minIntervalSeconds);
   const timeouts = TIMEOUTS.filter(([ms]) => !limits || ms <= limits.maxTimeoutMs);
   const defaultInterval = intervals.find(([seconds]) => seconds >= 60)?.[0] ?? intervals[0]?.[0] ?? 60;
@@ -31,6 +36,7 @@ export function CreateMonitorDialog({ onClose, onCreate }: {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (full) return;
     setSaving(true);
     setError(null);
     const data = new FormData(event.currentTarget);
@@ -43,7 +49,7 @@ export function CreateMonitorDialog({ onClose, onCreate }: {
         acceptedHttpStatuses: parseStatusCodes(String(data.get("acceptedHttpStatuses") ?? "")),
       });
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Monitor could not be created");
+      setError(createErrorMessage(reason, limits));
       setSaving(false);
     }
   }
@@ -83,10 +89,12 @@ export function CreateMonitorDialog({ onClose, onCreate }: {
             </label>
           </div>
           <AcceptedStatusCodesField disabled={saving} />
+          {usage && <p className="capacity-line" data-testid="capacity-line">{usage}</p>}
+          {full && <p className="capacity-why" role="note" id="create-capacity-why">{full}</p>}
           {error && <p className="form-error" role="alert">{error}</p>}
           <footer className="dialog-actions">
             <button type="button" className="button secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="button primary" disabled={saving}>{saving ? "Creating…" : "Create monitor"}</button>
+            <button type="submit" className="button primary" disabled={saving || full != null} aria-describedby={full ? "create-capacity-why" : undefined}>{saving ? "Creating…" : "Create monitor"}</button>
           </footer>
         </form>
       </section>

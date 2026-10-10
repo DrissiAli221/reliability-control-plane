@@ -20,6 +20,16 @@ export function loadSession(): Promise<void> {
   return loading;
 }
 
+/** Fetches /api/me again so the usage counters follow monitors created or deleted since the page loaded. */
+export async function refreshSession(): Promise<void> {
+  try {
+    session = await currentSession();
+    listeners.forEach((listener) => listener());
+  } catch {
+    // Keep the last answer; the server still enforces every limit.
+  }
+}
+
 export function useSession(): Session | null {
   return useSyncExternalStore(
     (listener) => {
