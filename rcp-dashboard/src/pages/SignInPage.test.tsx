@@ -306,4 +306,9 @@ describe("local mode", () => {
     expect(await screen.findByRole("heading", { name: "Check your email" })).toBeInTheDocument();
     expect(auth.signUp).not.toHaveBeenCalled();
   });
+
+  it("says plainly that this is a demo deployment that will be shut down", () => {
+    renderAt("/signin");
+    expect(screen.getByText(/demo deployment\. It will be shut down once the author.s internship search is over/)).toBeInTheDocument();
+  });
 });

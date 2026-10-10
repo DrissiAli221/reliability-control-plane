@@ -155,6 +155,103 @@ class ReliabilityReportApiTest {
     }
 
     @Test
+    void presetWindowsAreNamedByDaysAndTheDefaultIsSevenDays() throws Exception {
+        Monitor monitor = monitor("ali-subject", "Window target");
+        for (int days : new int[]{1, 7, 30, 90}) {
+            String body = mockMvc.perform(get("/api/monitors/{id}/reliability-report", monitor.getId())
+                            .with(jwt().jwt(token -> token.subject("ali-subject")))
+                            .queryParam("days", Integer.toString(days)))
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(windowDays(body)).isEqualTo(days);
+        }
+        String defaulted = mockMvc.perform(get("/api/monitors/{id}/reliability-report", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(windowDays(defaulted)).isEqualTo(7);
+    }
+
+    @Test
+    void rejectsWindowsOutsideThePresetsAndMixedWindowParameters() throws Exception {
+        Monitor monitor = monitor("ali-subject", "Window target");
+        for (String path : new String[]{"", "/html", "/csv"}) {
+            for (String days : new String[]{"0", "2", "14", "91", "365", "-7"}) {
+                mockMvc.perform(get("/api/monitors/{id}/reliability-report" + path, monitor.getId())
+                                .with(jwt().jwt(token -> token.subject("ali-subject")))
+                                .queryParam("days", days))
+                        .andExpect(status().isBadRequest());
+            }
+            mockMvc.perform(get("/api/monitors/{id}/reliability-report" + path, monitor.getId())
+                            .with(jwt().jwt(token -> token.subject("ali-subject")))
+                            .queryParam("days", "30")
+                            .queryParam("from", WINDOW_START.toString())
+                            .queryParam("to", WINDOW_START.plusSeconds(60).toString()))
+                    .andExpect(status().isBadRequest());
+            mockMvc.perform(get("/api/monitors/{id}/reliability-report" + path, monitor.getId())
+                            .with(jwt().jwt(token -> token.subject("ali-subject")))
+                            .queryParam("from", WINDOW_START.toString()))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test
+    void downloadsNameTheirPresetWindow() throws Exception {
+        Monitor monitor = monitor("ali-subject", "Window target");
+        mockMvc.perform(get("/api/monitors/{id}/reliability-report/html", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))).queryParam("days", "30"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=rcp-reliability-report-30d.html"));
+        mockMvc.perform(get("/api/monitors/{id}/reliability-report/csv", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))).queryParam("days", "90"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=rcp-reliability-incidents-90d.csv"));
+        String html = mockMvc.perform(get("/api/monitors/{id}/reliability-report/html", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))).queryParam("days", "30"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("30 days");
+    }
+
+    @Test
+    void aNinetyDayPeriodForAYoungMonitorOnlyExpectsChecksFromItsFirstSchedule() throws Exception {
+        // Created 9 days ago, hourly: 216 expected checks in a 90-day period, not 2160, so coverage is not diluted.
+        Instant created = Instant.now().minus(java.time.Duration.ofDays(9));
+        Monitor monitor = monitorRepository.saveAndFlush(Monitor.create(
+                "ali-subject", "Young monitor", "https://example.com", 3600, 5_000, created));
+        for (int hour = 0; hour < 9 * 24; hour++) {
+            execution(monitor, created.plusSeconds(hour * 3600L), "UP", 200);
+        }
+
+        String body = mockMvc.perform(get("/api/monitors/{id}/reliability-report", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject")))
+                        .queryParam("days", "90"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.availability.expectedOpportunities").value(org.hamcrest.Matchers.allOf(
+                        org.hamcrest.Matchers.greaterThanOrEqualTo(215), org.hamcrest.Matchers.lessThanOrEqualTo(217))))
+                .andExpect(jsonPath("$.availability.evidenceCoveragePercent").value(org.hamcrest.Matchers.greaterThan(95.0)))
+                .andExpect(jsonPath("$.availability.sloMet").value(true))
+                .andReturn().getResponse().getContentAsString();
+        Instant since = Instant.parse(com.jayway.jsonpath.JsonPath.read(body, "$.availability.monitoringSince"));
+        assertThat(java.time.Duration.between(created, since).abs().toMillis()).isLessThan(1000);
+
+        String html = mockMvc.perform(get("/api/monitors/{id}/reliability-report/html", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))).queryParam("days", "90"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("90 days", "data from ");
+        // A period the monitor fully covers carries no such note.
+        String sevenDays = mockMvc.perform(get("/api/monitors/{id}/reliability-report/html", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))).queryParam("days", "7"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(sevenDays).doesNotContain("data from ");
+    }
+
+    private static long windowDays(String json) {
+        Instant from = Instant.parse(com.jayway.jsonpath.JsonPath.read(json, "$.availability.from"));
+        Instant to = Instant.parse(com.jayway.jsonpath.JsonPath.read(json, "$.availability.to"));
+        return java.time.Duration.between(from, to).toDays();
+    }
+
+    @Test
     void publishesLatencyPercentilesOnlyWithEnoughHttpSamples() throws Exception {
         Monitor monitor = monitor("ali-subject", "Latency target");
         for (int minute = 0; minute < 10; minute++) {

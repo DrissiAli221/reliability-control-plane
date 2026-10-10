@@ -24,16 +24,18 @@ public class AvailabilityController {
     @GetMapping
     public AvailabilityReport report(
             @PathVariable UUID monitorId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
+            @RequestParam(required = false) Integer days,
             @RequestParam(defaultValue = "99.9") BigDecimal sloTargetPercent,
             Authentication authentication
     ) {
+        ReportWindow window = ReportWindow.resolve(from, to, days);
         return service.report(
                 authentication.getName(),
                 monitorId,
-                from,
-                to,
+                window.from(),
+                window.to(),
                 sloTargetPercent
         );
     }

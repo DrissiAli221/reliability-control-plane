@@ -25,10 +25,19 @@ class ConfigureVariety(unittest.TestCase):
             self.assertEqual(actual['rcp']['identity'], config['rcp']['identity'])
             self.assertEqual(actual['rcp']['private'], config['rcp']['private'])
             self.assertEqual(actual['rcp']['monitors']['max-per-owner'], 5)
-            self.assertEqual(actual['rcp']['monitors']['max-total'], 8)
+            self.assertEqual(actual['rcp']['monitors']['max-total'], 30)
             self.assertEqual(len(actual['rcp']['demo']['monitors'].split(',')), 5)
             self.assertEqual(path.stat().st_mode & 0o777, 0o600)
             self.assertEqual(list(Path(temp).iterdir()), [path])
+
+    def test_accepts_the_raised_cap_and_keeps_it(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'application.json'
+            config = {'rcp': {'monitors': {'max-per-owner': 5, 'max-total': 30, 'min-interval-seconds': 60, 'max-timeout-ms': 5000},
+                              'demo': {'monitors': 'Example Domain|https://example.com'}}}
+            path.write_text(json.dumps(config)); path.chmod(0o600)
+            variety.update(path)
+            self.assertEqual(json.loads(path.read_text())['rcp']['monitors']['max-total'], 30)
 
     def test_rejects_insecure_file_and_drift_without_overwriting(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -46,7 +55,7 @@ class ConfigureVariety(unittest.TestCase):
             path = Path(temp) / 'application.json'
             base = {'rcp': {'monitors': {'max-per-owner': 3, 'max-total': 8, 'min-interval-seconds': 60, 'max-timeout-ms': 5000},
                             'demo': {'monitors': 'Example Domain|https://example.com'}}}
-            for change in [{'max-total': 9}, {'max-per-owner': 6}, {'min-interval-seconds': 30}, {'max-timeout-ms': 10000}]:
+            for change in [{'max-total': 9}, {'max-total': 31}, {'max-per-owner': 6}, {'min-interval-seconds': 30}, {'max-timeout-ms': 10000}]:
                 config = json.loads(json.dumps(base))
                 config['rcp']['monitors'].update(change)
                 before = json.dumps(config)

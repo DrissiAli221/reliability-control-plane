@@ -47,7 +47,7 @@ costs. Local validation proves configuration, not AWS deployment or availability
 - Runtime IAM: send only to two job queues; receive/delete/change visibility/read
   attributes only on the result queue; `AdminInitiateAuth` only on this user pool.
 - The output `server_application_json` preserves the region keys exactly. It also
-  wires 5 monitors/owner, 60-second minimum interval, 8 monitors globally, demo
+  wires 5 monitors/owner, 60-second minimum interval, 30 monitors globally, demo
   group enforcement, and a 5,000 ms maximum timeout. `rcp.demo.monitors` seeds
   Example Domain, Wikipedia, Scheduled outage drill, GitHub Status and Cloudflare
   Status for the shared account, and
@@ -194,12 +194,16 @@ includes provider checksums for Linux and both Mac architectures.
 current regional prices, and usage shared with other projects. Credits are
 finite; free-tier allowances are account-wide and not doubled by two regions.
 
-Estimate both Lambda requests and GB-seconds. At 8 monitors,
+Estimate both Lambda requests and GB-seconds. At 8 monitors (the original demo size; the cap is now 30),
 60 seconds, two regions and 30 days, the configured one-job batches produce
 691,200 checks/invocations before retries. Average billed duration must include
 probe time, DNS/TLS setup, result publishing, cold starts, and failures.
 
-`cost-estimate.py` is an explicit illustrative model, defaulting to 256 MiB, ARM duration
+`cost-estimate.py` is an explicit illustrative model, not a worst-case ceiling. It accepts 0 to 30
+monitors (the demo's global cap), takes the average billed duration as `--duration-ms` (default 500, printed as
+an assumption), and prints what it includes (Lambda requests and GB-seconds, SQS requests) and what it does not
+model (CloudWatch Logs, cross-region data transfer, S3 and CloudFront, Cognito, budget services, VM and domain).
+It defaults to to 256 MiB, ARM duration
 at $0.0000133334/GB-second, requests at $0.20/million, standard SQS at $0.40/million,
 and available account-wide allowances of 1M Lambda requests, 400k GB-seconds and
 1M SQS requests. It conservatively counts six SQS calls/check plus up to five idle
@@ -207,9 +211,9 @@ pollers per region and one result consumer at 20 seconds. Actual receive/delete
 batching and busy/idle overlap change this; retries increase it.
 
 ```sh
-python3 infra/aws-demo/cost-estimate.py --monitors 8 --seconds 0.5
-python3 infra/aws-demo/cost-estimate.py --monitors 8 --seconds 5 --retry-percent 10
-python3 infra/aws-demo/cost-estimate.py --monitors 8 --seconds 5 --retry-percent 10 --memory-mb 512
+python3 infra/aws-demo/cost-estimate.py --monitors 8 --duration-ms 500
+python3 infra/aws-demo/cost-estimate.py --monitors 8 --duration-ms 5000 --retry-percent 10
+python3 infra/aws-demo/cost-estimate.py --monitors 8 --duration-ms 5000 --retry-percent 10 --memory-mb 512
 ```
 
 S3 storage/requests, CloudFront requests/transfer/functions, cross-region result
@@ -221,8 +225,8 @@ cap, that is about $1.83/month. An average of 5 seconds with 10% retries gives
 about $9.33/month at 256 MiB, compared with $22.01 at 512 MiB for the same billed
 duration. The fast-check estimates are unchanged because Lambda usage already
 fits within its monthly allowance; reducing memory does not halve the total bill.
-The 5-second probe timeout reduces the
-worst case, but does not cap total Lambda billed duration: startup, DNS/TLS, and
+The 5-second probe timeout limits how long one
+check can run, but does not cap total Lambda billed duration: startup, DNS/TLS, and
 result publishing also contribute. Sustained outages can still cost substantially
 more than fast successful checks.
 The $1 alarm is an early warning, not a promise to remain below $1.

@@ -26,8 +26,8 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM drill_live_monitors WHERE owner_subject = subject) THEN
         RAISE EXCEPTION 'Existing demo workspace not found; verify demo_owner_subject';
     END IF;
-    IF (SELECT count(*) FROM drill_live_monitors) >= 8 THEN
-        RAISE EXCEPTION 'Global monitor cap of 8 reached';
+    IF (SELECT count(*) FROM drill_live_monitors) >= 30 THEN
+        RAISE EXCEPTION 'Global monitor cap of 30 reached';
     END IF;
     IF (SELECT count(*) FROM drill_live_monitors WHERE owner_subject = subject) >= 5 THEN
         RAISE EXCEPTION 'Demo owner quota of 5 reached';

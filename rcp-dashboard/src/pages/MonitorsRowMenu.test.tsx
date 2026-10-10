@@ -20,7 +20,7 @@ vi.mock("../api", () => ({
   setMonitorEnabled: vi.fn(),
   deleteMonitor: vi.fn(async () => undefined),
 }));
-vi.mock("../session", () => ({ useReadOnly: vi.fn(), useSession: () => null }));
+vi.mock("../session", () => ({ useReadOnly: vi.fn(), useSession: () => null, refreshSession: vi.fn() }));
 
 afterEach(() => {
   cleanup();

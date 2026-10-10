@@ -23,6 +23,7 @@ import { BrandMark } from "../components/AppShell";
 import { StatusDot } from "../components/StatusBadge";
 import { drillPhase, utcClock } from "../drill";
 import { passwordChecks, passwordMeetsPolicy } from "../passwordPolicy";
+import { rememberReturnPath } from "../returnPath";
 import { useNow } from "../useLiveData";
 
 type View = "signin" | "signup" | "confirm" | "forgot" | "reset" | "mfa" | "newPassword";
@@ -106,13 +107,17 @@ export function SignInPage() {
   }
 
   function arrive(step: SignInStep) {
-    if (step === "signedIn") window.location.assign(next);
+    if (step === "signedIn") {
+      rememberReturnPath(next);
+      window.location.assign(next);
+    }
     else go(step);
   }
 
   async function tryDemo() {
     await run("demo", async () => {
       await startDemoSession();
+      rememberReturnPath(next);
       window.location.assign(next);
     }, "The demo could not be started");
   }
@@ -300,6 +305,7 @@ export function SignInPage() {
         <DemoStatus />
         <a href="https://github.com/DrissiAli221/reliability-control-plane" target="_blank" rel="noreferrer">Source</a>
       </footer>
+      <p className="signin-shutdown">This is a demo deployment. It will be shut down once the author&rsquo;s internship search is over.</p>
     </main>
   );
 }

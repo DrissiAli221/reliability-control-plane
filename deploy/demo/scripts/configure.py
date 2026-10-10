@@ -36,7 +36,7 @@ def render(outputs, api_domain, acme_email):
         raise ValueError("Read-only group must be demo")
     if rcp["identity"]["allowed-origins"] != dashboard["origin"]:
         raise ValueError("CORS origin differs from the dashboard")
-    if rcp["monitors"] != {"max-per-owner": 5, "min-interval-seconds": 60, "max-total": 8, "max-timeout-ms": 5000}:
+    if rcp["monitors"] != {"max-per-owner": 5, "min-interval-seconds": 60, "max-total": 30, "max-timeout-ms": 5000}:
         raise ValueError("Unexpected demo quotas")
     demo = rcp["demo"]
     if "seed-example-monitor" in demo:
