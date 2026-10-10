@@ -132,7 +132,7 @@ def check(plan):
     require(pool["auto_verified_attributes"] == ["email"], "Email verification is required")
     require(resources("aws_cognito_user_group")[0]["name"] == "demo", "Wrong demo group")
     budget = resources("aws_budgets_budget")[0]
-    require(float(budget["limit_amount"]) == 1 and budget["time_unit"] == "MONTHLY", "Expected USD1 monthly alert")
+    require(float(budget["limit_amount"]) == 10 and budget["time_unit"] == "MONTHLY", "Expected USD10 monthly alert")
     require(not budget.get("cost_filter"), "Budget must cover the whole account")
     require(budget["cost_types"][0]["include_credit"] is False, "Credits must not hide consumption")
     blocks = resources("aws_s3_bucket_public_access_block")

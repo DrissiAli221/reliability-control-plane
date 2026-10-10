@@ -29,7 +29,7 @@ variable "budget_email" {
 variable "monthly_budget_usd" {
   description = "Account-wide alert threshold; this is not a hard spending cap."
   type        = number
-  default     = 1
+  default     = 10
   validation {
     condition     = var.monthly_budget_usd > 0
     error_message = "Budget must be positive."

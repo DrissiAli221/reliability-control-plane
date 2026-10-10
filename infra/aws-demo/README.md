@@ -153,7 +153,7 @@ includes provider checksums for Linux and both Mac architectures.
 
 ## Later deployment sequence (requires account and deployment authorization)
 
-1. Create the AWS account and an account-wide **$1 monthly budget alert before
+1. Create the AWS account and an account-wide **$10 monthly budget alert before
    any application resources**. AWS Budgets alerts lag usage and do not cap
    spending. The budget resource here maintains matching alerts at 10% actual,
    100% actual, and 100% forecast; credits/refunds are excluded so credits do not
@@ -229,7 +229,7 @@ The 5-second probe timeout limits how long one
 check can run, but does not cap total Lambda billed duration: startup, DNS/TLS, and
 result publishing also contribute. Sustained outages can still cost substantially
 more than fast successful checks.
-The $1 alarm is an early warning, not a promise to remain below $1.
+The $10 alarm (with an early email at 10%, $1) is a warning, not a promise to remain below $10. It was $1 until the global cap rose to 30 monitors, when normal spend would have passed it every month.
 
 For accounts opened on the current AWS Free plan, the account closes after six
 months or when its credits run out unless upgraded to the Paid plan. Record the
