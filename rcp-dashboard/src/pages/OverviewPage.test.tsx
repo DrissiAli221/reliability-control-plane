@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fleetOverview, listMonitors, pipelineEvents, pipelineSnapshot } from "../api";
@@ -54,6 +54,28 @@ function renderPage() {
 }
 
 describe("OverviewPage", () => {
+  it("shows the full recent event feed instead of truncating it to ten rows", async () => {
+    vi.mocked(fleetOverview).mockResolvedValue(overview([]));
+    vi.mocked(listMonitors).mockResolvedValue([monitor]);
+    vi.mocked(pipelineSnapshot).mockResolvedValue(snapshot);
+    vi.mocked(pipelineEvents).mockResolvedValue(Array.from({ length: 40 }, (_, index) => ({
+      at: new Date(Date.now() - index * 1000).toISOString(),
+      type: "ExecutionFinalized",
+      executionId: `execution-${index}`,
+      region: null,
+      monitorId: "monitor-1",
+      monitorName: `Event monitor ${index}`,
+      outcome: null,
+      httpStatus: null,
+      latencyMs: null,
+      detail: "UP",
+    })));
+
+    render(<MemoryRouter><OverviewPage /></MemoryRouter>);
+    expect(await screen.findByText("Event monitor 39")).toBeInTheDocument();
+    expect(within(screen.getByRole("list", { name: "Recent pipeline events" })).getAllByRole("listitem")).toHaveLength(40);
+  });
+
   it("reads fleet uptime from conclusive checks only", async () => {
     vi.mocked(fleetOverview).mockResolvedValue(overview([]));
     renderPage();

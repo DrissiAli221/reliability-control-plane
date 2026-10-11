@@ -71,7 +71,7 @@ export function OverviewPage() {
 
           <div className="split overview-tail">
             <Fleet monitors={monitors.data} now={now} />
-            <EventStream limit={10} />
+        <EventStream />
           </div>
         </>
       )}

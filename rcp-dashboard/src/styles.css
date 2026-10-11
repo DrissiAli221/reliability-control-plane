@@ -1546,6 +1546,12 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .split > .panel > .event-log { flex: 1; max-height: 520px; }
 /* Keep the overview's touching modules level, with one consistent event-panel surface. */
 .overview-tail > .panel > .event-log { max-height: none; background: var(--surface); }
+@media (min-width: 1109px) {
+  .overview-tail > .panel > .event-log { contain: size; min-height: 0; flex-basis: 0; }
+}
+@media (max-width: 1108px) {
+  .overview-tail > .panel > .event-log { max-height: 520px; }
+}
 .panel[data-tour="events"] { container-type: inline-size; }
 .event-log li > * { min-width: 0; }
 @container (max-width: 700px) {
