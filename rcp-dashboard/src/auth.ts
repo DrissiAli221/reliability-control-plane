@@ -448,7 +448,12 @@ export async function logout(): Promise<void> {
     window.location.assign("/signin");
     return;
   }
-  await cognitoManager().signoutRedirect();
+  // Cognito requires these even when the OIDC library supplies an id_token_hint.
+  // Its logout endpoint uses logout_uri, rather than the generic OIDC redirect parameter.
+  await cognitoManager().signoutRedirect({ post_logout_redirect_uri: "", extraQueryParams: {
+    client_id: import.meta.env.VITE_COGNITO_CLIENT_ID,
+    logout_uri: window.location.origin,
+  } });
 }
 
 let pendingLocalToken: Promise<string> | null = null;

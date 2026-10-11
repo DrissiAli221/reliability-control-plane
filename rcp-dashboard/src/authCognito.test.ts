@@ -230,7 +230,27 @@ describe("signing out", () => {
 
   it("ends Cognito's own browser session for a redirect sign-in", async () => {
     await auth.logout();
-    expect(oidc.signoutRedirect).toHaveBeenCalled();
+    expect(oidc.signoutRedirect).toHaveBeenCalledWith({ post_logout_redirect_uri: "", extraQueryParams: {
+      client_id: "client-1", logout_uri: window.location.origin,
+    } });
     expect(assign).not.toHaveBeenCalled();
+
+    // Build the actual library URL with an ID token (the case that suppresses its client_id).
+    const { OidcClient } = await vi.importActual<typeof import("oidc-client-ts")>("oidc-client-ts");
+    const client = new OidcClient({
+      authority: "https://issuer.example", client_id: "client-1", redirect_uri: "https://app.example/auth/callback",
+      post_logout_redirect_uri: window.location.origin,
+      metadata: { end_session_endpoint: "https://pool.auth.us-east-1.amazoncognito.com/logout" },
+    });
+    const oldRequest = await client.createSignoutRequest({ id_token_hint: "id-token" });
+    expect(new URL(oldRequest.url).searchParams.has("client_id")).toBe(false);
+    for (const id_token_hint of ["id-token", undefined]) {
+      const request = await client.createSignoutRequest({ id_token_hint, ...oidc.signoutRedirect.mock.calls[0][0] });
+      const url = new URL(request.url);
+      expect(url.pathname).toBe("/logout");
+      expect(url.searchParams.getAll("client_id")).toEqual(["client-1"]);
+      expect(url.searchParams.get("logout_uri")).toBe(window.location.origin);
+      expect(url.searchParams.has("post_logout_redirect_uri")).toBe(false);
+    }
   });
 });
