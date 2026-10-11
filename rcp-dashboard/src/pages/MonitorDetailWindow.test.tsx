@@ -94,7 +94,7 @@ describe("a monitor that is not there", () => {
 
     expect(await screen.findByRole("heading", { name: "Monitors" })).toBeInTheDocument();
     expect(screen.getByLabelText("location")).toHaveTextContent(/^\/monitors$/);
-    expect(screen.getByText(/That monitor is not on this account/)).toBeInTheDocument();
+    expect(screen.getByText(/That monitor was deleted or belongs to another account/)).toBeInTheDocument();
   });
 
   it("does not redirect a deliberate visit, and a found monitor clears the mark", async () => {
