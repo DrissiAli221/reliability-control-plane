@@ -146,7 +146,7 @@ export function MonitorDetailPage() {
     const here = `${location.pathname}${location.search}`;
     if (found) takeReturnPath(here);
     else if (missing && takeReturnPath(here)) {
-      navigate("/monitors", { replace: true, state: { notice: "That monitor is not on this account, so you are on the list instead." } });
+      navigate("/monitors", { replace: true, state: { notice: "That monitor was deleted or belongs to another account. Showing your monitors instead." } });
     }
   }, [missing, found, location.pathname, location.search, navigate]);
   const readOnly = useReadOnly();
