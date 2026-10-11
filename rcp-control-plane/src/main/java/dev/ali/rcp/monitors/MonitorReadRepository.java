@@ -27,12 +27,22 @@ public class MonitorReadRepository {
                     monitors.next_check_at,
                     COALESCE(incident_state.status, 'HEALTHY') AS incident_status,
                     latest.verdict AS latest_verdict,
-                    latest.scheduled_at AS latest_checked_at
+                    latest.scheduled_at AS latest_checked_at,
+                    COALESCE(latest.verdict = 'NO_DATA' AND (
+                        SELECT COUNT(*) = latest.expected_region_count AND BOOL_AND(
+                            results.outcome = 'HTTP_RESPONSE'
+                            AND COALESCE(results.bot_protection = 'CLOUDFLARE_CHALLENGE', FALSE)
+                            AND NOT CASE WHEN latest.accepted_http_statuses_snapshot IS NULL
+                                THEN results.http_status BETWEEN 200 AND 399
+                                ELSE results.http_status = ANY(latest.accepted_http_statuses_snapshot) END
+                        )
+                        FROM probe_results results WHERE results.execution_id = latest.execution_id
+                    ), FALSE) AS latest_blocked
                 FROM monitors
                 LEFT JOIN monitor_incident_state incident_state
                   ON incident_state.monitor_id = monitors.monitor_id
                 LEFT JOIN LATERAL (
-                    SELECT verdict, scheduled_at
+                    SELECT execution_id, verdict, scheduled_at, expected_region_count, accepted_http_statuses_snapshot
                     FROM probe_executions executions
                     WHERE executions.monitor_id = monitors.monitor_id
                       AND executions.status = 'FINALIZED'
@@ -50,7 +60,8 @@ public class MonitorReadRepository {
                         instant(resultSet.getObject("next_check_at", OffsetDateTime.class)),
                         resultSet.getString("incident_status"),
                         resultSet.getString("latest_verdict"),
-                        instant(resultSet.getObject("latest_checked_at", OffsetDateTime.class))
+                        instant(resultSet.getObject("latest_checked_at", OffsetDateTime.class)),
+                        resultSet.getBoolean("latest_blocked")
                 ),
                 ownerSubject
         );

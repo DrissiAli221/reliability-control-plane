@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../apiError";
 import { availability, getMonitor, latencyHeatmap, listMonitors, monitorHistory, reliabilityReport } from "../api";
@@ -49,7 +49,9 @@ beforeEach(() => {
 
 function Where() {
   const { pathname, search } = useLocation();
-  return <output aria-label="location">{pathname + search}</output>;
+  const navigate = useNavigate();
+  return <><output aria-label="location">{pathname + search}</output>
+    <button onClick={() => navigate(-1)}>History back</button><button onClick={() => navigate(1)}>History forward</button></>;
 }
 
 function page(url = "/monitors/id") {
@@ -111,6 +113,19 @@ describe("a monitor that is not there", () => {
 });
 
 describe("report period", () => {
+  it("keeps period selections navigable with Back and Forward", async () => {
+    page();
+    await screen.findByText("Uptime · 7d");
+    fireEvent.click(screen.getByRole("button", { name: "30 d" }));
+    await screen.findByText("Uptime · 30d");
+    fireEvent.click(screen.getByRole("button", { name: "90 d" }));
+    await screen.findByText("Uptime · 90d");
+    fireEvent.click(screen.getByRole("button", { name: "History back" }));
+    await screen.findByText("Uptime · 30d");
+    fireEvent.click(screen.getByRole("button", { name: "History forward" }));
+    await screen.findByText("Uptime · 90d");
+  });
+
   it("defaults to 7 days, offers 24 h, 7 d, 30 d and 90 d, and labels the tiles", async () => {
     page();
 
@@ -250,6 +265,7 @@ describe("loading, failing and empty states", () => {
     fireEvent.click(screen.getByRole("button", { name: "30 d" }));
 
     expect(await screen.findByText("Updating…")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Summary · last 7 days" })).toBeInTheDocument();
     // The old numbers are still there, still labelled with their own period, and dimmed.
     const tiles = screen.getByLabelText("7 days summary");
     expect(tiles).toHaveAttribute("data-stale", "true");

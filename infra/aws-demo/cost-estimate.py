@@ -4,8 +4,8 @@ import argparse
 import json
 import math
 
-# The deployment's global monitor cap (rcp.monitors.max-total); the estimate covers up to a full demo.
-MAX_MONITORS = 30
+# Full deployment: 30 visitor slots plus the separate hard ceiling of 15 demo-owner monitors.
+MAX_MONITORS = 45
 DEFAULT_DURATION_MS = 500
 
 INCLUDED = ["Lambda requests", "Lambda GB-seconds", "SQS requests (job and result queues, idle polling)"]
@@ -57,7 +57,7 @@ def estimate(monitors, seconds, interval=60, days=30, retry_percent=0, memory_mb
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--monitors", type=int, default=8, help=f"0-{MAX_MONITORS}; the demo's global cap is {MAX_MONITORS}")
+    parser.add_argument("--monitors", type=int, default=8, help=f"0-{MAX_MONITORS}; total active monitors, including the separately capped demo fleet")
     parser.add_argument("--duration-ms", type=float, default=DEFAULT_DURATION_MS,
                         help="Assumed average billed Lambda duration per check in milliseconds (default %(default)s, an assumption)")
     parser.add_argument("--seconds", type=float, default=None, help="Deprecated spelling of --duration-ms, in seconds")

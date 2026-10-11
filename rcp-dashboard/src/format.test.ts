@@ -25,6 +25,10 @@ describe("format", () => {
   it("lets an open incident outrank a recovered latest check, and a pause outrank both", () => {
     expect(monitorState({ ...monitor, incidentStatus: "OPEN" })).toEqual({ label: "Incident", tone: "fault" });
     expect(monitorState({ ...monitor, incidentStatus: "OPEN", enabled: false }).label).toBe("Paused");
+    expect(monitorState({ ...monitor, latestVerdict: "NO_DATA", latestBlocked: true }).label).toBe("Blocked");
+    expect(monitorState({ ...monitor, latestVerdict: "NO_DATA", latestBlocked: false }).label).toBe("No data");
+    expect(monitorState({ ...monitor, latestVerdict: "UP", latestBlocked: true }).label).toBe("Operational");
+    expect(monitorState({ ...monitor, latestVerdict: "NO_DATA", latestBlocked: true, enabled: false }).label).toBe("Paused");
     expect(monitorState({ ...monitor, latestVerdict: "DISAGREEMENT" }).tone).toBe("warn");
   });
 

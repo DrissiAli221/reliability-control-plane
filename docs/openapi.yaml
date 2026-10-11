@@ -333,10 +333,10 @@ paths:
                       maxTimeoutMs: { type: integer }
                   usage:
                     type: object
-                    description: Live monitors counted against the limits; deleted monitors are not counted
+                    description: Live visitor monitors counted against the limits; deleted and configured demo-owner monitors are excluded
                     properties:
-                      ownedMonitors: { type: integer, description: Monitors owned by the caller, compare with limits.maxPerOwner }
-                      totalMonitors: { type: integer, description: Monitors across every account, compare with limits.maxTotal }
+                      ownedMonitors: { type: integer, description: Visitor monitors owned by the caller; zero for the configured demo subject }
+                      totalMonitors: { type: integer, description: Visitor monitors across all owners, excluding the configured demo subject; compare with limits.maxTotal }
         '401':
           $ref: '#/components/responses/Unauthorized'
   /api/overview:
@@ -776,6 +776,9 @@ components:
           type: string
           format: date-time
           nullable: true
+        latestBlocked:
+          type: boolean
+          description: Latest finalized check is NO_DATA with an unaccepted Cloudflare challenge in every expected region; uses the check's saved status policy.
     Availability:
       type: object
       required: [monitorId, from, to, sloTargetPercent, evidenceCoveragePercent, minimumEvidenceCoveragePercent, upExecutions, downExecutions, disagreementExecutions, noDataExecutions, conclusiveExecutions, totalFinalizedExecutions, pendingExecutions, missingExecutions, expectedOpportunities, denominatorPolicy]

@@ -343,7 +343,7 @@ a { color: inherit; }
 .fleet-summary .metric:not(:first-child) .metric-visual { display: none; }
 .metric-hint { font-size: 12px; color: var(--text-3); line-height: 1.5; }
 .metric-visual { display: flex; align-items: center; height: 22px; margin-top: 2px; }
-.metric-visual > * { flex: 1; }
+.metric-visual > * { flex: 1; min-width: 0; }
 .metric-visual .tracker.compact .tracker-bars { height: 12px; gap: 3px; }
 /* Block meters: the uptime tile's language for every tile. Each block is a key (a dark rim, a lit top edge, a shaded
    foot, like the buttons); an empty block is a sunk well. A block fills left to right, and the stretch between the
@@ -513,11 +513,7 @@ a { color: inherit; }
 .drill-meter { position: relative; padding-top: 16px; }
 .drill-meter-tag { position: absolute; top: 0; right: 0; line-height: 12px; }
 .drill-meter-tag.start { right: auto; left: 0; }
-.drill-meter-cells { position: relative; display: flex; gap: 1px; height: 14px; border: 1px solid var(--border); background: var(--border); }
-.drill-meter-cells i { position: relative; flex: 1 1 0; min-width: 0; background: var(--surface-2); }
-.drill-meter-cells i b { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--text-3) 45%, transparent); }
-.drill-meter-cells i.outage { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--red) 75%, transparent) 0 3px, transparent 3px 6px), var(--red-bg); }
-.drill-meter-cells i.outage b { background: color-mix(in srgb, var(--red) 60%, transparent); }
+.drill-meter-cells { position: relative; height: 14px; border: 1px solid var(--border); background: var(--well); }
 .drill-meter-window { position: absolute; top: 0; bottom: 0; min-width: 1px; background: repeating-linear-gradient(135deg, var(--amber) 0 2px, transparent 2px 5px); pointer-events: none; }
 /* "Now" is a notch through the cells. --bg, a stronger cut than --surface, so it still reads over unfilled cells. */
 .drill-meter-now { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--bg); transition: left 1s linear; }
@@ -549,7 +545,10 @@ a { color: inherit; }
   flex: 1; min-width: 2px; border-radius: var(--radius-xs); background: var(--gray-bar);
   transform-origin: bottom; animation: grow 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both; transition: opacity 120ms;
 }
-.tracker.compact .tracker-bar { border-radius: var(--radius-xs); }
+.tracker.compact .tracker-bar { min-width: 0; border-radius: var(--radius-xs); }
+/* Dense day rows keep every UTC day, including empty ones, inside their actual container. */
+.tracker.compact .tracker-bars[data-dense] { gap: 1px; }
+.metric-visual .tracker.compact .tracker-bars[data-dense] { gap: 1px; }
 .tracker-bar { display: flex; flex-direction: column; overflow: hidden; }
 .tracker-bar i { display: block; min-height: 0; flex-basis: 0; }
 .tracker-bar i + i { box-shadow: 0 -1px 0 var(--surface); }
@@ -766,7 +765,6 @@ a { color: inherit; }
 :root[data-theme="light"] .statusbar { background: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none; }
 :root[data-theme="light"] .hero-stats div { background: var(--surface); }
 :root[data-theme="light"] .timeline-span { background-color: color-mix(in srgb, var(--red) 85%, var(--surface)); }
-:root[data-theme="light"] .drill-meter-cells i b { background: #c6c6cd; }
 :root[data-theme="light"] .led i { opacity: 0.4; }
 :root[data-theme="light"] .heatmap { --heat: #0e7490; }
 :root[data-theme="light"] .heatmap-grid i:not(.hot) { opacity: 0.7; }
@@ -1816,3 +1814,14 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 /* Previous numbers stay in place, dimmed, so the page does not jump while a period loads or after a failed refresh. */
 .metric-grid, .panel-body, .table-scroll, .panel-body.subtle { transition: opacity 120ms; }
 [data-stale="true"] { opacity: 0.55; }
+
+/* One sticky stack; its measured height keeps anchors below both the bar and the wrapping demo notice. */
+:root { scroll-padding-top: calc(var(--shell-header-height, var(--bar-h)) + 12px); }
+.shell-header { position: sticky; top: 0; z-index: 30; background: var(--bg); }
+.shell-header .topbar { position: relative; top: auto; }
+.shell-header:has(.demo-banner) .topbar::after { display: none; }
+.shell-header .demo-banner { margin: 0; border-left: 0; border-right: 0; padding: 10px clamp(20px, 4vw, 48px); }
+@media (max-width: 600px) {
+  .shell-header .demo-banner { padding: 8px 16px; gap: 8px; }
+  .demo-banner-detail { display: none; }
+}

@@ -148,7 +148,7 @@ class ReliabilityReportHtmlRendererTest {
         }
         // Title, figure, heading, body, hint and label, and their print equivalents.
         assertThat(sizes).containsExactlyInAnyOrder("32px", "30px", "15px", "13px", "12px", "11px",
-                "22pt", "19pt", "10.5pt", "9pt", "8pt", "7.5pt");
+                "14pt", "19pt", "10.5pt", "9pt", "8pt", "7.5pt");
         assertThat(css).doesNotContain("text-transform", "font: ", "border-radius: 4", "border-radius: 6");
         assertThat(css).contains("\"Geist\"", "\"Geist Mono\"", "\"Doto\"", "#0a0a0a", "#111111", "#242424",
                 "#30a46c", "#e5484d", "#f5a524", "#ededf0", "#1a7f4b", "#d1342f", "#b86e00", "#dcdce1");
@@ -219,7 +219,7 @@ class ReliabilityReportHtmlRendererTest {
                 sample.sourceDataWatermark(), sample.monitorName(), sample.targetUrl(), sample.availability(),
                 sample.errorBudget(), sample.latency(), sample.incidentTimeline(), true, sample.limitations(), sample.caveats());
         assertThat(renderer.render(truncated)).contains("class=\"figure\">2+</span>", "Lower bound · timeline truncated",
-                "Incident timeline truncated at 100 transitions");
+                "Incident timeline is incomplete");
     }
 
     @Test

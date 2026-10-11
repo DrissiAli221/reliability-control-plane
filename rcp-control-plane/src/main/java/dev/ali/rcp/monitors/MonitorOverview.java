@@ -11,6 +11,7 @@ public record MonitorOverview(
         Instant nextCheckAt,
         String incidentStatus,
         String latestVerdict,
-        Instant latestCheckedAt
+        Instant latestCheckedAt,
+        boolean latestBlocked
 ) {
 }

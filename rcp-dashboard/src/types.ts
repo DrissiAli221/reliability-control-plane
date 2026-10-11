@@ -9,6 +9,7 @@ export type MonitorOverview = {
   incidentStatus: "HEALTHY" | "OPEN" | null;
   latestVerdict: Verdict | null;
   latestCheckedAt: string | null;
+  latestBlocked?: boolean;
 };
 
 export type MonitorDetail = {

@@ -26,7 +26,8 @@ class ConfigureVariety(unittest.TestCase):
             self.assertEqual(actual['rcp']['private'], config['rcp']['private'])
             self.assertEqual(actual['rcp']['monitors']['max-per-owner'], 5)
             self.assertEqual(actual['rcp']['monitors']['max-total'], 30)
-            self.assertEqual(len(actual['rcp']['demo']['monitors'].split(',')), 5)
+            self.assertEqual(len(actual['rcp']['demo']['monitors'].split(',')), 10)
+            self.assertEqual(actual['rcp']['demo']['max-monitors'], 15)
             self.assertEqual(path.stat().st_mode & 0o777, 0o600)
             self.assertEqual(list(Path(temp).iterdir()), [path])
 
@@ -63,8 +64,18 @@ class ConfigureVariety(unittest.TestCase):
                 with self.assertRaises(ValueError): variety.update(path)
                 self.assertEqual(path.read_text(), before)
             config = json.loads(json.dumps(base))
-            config['rcp']['demo']['monitors'] = ', '.join(f'Target {i}|https://example.com/{i}' for i in range(4))
+            config['rcp']['demo']['monitors'] = ', '.join(f'Target {i}|https://example.com/{i}' for i in range(9))
             before = json.dumps(config)
             path.write_text(before)
+            with self.assertRaises(ValueError): variety.update(path)
+            self.assertEqual(path.read_text(), before)
+
+    def test_rejects_an_unreviewed_demo_ceiling_without_overwriting(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'application.json'
+            config = {'rcp': {'monitors': {'max-per-owner': 5, 'max-total': 30, 'min-interval-seconds': 60, 'max-timeout-ms': 5000},
+                              'demo': {'monitors': 'Example Domain|https://example.com', 'max-monitors': 16}}}
+            before = json.dumps(config)
+            path.write_text(before); path.chmod(0o600)
             with self.assertRaises(ValueError): variety.update(path)
             self.assertEqual(path.read_text(), before)

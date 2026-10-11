@@ -17,9 +17,9 @@ half is documented in [`infra/aws-demo`](../../infra/aws-demo/README.md).
   and `/api/demo/session`. Verify backend group enforcement, concurrent quota
   protection, and the 30/minute demo-login limit for the single backend.
   Stock Caddy does not add another login rate limiter here.
-- The shared demo account must retain `demo` membership. The backend seeds five
-  monitors (Example Domain, Wikipedia, Scheduled outage drill, GitHub Status,
-  and Cloudflare Status) on startup
+- The shared demo account must retain `demo` membership. The backend seeds ten
+  configured monitors on startup, with a separate hard ceiling of fifteen live
+  demo-owner monitors; they consume no visitor slots
   using the Cognito UUID `sub`. Capture that subject during provisioning; do not substitute its
   email or remove group membership to seed monitors.
 - Establish the AWS budget alert before creating application resources.
@@ -343,38 +343,34 @@ docker compose --profile monitoring up -d --no-deps --force-recreate --wait --wa
 curl -fsS https://rcp-ali.duckdns.org/healthz
 ```
 
-Check that `/api/me` now reports `maxTotal: 30`. More monitors mean more probe
-invocations in both Regions; re-run `infra/aws-demo/cost-estimate.py` with
-`--monitors 30` before inviting people.
+Deploy the reviewed backend before running this helper: it also upgrades the
+separate demo fleet described below. Check that `/api/me` now reports `maxTotal: 30`.
+Model the combined fleet (ten demo plus thirty visitors: `--monitors 40`), not just
+visitor capacity, before inviting people.
+
+
 
 ### Upgrade the existing demo fleet without losing history
 
-New generated configuration seeds **five** monitors and sets **5 per owner / 30
-globally**, with the same 60-second minimum interval and 5-second maximum timeout.
-The owner limit applies to every owner, not only the shared account. Example
-Domain, Wikipedia and our drill remain; GitHub Status and Cloudflare Status are
-added as small public JSON endpoints. These checks measure the availability of
-those HTTP endpoints, **not** the provider-wide health reported inside the JSON.
-All public targets still go through the probes' safe-address validation; there is
-no new named-host allowlist or third-party fault injection.
+Deploy the reviewed backend before using the operator SQL fallbacks; their demo ceiling assumes this version.
+The private demo subject file is unchanged. The configured list adds Atlassian, npm, DigitalOcean, Render and
+Zoom status JSON to the existing five targets. Local HEAD and GET checks returned 2xx (Zoom redirects first)
+without `cf-mitigated`; this is a point-in-time check from one location, not a guarantee about the AWS probes.
+After deployment, verify real results from both regions. These monitor the endpoints themselves, not the
+provider-wide service status described in their JSON. Only the existing `/drill/status.html` endpoint is faulted.
+Other targets, including SpectraTV, are never drilled.
 
-On startup, the backend adds missing configured demo monitors matched by name
-and retains existing monitors and history. Never remove the `demo` group, delete
-monitors or replace the stored Cognito `sub` to reseed. Inspect current monitor
-counts first: five configured targets cannot fit if an existing workspace or the
-global fleet already fills either cap. The settings do not evict existing monitors.
-
-After taking a verified off-host backup, update the existing private configuration
-on the VM. The helper preserves identity, URLs, queue maps and unrelated settings,
-refuses unreviewed quota/timeout changes, adds only missing target URLs, and writes
-atomically. It requires private permissions and preserves file ownership. Do not
-rerun the new-deployment generator over existing configuration.
+From `/opt/rcp`, use the existing release build procedure to build the backend and set the reviewed image tag in
+`.env`. Then update the configuration and restart; these commands are for the operator to run after approval:
 
 ```sh
 set -e
 cd /opt/rcp
-sudo test ! -e deploy/demo/secrets/application.before-variety.json
-sudo install -m 600 deploy/demo/secrets/application.json deploy/demo/secrets/application.before-variety.json
+git pull --ff-only
+./deploy/demo/scripts/backup.sh
+docker compose --env-file deploy/demo/.env --env-file deploy/demo/.env.monitoring -f deploy/demo/compose.yaml build control-plane
+sudo test ! -e deploy/demo/secrets/application.before-demo-fleet.json
+sudo install -m 600 deploy/demo/secrets/application.json deploy/demo/secrets/application.before-demo-fleet.json
 sudo chmod 600 deploy/demo/secrets/application.json
 if ! sudo python3 deploy/demo/scripts/configure-variety.py deploy/demo/secrets/application.json; then
   sudo chmod 444 deploy/demo/secrets/application.json
@@ -382,51 +378,44 @@ if ! sudo python3 deploy/demo/scripts/configure-variety.py deploy/demo/secrets/a
 fi
 sudo chmod 444 deploy/demo/secrets/application.json
 cd deploy/demo
-docker compose --profile monitoring up -d --no-deps --force-recreate --wait --wait-timeout 180 control-plane
+docker compose --env-file .env --env-file .env.monitoring --profile monitoring up -d --no-deps --force-recreate --wait --wait-timeout 180 control-plane
 curl -fsS https://rcp-ali.duckdns.org/healthz
 ```
 
-Keep `secrets/` mode 0700; 0444 on the mounted application file lets container UID
-10001 read it. The protected backup is 0600. Omit `--profile monitoring` if Alloy
-is not installed. **Recreate**, rather than merely restart, the backend because
-an atomic replacement must be rebound into its file-backed Compose secret.
-Check the demo UI now contains five targets and that `/api/me` reports the
-approved quotas. Existing history stays attached to the same monitor IDs.
+Startup adds missing configured names and preserves current IDs/history. Extra existing demo monitors are
+kept, so the result may be larger than ten; the ceiling counts every live demo-owner monitor, even if paused.
+Tombstones count toward neither quota. `/api/me` usage counts visitor monitors only; the shared demo returns
+zero owned visitor slots. Visitor capacity stays thirty overall and five per owner.
 
-For an older backend that cannot add missing demo targets on startup, use the
-operator-only SQL helper after the configuration update. First confirm the existing
-workspace belongs to the stored subject and has capacity:
+Keep `secrets/` mode 0700. The mounted application file is 0444 so container UID
+10001 can read it; its backup is 0600. Recreate rather than restart the backend
+because atomic replacement must be rebound into its file-backed Compose secret.
+For a deployment without Alloy, omit `.env.monitoring` and `--profile monitoring`.
+
+The operator SQL fallbacks are for an existing workspace that needs the original
+GitHub/Cloudflare additions (`add-demo-variety.sql`) or the drill
+(`add-drill-monitor.sql`). Deploy this backend first: both helpers now enforce
+only the separate demo ceiling of fifteen and must not be used against a backend
+that still counts demo monitors in visitor quotas. They are not a substitute for
+the configured ten-target startup seeder. Run from `deploy/demo`, after verifying
+the saved subject belongs to that workspace:
 
 ```sh
-cd /opt/rcp/deploy/demo
 docker compose exec -T postgres psql -X -U rcp -d rcp -v ON_ERROR_STOP=1 \
   -v demo_subject="$(cat secrets/demo_owner_subject)" \
   < scripts/add-demo-variety.sql
 ```
 
-It adds only the two fixed status endpoints, deduplicated by owner and URL. The
-transaction takes a brief table lock, validates the existing subject, and refuses
-to exceed either cap; failure adds nothing. It leaves other owners, existing
-history, scheduling triggers and group membership alone. The older
-`add-drill-monitor.sql` remains available for a workspace missing the drill itself;
-its quota check now also uses five. These helpers do not delete monitors to make
-space. Verify the backend version and existing names before choosing the startup
-seeder or SQL path.
+The transaction shares the backend's owner lock before taking a brief table lock, validates the existing subject and
+counts only live rows after V11. Failure adds nothing; deleted targets can be
+replaced without removing tombstones/history. These helpers never evict monitors.
 
-Both helpers work before and after the V11 soft-delete migration. After V11,
-quota counts, workspace validation and URL deduplication consider only rows with
-`deleted_at IS NULL`. A deleted target is replaced by a new monitor ID; its
-tombstone and schedule history remain intact. An owner with only deleted rows
-does not satisfy the existing-workspace check. The transaction keeps live limits
-at five per owner and thirty globally, and rolls back every addition on failure.
-
-For configuration rollback, disable the drill timer and restore the endpoint
-first. Restore `application.before-variety.json` with private permissions, set
-0444 inside the protected directory, and recreate the backend. This restores the
-old configuration, **not** the database: newly seeded monitors and history remain.
-Do not downgrade to the owner quota of three while five monitors remain without
-reviewing that workspace. Keep the previous responder/dashboard release together
-if rolling back the schedule version.
+For rollback, restore the protected configuration backup and its 0444 mount
+permissions, set the previous compatible image tag, then recreate the backend.
+Configuration rollback does not undo newly seeded database rows. Before restoring
+an older backend without demo exemption, review its owner/global quotas against
+all existing rows; ten demo monitors exceed the old owner limit of five. Keep
+an independently verified off-host database backup.
 
 ## Publish the dashboard
 
@@ -568,8 +557,8 @@ python3 deploy/demo/scripts/local-smoke.py --build --phase2
 ```
 
 This second mode uses local JWTs, enables the demo configuration, disables
-both queue polling and local workers, and verifies the seeded demo UUID, five
-monitors, server-side read-only rejection, 60-second/5-second limits, and one-time
+both queue polling and local workers, and verifies the seeded demo UUID, its isolated five-monitor
+fixture, server-side read-only rejection, 60-second/5-second limits, and one-time
 onboarding. It uses a fresh local database, not the developer's running services.
 The local token endpoint exists only in this loopback test's `local` profile;
 production Compose still uses `aws`. To test a specific application source checkout,
@@ -590,3 +579,8 @@ PostgreSQL with a different password file does **not** change an initialized DB'
 password; rotate the DB role and application secret together. Keep image versions
 pinned and review security updates periodically. Nothing in this setup provides
 production HA or automatic database failover.
+
+For an isolated browser audit with fake HTTP responses (never the real API), start a separate Vite server and run
+`rcp-dashboard/scripts/audit-final-round.mjs` with `RCP_AUDIT_URL` pointing at its localhost port. It checks both
+themes, all report periods and 1440/380/320px viewports; its fixture toggle covers busy, empty, one, loading and
+error responses. Outputs go to a temporary directory, never to the published dashboard.

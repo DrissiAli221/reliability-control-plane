@@ -47,7 +47,7 @@ costs. Local validation proves configuration, not AWS deployment or availability
 - Runtime IAM: send only to two job queues; receive/delete/change visibility/read
   attributes only on the result queue; `AdminInitiateAuth` only on this user pool.
 - The output `server_application_json` preserves the region keys exactly. It also
-  wires 5 monitors/owner, 60-second minimum interval, 30 monitors globally, demo
+  wires 5 visitor monitors/owner, 60-second minimum interval, 30 visitor monitors globally, a separate demo ceiling of 15, demo
   group enforcement, and a 5,000 ms maximum timeout. `rcp.demo.monitors` seeds
   Example Domain, Wikipedia, Scheduled outage drill, GitHub Status and Cloudflare
   Status for the shared account, and
@@ -199,11 +199,11 @@ Estimate both Lambda requests and GB-seconds. At 8 monitors (the original demo s
 691,200 checks/invocations before retries. Average billed duration must include
 probe time, DNS/TLS setup, result publishing, cold starts, and failures.
 
-`cost-estimate.py` is an explicit illustrative model, not a worst-case ceiling. It accepts 0 to 30
-monitors (the demo's global cap), takes the average billed duration as `--duration-ms` (default 500, printed as
+`cost-estimate.py` is an explicit illustrative model, not a worst-case ceiling. It accepts 0 to 45
+monitors (30 visitor slots plus the separate demo ceiling of 15), takes the average billed duration as `--duration-ms` (default 500, printed as
 an assumption), and prints what it includes (Lambda requests and GB-seconds, SQS requests) and what it does not
 model (CloudWatch Logs, cross-region data transfer, S3 and CloudFront, Cognito, budget services, VM and domain).
-It defaults to to 256 MiB, ARM duration
+It defaults to 256 MiB, ARM duration
 at $0.0000133334/GB-second, requests at $0.20/million, standard SQS at $0.40/million,
 and available account-wide allowances of 1M Lambda requests, 400k GB-seconds and
 1M SQS requests. It conservatively counts six SQS calls/check plus up to five idle
@@ -236,6 +236,24 @@ months or when its credits run out unless upgraded to the Paid plan. Record the
 signup date and set a reminder around month five; upgrade before expiry if the
 demo should remain online. The Paid plan retains eligible monthly free allowances,
 but credits expire and actual usage determines the bill.
+
+
+### Separate demo fleet costs
+
+The shared demo owner is excluded from visitor capacity, with a separately enforced ceiling of 15 live
+monitors. The generated fleet has ten targets; the visitor limits stay at five per owner and thirty total.
+Model the **combined active fleet**, not just the visitor slots:
+
+```sh
+python3 infra/aws-demo/cost-estimate.py --monitors 10 --duration-ms 260
+python3 infra/aws-demo/cost-estimate.py --monitors 40 --duration-ms 260
+python3 infra/aws-demo/cost-estimate.py --monitors 45 --duration-ms 5000 --retry-percent 10
+```
+
+The supplied 260 ms duration is an input, not verified by this script. Its illustrative Lambda/SQS subtotal
+is $2.24/month for ten demo monitors, $8.96 for ten demo plus thirty visitor monitors, and $77.04 for
+forty-five monitors averaging five seconds with ten percent retries. These exclude the services listed in
+`not_modelled`, assume the account-wide monthly allowances are available, and are not spending ceilings.
 
 Official references, pricing checked 2026-10-01:
 [Lambda pricing](https://aws.amazon.com/lambda/pricing/),

@@ -13,10 +13,10 @@ spec.loader.exec_module(cost)
 
 class CostEstimate(unittest.TestCase):
     def test_covers_the_global_cap_and_rejects_beyond_it(self):
-        self.assertEqual(cost.MAX_MONITORS, 30)
-        self.assertEqual(cost.estimate(30, 0.5)["monitors"], 30)
+        self.assertEqual(cost.MAX_MONITORS, 45)
+        self.assertEqual(cost.estimate(45, 0.5)["monitors"], 45)
         with self.assertRaises(ValueError):
-            cost.estimate(31, 0.5)
+            cost.estimate(46, 0.5)
 
     def test_cost_grows_with_monitors_and_duration(self):
         self.assertGreater(cost.estimate(30, 5)["subtotal_usd"], cost.estimate(8, 5)["subtotal_usd"])
@@ -46,7 +46,7 @@ class CostEstimate(unittest.TestCase):
         self.assertEqual(json.loads(self.run_cli("--monitors", "8", "--seconds", "5").stdout)["assumptions"]["average_billed_duration_ms"], 5000)
 
     def test_cli_refuses_more_than_the_cap(self):
-        self.assertNotEqual(self.run_cli("--monitors", "31").returncode, 0)
+        self.assertNotEqual(self.run_cli("--monitors", "46").returncode, 0)
 
 
 if __name__ == "__main__":

@@ -301,7 +301,7 @@ function FleetTableRow({ row, now, index, changed, readOnly, onOpen, onToggle, o
           </div>
         </div>
       </td>
-      <td className="col-status"><StatusBadge label={state.label} tone={state.tone} /></td>
+      <td className="col-status"><StatusBadge label={state.label} tone={state.tone} blocked={state.label === "Blocked"} /></td>
       <td className="col-tracker">
         {history ? <Tracker days={history.days} size="compact" label={`${monitor.name}, last ${TRACKER_DAYS} days`} /> : <span className="subtle">—</span>}
       </td>

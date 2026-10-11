@@ -87,20 +87,20 @@ describe("report exports", () => {
     expect(downloads[0]).toMatch(/\.csv$/);
   });
 
-  it("exports the selected window in every format", async () => {
+  it.each([[1, "24h"], [7, "7d"], [30, "30d"], [90, "90d"]] as const)("exports the %s-day window in every format", async (days, label) => {
     const { downloads } = captureDownloads();
     vi.mocked(reliabilityReport).mockResolvedValue({} as never);
     vi.mocked(reliabilityReportCsv).mockResolvedValue(new Blob(["x"]));
     vi.mocked(reliabilityReportHtml).mockResolvedValue(new Blob(["x"]));
 
-    await downloadReport("monitor-1", "Checkout API", 30);
-    await downloadReportJson("monitor-1", "Checkout API", 30);
-    await downloadReportCsv("monitor-1", "Checkout API", 30);
+    await downloadReport("monitor-1", "Checkout API", days);
+    await downloadReportJson("monitor-1", "Checkout API", days);
+    await downloadReportCsv("monitor-1", "Checkout API", days);
 
-    expect(reliabilityReportHtml).toHaveBeenCalledWith("monitor-1", 30);
-    expect(reliabilityReport).toHaveBeenCalledWith("monitor-1", 30);
-    expect(reliabilityReportCsv).toHaveBeenCalledWith("monitor-1", 30);
-    expect(downloads.every((name) => name.includes("-30d-"))).toBe(true);
+    expect(reliabilityReportHtml).toHaveBeenCalledWith("monitor-1", days);
+    expect(reliabilityReport).toHaveBeenCalledWith("monitor-1", days);
+    expect(reliabilityReportCsv).toHaveBeenCalledWith("monitor-1", days);
+    expect(downloads.every((name) => name.includes(`-${label}-`))).toBe(true);
   });
 
   it("opens the report in a tab and prints it once it has loaded", async () => {

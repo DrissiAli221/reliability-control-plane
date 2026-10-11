@@ -5,7 +5,7 @@ package dev.ali.rcp.monitors;
  * tightens them so strangers cannot turn the probes into a load generator or run up the bill.
  *
  * @param maxPerOwner       monitors one identity may register, paused ones included
- * @param maxTotal          monitors across every identity; 0 disables the cap
+ * @param maxTotal          visitor monitors, excluding the configured demo owner; 0 disables the cap
  * @param minIntervalSeconds shortest allowed check interval
  * @param maxTimeoutMs      longest allowed per-check timeout
  */

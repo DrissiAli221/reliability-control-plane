@@ -25,7 +25,7 @@ def outputs():
             "probe-result-queue-region": "us-east-1", "probe-result-queue-url": "https://sqs.us-east-1.amazonaws.com/123456789012/results",
             "result-wait-time-seconds": 20, "result-visibility-timeout-seconds": 60},
         "monitors": {"max-per-owner": 5, "min-interval-seconds": 60, "max-total": 30, "max-timeout-ms": 5000},
-        "demo": {"monitors": "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org, Scheduled outage drill|https://api.example.invalid/drill/status.html, GitHub Status|https://www.githubstatus.com/api/v2/status.json, Cloudflare Status|https://www.cloudflarestatus.com/api/v2/status.json", "example-monitor-url": "https://example.com"},
+        "demo": {"max-monitors": 15, "monitors": "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org, Scheduled outage drill|https://api.example.invalid/drill/status.html, GitHub Status|https://www.githubstatus.com/api/v2/status.json, Cloudflare Status|https://www.cloudflarestatus.com/api/v2/status.json, Atlassian Status|https://status.atlassian.com/api/v2/status.json, npm Status|https://status.npmjs.org/api/v2/status.json, DigitalOcean Status|https://status.digitalocean.com/api/v2/status.json, Render Status|https://status.render.com/api/v2/status.json, Zoom Status|https://status.zoom.us/api/v2/status.json", "example-monitor-url": "https://example.com"},
     }}
     return {
         "identity": {"value": {"issuer_uri": issuer, "client_id": "fake-client"}},

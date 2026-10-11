@@ -114,12 +114,12 @@ class MonitorDeletionTest {
         assertThat(ingestion.ingest("deleted-"+job,codec.encodeResult(result))).isEqualTo(ProbeResultIngestion.DISCARDED_MONITOR);
         assertThat(ingestion.ingest("deleted-"+job,codec.encodeResult(result))).isEqualTo(ProbeResultIngestion.DUPLICATE_MESSAGE);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM probe_results WHERE monitor_id = ?",Integer.class,id)).isZero();
-        MonitorService quota = new MonitorService(monitors,targets,jdbc,1,0,60,5000);
+        MonitorService quota = new MonitorService(monitors,targets,jdbc,1,0,60,5000,"",15);
         quota.create(owner,new CreateMonitorRequest("Replacement","https://1.1.1.1/",60,5000));
         assertThatThrownBy(() -> quota.create(owner,new CreateMonitorRequest("Overflow","https://1.1.1.1/",60,5000)))
                 .isInstanceOf(MonitorQuotaExceededException.class);
         int live = jdbc.queryForObject("SELECT COUNT(*) FROM monitors WHERE deleted_at IS NULL",Integer.class);
-        MonitorService capped = new MonitorService(monitors,targets,jdbc,25,live+1,60,5000);
+        MonitorService capped = new MonitorService(monitors,targets,jdbc,25,live+1,60,5000,"",15);
         capped.create("global-"+owner,new CreateMonitorRequest("Global replacement","https://1.1.1.1/",60,5000));
         assertThatThrownBy(() -> capped.create("overflow-"+owner,new CreateMonitorRequest("Global overflow","https://1.1.1.1/",60,5000)))
                 .isInstanceOf(MonitorCapacityReachedException.class);

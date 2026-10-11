@@ -23,9 +23,21 @@ vi.mock("../session", () => ({ useReadOnly: vi.fn(), useSession: () => null, ref
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  monitor.latestVerdict = "UP";
+  monitor.latestBlocked = false;
 });
 
 describe("read-only mode", () => {
+  it("shows the shield and Blocked instead of No data for confirmed bot challenges", async () => {
+    vi.mocked(useReadOnly).mockReturnValue(true);
+    monitor.latestVerdict = "NO_DATA";
+    monitor.latestBlocked = true;
+    render(<MemoryRouter><MonitorsPage /></MemoryRouter>);
+    const label = (await screen.findAllByText("Blocked")).find(element => element.classList.contains("badge"))!;
+    expect(label).toHaveClass("badge", "blocked");
+    expect(label.querySelector("svg")).not.toBeNull();
+  });
+
   it("hides creating monitors from the demo account", async () => {
     vi.mocked(useReadOnly).mockReturnValue(true);
     render(<MemoryRouter><MonitorsPage /></MemoryRouter>);
