@@ -137,7 +137,7 @@ export function MobileMenu({ local, readOnly, theme, onLogout }: { local: boolea
           {readOnly && <p className="identity demo-identity"><Eye size={14} aria-hidden="true" /> Live demo · read-only</p>}
           {local && !readOnly && <p className="identity">Local development identity</p>}
           <div role="menu" id={menuId} aria-label="More">
-            <button type="button" role="menuitem" className="nav-item" onClick={choose(toggleTheme)}>
+            <button type="button" role="menuitem" className="nav-item theme-button" onClick={choose(toggleTheme)}>
               {theme === "dark" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
               {theme === "dark" ? "Light theme" : "Dark theme"}
             </button>
@@ -232,7 +232,7 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
               Regions are simulated in one JVM; labels are not geographic evidence.
             </p>
           )}
-          <button type="button" className="nav-item" onClick={toggleTheme}>
+          <button type="button" className="nav-item theme-button" onClick={toggleTheme}>
             {theme === "dark" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
             {theme === "dark" ? "Light theme" : "Dark theme"}
           </button>

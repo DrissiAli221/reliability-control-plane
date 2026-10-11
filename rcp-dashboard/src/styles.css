@@ -1841,6 +1841,17 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .meta-row.monitor-meta span::before { content: none; }
 .sidebar-footer .demo-identity, .mobile-menu-panel .demo-identity {
   height: 36px; margin: 4px -8px 0; padding: 0 16px; border: 0;
-  border-bottom: 1px solid var(--accent-line); border-radius: 0;
+  border-bottom: 1px solid var(--border); border-radius: 0;
   background: linear-gradient(to bottom, var(--accent-soft), transparent);
 }
+
+/* Footer rows are continuous, and the complete theme cell is clickable. */
+.sidebar > .sidebar-footer { gap: 0; padding: 0; }
+.sidebar-footer .theme-button {
+  height: 32px; padding: 0 16px; border-radius: 0; border-bottom: 1px solid var(--border);
+  background: linear-gradient(to bottom, var(--gray-bg), transparent);
+}
+.sidebar-footer .theme-button:hover { background: linear-gradient(to bottom, var(--surface-hover), transparent); }
+.sidebar-footer .demo-identity { height: 32px; margin: 0; }
+.sidebar > .sidebar-footer > :last-child { margin: 0; padding: 0 16px; border-top: 0; }
+.sidebar-footer .env-note { padding: 8px 16px; }
