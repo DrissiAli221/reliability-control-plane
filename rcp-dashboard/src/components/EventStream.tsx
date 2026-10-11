@@ -61,7 +61,7 @@ export function EventStream({ limit }: { limit?: number } = {}) {
       ) : lines.length === 0 ? (
         <p className="panel-body subtle">{events.error ?? "Waiting for the next check…"}</p>
       ) : (
-        <ol className="event-log" ref={log} aria-live="off">
+        <ol className="event-log" ref={log} aria-live="off" tabIndex={0} aria-label="Recent pipeline events">
           {lines.map((event) => {
             const { text, tone } = describe(event);
             return (
@@ -69,8 +69,8 @@ export function EventStream({ limit }: { limit?: number } = {}) {
                 <time>{clock(event.at)}</time>
                 <span className={`log-type ${event.type}`}>{event.type}</span>
                 <span className="log-region">{event.region ?? ""}</span>
-                <span className={`log-text ${tone ?? ""}`}>{text}</span>
-                <span className="log-monitor">{event.monitorName}</span>
+                <span className={`log-text ${tone ?? ""}`} title={text}>{text}</span>
+                <span className="log-monitor" title={event.monitorName}>{event.monitorName}</span>
               </li>
             );
           })}

@@ -1544,16 +1544,16 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 /* Beside the timing chart, the event tail fills the same height instead of stopping short. */
 .split > .panel:has(> .event-log) { display: flex; flex-direction: column; }
 .split > .panel > .event-log { flex: 1; max-height: 520px; }
-/* A long fleet must not stretch the event tail into an empty, full-height panel. */
-.overview-tail { align-items: start; }
+/* Keep the overview's touching modules level, with one consistent event-panel surface. */
+.overview-tail > .panel > .event-log { max-height: none; background: var(--surface); }
 .panel[data-tour="events"] { container-type: inline-size; }
 .event-log li > * { min-width: 0; }
 @container (max-width: 700px) {
-  .event-log li { grid-template-columns: 86px minmax(0, 1.2fr) minmax(0, 1fr); row-gap: 2px; padding-top: 5px; padding-bottom: 5px; }
-  .event-log .log-type { grid-column: 2 / 4; grid-row: 1; }
-  .event-log .log-region { grid-column: 1; grid-row: 2; font-size: 11px; }
-  .event-log .log-text { grid-column: 2; grid-row: 2; }
-  .event-log .log-monitor { grid-column: 3; grid-row: 2; }
+  .event-log li { min-width: 460px; grid-template-columns: 84px 130px 66px minmax(90px, 1.3fr) minmax(0, 1fr); gap: 6px; padding-inline: 10px; }
+  .event-log .log-region { font-size: 11px; }
+}
+@media (max-width: 860px) {
+  .event-log li { min-width: 340px; grid-template-columns: 84px minmax(130px, 1fr) minmax(80px, 1fr); }
 }
 .decision-times li.fresh button { animation: fresh-line 1.8s ease-out, rise 280ms ease-out backwards; }
 .decision-times li.fresh .decision-track b { animation-duration: 700ms; }
@@ -1840,6 +1840,7 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 /* Monitor metadata reads as plain labels; the demo identity gets its own square cell. */
 .meta-row.monitor-meta span::before { content: none; }
 .sidebar-footer .demo-identity, .mobile-menu-panel .demo-identity {
-  height: 34px; margin: 4px 0; padding: 0 8px; border: 1px solid var(--border);
-  border-radius: 0; background: var(--surface-2);
+  height: 36px; margin: 4px -8px 0; padding: 0 16px; border: 0;
+  border-bottom: 1px solid var(--accent-line); border-radius: 0;
+  background: linear-gradient(to bottom, var(--accent-soft), transparent);
 }
