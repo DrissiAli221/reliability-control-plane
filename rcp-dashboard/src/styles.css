@@ -1836,3 +1836,10 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
   .shell-header .demo-banner { padding: 8px 16px; gap: 8px; }
   .demo-banner-detail { display: none; }
 }
+
+/* Monitor metadata reads as plain labels; the demo identity gets its own square cell. */
+.meta-row.monitor-meta span::before { content: none; }
+.sidebar-footer .demo-identity, .mobile-menu-panel .demo-identity {
+  height: 34px; margin: 4px 0; padding: 0 8px; border: 1px solid var(--border);
+  border-radius: 0; background: var(--surface-2);
+}

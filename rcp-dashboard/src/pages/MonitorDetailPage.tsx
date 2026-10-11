@@ -215,7 +215,7 @@ export function MonitorDetailPage() {
             <StatusBadge label={state.label} tone={state.tone} blocked={blocked} />
             {drill && <DrillTag />}
           </div>
-          <div className="meta-row">
+          <div className="meta-row monitor-meta">
             <a className="mono" href={monitor.targetUrl} target="_blank" rel="noreferrer">
               {compactUrl(monitor.targetUrl)} <ExternalLink size={14} aria-hidden="true" />
             </a>
