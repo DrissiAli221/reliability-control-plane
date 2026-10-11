@@ -1156,7 +1156,7 @@ a { color: inherit; }
   font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums;
 }
 .event-log li {
-  display: grid; grid-template-columns: 96px 150px 76px minmax(0, 1fr) auto; gap: 12px; padding: 2px 16px;
+  display: grid; grid-template-columns: 86px minmax(110px, 1.2fr) 76px minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px; padding: 2px 16px;
   color: var(--text-2); white-space: nowrap;
 }
 .event-log li.fresh { animation: fresh-line 1.6s ease-out; }
@@ -1167,7 +1167,7 @@ a { color: inherit; }
 .log-type.ExecutionFinalized { color: var(--text); }
 .log-type.IncidentOpened { color: var(--red-text); }
 .log-type.IncidentResolved { color: var(--green-text); }
-.log-region { color: var(--text-3); }
+.log-region { color: var(--text-3); overflow: hidden; text-overflow: ellipsis; }
 .log-text { overflow: hidden; text-overflow: ellipsis; }
 .log-text.good { color: var(--green-text); }
 .log-text.fault { color: var(--red-text); }
@@ -1544,6 +1544,17 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 /* Beside the timing chart, the event tail fills the same height instead of stopping short. */
 .split > .panel:has(> .event-log) { display: flex; flex-direction: column; }
 .split > .panel > .event-log { flex: 1; max-height: 520px; }
+/* A long fleet must not stretch the event tail into an empty, full-height panel. */
+.overview-tail { align-items: start; }
+.panel[data-tour="events"] { container-type: inline-size; }
+.event-log li > * { min-width: 0; }
+@container (max-width: 700px) {
+  .event-log li { grid-template-columns: 86px minmax(0, 1.2fr) minmax(0, 1fr); row-gap: 2px; padding-top: 5px; padding-bottom: 5px; }
+  .event-log .log-type { grid-column: 2 / 4; grid-row: 1; }
+  .event-log .log-region { grid-column: 1; grid-row: 2; font-size: 11px; }
+  .event-log .log-text { grid-column: 2; grid-row: 2; }
+  .event-log .log-monitor { grid-column: 3; grid-row: 2; }
+}
 .decision-times li.fresh button { animation: fresh-line 1.8s ease-out, rise 280ms ease-out backwards; }
 .decision-times li.fresh .decision-track b { animation-duration: 700ms; }
 
@@ -1596,7 +1607,7 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 /* ---------- Demo session ---------- */
 .demo-banner {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: -8px 0 20px; padding: 10px 16px;
-  border: 1px solid var(--accent-line); background: var(--accent-soft); color: var(--text-2); font-size: 13px;
+  border: 1px solid var(--accent-line); border-top: 0; background: linear-gradient(to bottom, var(--accent-soft), transparent); color: var(--text-2); font-size: 13px;
 }
 .demo-banner svg { color: var(--accent-text); flex: none; }
 .demo-banner strong { color: var(--text); font-weight: 600; }
@@ -1781,7 +1792,7 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .badge.blocked svg { flex: none; color: var(--text-2); }
 
 /* The bot-challenge note sits right under the check card's header: a shield, one line, the regions and the fix. */
-.bot-note { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text); }
+.bot-note { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text); background: linear-gradient(to bottom, var(--gray-bg), transparent 32px); box-shadow: inset 0 1px 0 var(--border-strong); }
 .bot-note > svg { flex: none; color: var(--text-2); }
 .bot-note-text { flex: 1; min-width: 0; }
 .bot-note strong { font-size: 13px; font-weight: 500; }

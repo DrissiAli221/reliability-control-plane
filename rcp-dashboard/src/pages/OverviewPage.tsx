@@ -69,7 +69,7 @@ export function OverviewPage() {
             <Regions snapshot={pipeline.data} />
           </div>
 
-          <div className="split">
+          <div className="split overview-tail">
             <Fleet monitors={monitors.data} now={now} />
             <EventStream limit={10} />
           </div>
