@@ -21,6 +21,8 @@ public class MonitorService {
 
     private final JdbcTemplate jdbcTemplate;
     private final MonitorLimits limits;
+    private final String demoOwnerSubject;
+    private final int maxDemoMonitors;
 
     public MonitorService(
             MonitorRepository monitorRepository,
@@ -29,12 +31,19 @@ public class MonitorService {
             @Value("${rcp.monitors.max-per-owner:25}") int maxPerOwner,
             @Value("${rcp.monitors.max-total:0}") int maxTotal,
             @Value("${rcp.monitors.min-interval-seconds:30}") int minIntervalSeconds,
-            @Value("${rcp.monitors.max-timeout-ms:30000}") int maxTimeoutMs
+            @Value("${rcp.monitors.max-timeout-ms:30000}") int maxTimeoutMs,
+            @Value("${rcp.demo.owner-subject:}") String demoOwnerSubject,
+            @Value("${rcp.demo.max-monitors:15}") int maxDemoMonitors
     ) {
         this.monitorRepository = monitorRepository;
         this.safeTargetPolicy = safeTargetPolicy;
         this.jdbcTemplate = jdbcTemplate;
         this.limits = new MonitorLimits(maxPerOwner, maxTotal, minIntervalSeconds, maxTimeoutMs);
+        this.demoOwnerSubject = demoOwnerSubject.trim();
+        if (maxDemoMonitors < 1 || maxDemoMonitors > 15) {
+            throw new IllegalArgumentException("rcp.demo.max-monitors must be between 1 and the hard ceiling of 15");
+        }
+        this.maxDemoMonitors = maxDemoMonitors;
     }
 
     /** The limits this deployment enforces, so clients can offer only choices that will be accepted. */
@@ -42,13 +51,22 @@ public class MonitorService {
         return limits;
     }
 
-    /** Live monitors the owner has and live monitors on the whole deployment, for showing remaining capacity. */
+    /** Visitor capacity excludes only the server-configured demo subject, never a caller-supplied group claim. */
     @Transactional(readOnly = true)
     public MonitorUsage usage(String ownerSubject) {
-        Long owned = jdbcTemplate.queryForObject(
+        Long owned = isDemoOwner(ownerSubject) ? 0L : jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM monitors WHERE owner_subject = ? AND deleted_at IS NULL", Long.class, ownerSubject);
-        Long total = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM monitors WHERE deleted_at IS NULL", Long.class);
+        Long total = visitorCount();
         return new MonitorUsage(owned == null ? 0 : owned, total == null ? 0 : total);
+    }
+
+    private boolean isDemoOwner(String subject) {
+        return !demoOwnerSubject.isBlank() && demoOwnerSubject.equals(subject);
+    }
+
+    private Long visitorCount() {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM monitors WHERE deleted_at IS NULL AND owner_subject <> ?",
+                Long.class, demoOwnerSubject);
     }
 
     @Transactional
@@ -68,9 +86,10 @@ public class MonitorService {
 
         // Locks are always taken in the same order (global, then owner) so concurrent creations cannot deadlock.
         // The global lock only exists when a deployment-wide cap is configured.
-        if (limits.maxTotal() > 0) {
+        boolean demo = isDemoOwner(ownerSubject);
+        if (!demo && limits.maxTotal() > 0) {
             jdbcTemplate.queryForList("SELECT pg_advisory_xact_lock(?, ?)", CAPACITY_LOCK, 0);
-            Long total = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM monitors WHERE deleted_at IS NULL", Long.class);
+            Long total = visitorCount();
             if (total != null && total >= limits.maxTotal()) {
                 throw new MonitorCapacityReachedException(limits.maxTotal());
             }
@@ -85,8 +104,9 @@ public class MonitorService {
                 "SELECT COUNT(*) FROM monitors WHERE owner_subject = ? AND deleted_at IS NULL",
                 Long.class, ownerSubject
         );
-        if (existing != null && existing >= limits.maxPerOwner()) {
-            throw new MonitorQuotaExceededException(limits.maxPerOwner());
+        int ownerLimit = demo ? maxDemoMonitors : limits.maxPerOwner();
+        if (existing != null && existing >= ownerLimit) {
+            throw new MonitorQuotaExceededException(ownerLimit);
         }
 
         Monitor monitor = Monitor.create(

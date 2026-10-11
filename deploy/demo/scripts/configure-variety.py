@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Opt an existing private application configuration into the five-monitor demo
-and the 30-monitor global cap (an existing cap of 8 is raised; 30 is kept)."""
+"""Opt an existing private application configuration into the ten-monitor demo
+and a separate demo ceiling of 15; visitor limits become 5 per owner / 30 total."""
 import argparse
 import json
 import os
@@ -9,7 +9,12 @@ import stat
 import tempfile
 
 TARGETS = ('GitHub Status|https://www.githubstatus.com/api/v2/status.json',
-           'Cloudflare Status|https://www.cloudflarestatus.com/api/v2/status.json')
+           'Cloudflare Status|https://www.cloudflarestatus.com/api/v2/status.json',
+           'Atlassian Status|https://status.atlassian.com/api/v2/status.json',
+           'npm Status|https://status.npmjs.org/api/v2/status.json',
+           'DigitalOcean Status|https://status.digitalocean.com/api/v2/status.json',
+           'Render Status|https://status.render.com/api/v2/status.json',
+           'Zoom Status|https://status.zoom.us/api/v2/status.json')
 
 
 def update(path):
@@ -26,11 +31,15 @@ def update(path):
     for target in TARGETS:
         if target.partition('|')[2] not in urls:
             entries.append(target)
-    if len(entries) > 5:
-        raise ValueError('Configured demo targets would exceed the approved quota of 5; review existing targets')
+    demo = rcp['demo']
+    if demo.get('max-monitors', 15) != 15:
+        raise ValueError('Expected the reviewed separate demo ceiling of 15')
+    if len(entries) > 15:
+        raise ValueError('Configured demo targets would exceed the separate hard ceiling of 15; review existing targets')
     limits['max-per-owner'] = 5
     limits['max-total'] = 30
     rcp['demo']['monitors'] = ', '.join(entries)
+    rcp['demo']['max-monitors'] = 15
     fd, temporary = tempfile.mkstemp(prefix='.variety-', dir=path.parent)
     try:
         with os.fdopen(fd, 'w') as stream:
@@ -52,4 +61,4 @@ if __name__ == '__main__':
         update(args.configuration)
     except (OSError, ValueError, KeyError):
         parser.exit(1, 'Could not update configuration. Check private permissions, limits and target count. No configuration values were printed.\n')
-    print('Updated demo quotas (5 per owner, 30 in total) and targets. Recreate the backend container to load the configuration.')
+    print('Updated visitor quotas (5 per owner, 30 total), exempt demo targets and their separate ceiling of 15. Recreate the backend container to load the configuration.')

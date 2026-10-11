@@ -333,10 +333,10 @@ paths:
                       maxTimeoutMs: { type: integer }
                   usage:
                     type: object
-                    description: Live monitors counted against the limits; deleted monitors are not counted
+                    description: Live visitor monitors counted against the limits; deleted and configured demo-owner monitors are excluded
                     properties:
-                      ownedMonitors: { type: integer, description: Monitors owned by the caller, compare with limits.maxPerOwner }
-                      totalMonitors: { type: integer, description: Monitors across every account, compare with limits.maxTotal }
+                      ownedMonitors: { type: integer, description: Visitor monitors owned by the caller; zero for the configured demo subject }
+                      totalMonitors: { type: integer, description: Visitor monitors across all owners, excluding the configured demo subject; compare with limits.maxTotal }
         '401':
           $ref: '#/components/responses/Unauthorized'
   /api/overview:

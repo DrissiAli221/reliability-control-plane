@@ -43,7 +43,9 @@ def render(outputs, api_domain, acme_email):
         raise ValueError("The old seed-example-monitor flag is unsupported; regenerate outputs")
     expected_monitors = ("Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org, "
                          f"Scheduled outage drill|https://{api_domain}/drill/status.html"
-                         ", GitHub Status|https://www.githubstatus.com/api/v2/status.json, Cloudflare Status|https://www.cloudflarestatus.com/api/v2/status.json")
+                         ", GitHub Status|https://www.githubstatus.com/api/v2/status.json, Cloudflare Status|https://www.cloudflarestatus.com/api/v2/status.json, Atlassian Status|https://status.atlassian.com/api/v2/status.json, npm Status|https://status.npmjs.org/api/v2/status.json, DigitalOcean Status|https://status.digitalocean.com/api/v2/status.json, Render Status|https://status.render.com/api/v2/status.json, Zoom Status|https://status.zoom.us/api/v2/status.json")
+    if demo.get("max-monitors") != 15:
+        raise ValueError("Expected the separate hard demo ceiling of 15")
     if demo.get("monitors") != expected_monitors:
         raise ValueError("Unexpected shared demo seed targets")
     if demo.get("example-monitor-url") != "https://example.com":

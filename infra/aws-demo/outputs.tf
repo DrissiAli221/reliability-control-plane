@@ -76,7 +76,8 @@ output "server_application_json" {
         max-timeout-ms       = 5000
       }
       demo = {
-        monitors            = "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org, Scheduled outage drill|${var.api_origin}/drill/status.html, GitHub Status|https://www.githubstatus.com/api/v2/status.json, Cloudflare Status|https://www.cloudflarestatus.com/api/v2/status.json"
+        max-monitors        = 15
+        monitors            = "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org, Scheduled outage drill|${var.api_origin}/drill/status.html, GitHub Status|https://www.githubstatus.com/api/v2/status.json, Cloudflare Status|https://www.cloudflarestatus.com/api/v2/status.json, Atlassian Status|https://status.atlassian.com/api/v2/status.json, npm Status|https://status.npmjs.org/api/v2/status.json, DigitalOcean Status|https://status.digitalocean.com/api/v2/status.json, Render Status|https://status.render.com/api/v2/status.json, Zoom Status|https://status.zoom.us/api/v2/status.json"
         example-monitor-url = "https://example.com"
       }
     }
