@@ -185,7 +185,7 @@ class ReliabilityReportHtmlRendererTest {
         ReliabilityReport report = reportWithEvidence(new BigDecimal("100"), null,
                 new BigDecimal("0.00500"), 0, new BigDecimal("0.00500"));
         String html = renderer.render(report);
-        assertThat(html).contains("NO VERDICT", "Not enough evidence to judge this SLO",
+        assertThat(html).contains("UNPROVEN", "Not enough evidence to judge this SLO",
                 "Observed availability is not an SLO pass", "2 of 20 samples needed");
         assertThat(html).doesNotContain("The SLO target was met.");
     }
