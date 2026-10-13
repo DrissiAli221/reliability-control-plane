@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { Gauge, LayoutList, Workflow, type LucideIcon } from "lucide-react";
+import { BookOpen, Gauge, LayoutList, Workflow, type LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useNow } from "../useLiveData";
 import { crumbs } from "../crumbs";
 import { LiveLed } from "./StatusBadge";
 
 /** The same icons as the nav items, so the current crumb reads as "you are here". */
-const PAGE_ICONS: Record<string, LucideIcon> = { "": Gauge, monitors: LayoutList, pipeline: Workflow };
+const PAGE_ICONS: Record<string, LucideIcon> = { "": Gauge, monitors: LayoutList, pipeline: Workflow, learn: BookOpen };
 
 /**
  * A slim translucent bar over the scrolling page: the path on the left, and a clock that says the console is

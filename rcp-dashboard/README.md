@@ -1,6 +1,6 @@
 # RCP dashboard
 
-Thin React/TypeScript operator and public-status UI for the Reliability Control Plane. It visualizes backend-owned facts and decisions; it does not reproduce incident logic in the browser.
+Thin React/TypeScript operator and public-status UI for the Reliability Control Plane. Operational views visualize backend-owned facts and decisions. The visual guide uses separate illustrative examples to explain those rules.
 
 ## Local development
 
@@ -34,3 +34,9 @@ The dashboard currently supports:
 Incident state transitions, day statuses, availability calculations, and report generation remain backend responsibilities. The browser obtains the report with its existing bearer token and downloads the returned HTML attachment; it does not calculate report values. The monitor list refreshes every 30 seconds, a monitor page every 10, and the Pipeline page every 5; a failed refresh keeps the last data but marks it as stale.
 
 The visual system is a dark, Vercel-inspired console (Geist Sans/Mono, neutral surfaces, colour reserved for evidence) with an OpenStatus-style monitor table and an OpenAI-status-style public page. OpenStatus is AGPL-3.0, so only its layout ideas are borrowed; no code is copied.
+
+## Visual guide
+
+The sidebar’s **How RCP works** entry opens `/learn`, with the four reviewed service and behavior diagrams. `/learn/machine` opens the interactive isometric machine: step through a check, change the example scenario, or play outage and recovery. Both are available in the command palette.
+
+These figures work without the backend. Only the selected artifact loads, and switching views removes the previous frame and its animation. The shell may show unavailable telemetry while the backend is stopped. See [the artifact notes](public/visual-guide/README.md) for hosting, isolation and font/icon attribution.

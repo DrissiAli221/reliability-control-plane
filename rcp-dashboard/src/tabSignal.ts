@@ -29,6 +29,7 @@ function pageName(pathname: string): string {
   if (pathname.startsWith("/monitors/")) return "Monitor";
   if (pathname.startsWith("/monitors")) return "Monitors";
   if (pathname.startsWith("/pipeline")) return "Pipeline";
+  if (pathname.startsWith("/learn")) return "How RCP works";
   return pathname === "/" ? "Overview" : "Not found";
 }
 

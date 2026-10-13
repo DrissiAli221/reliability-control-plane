@@ -218,6 +218,9 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
             </a>
           )}
           <p className="nav-label">Reference</p>
+          <NavLink to="/learn" className={() => `nav-item${pathname.startsWith("/learn") ? " active" : ""}`}>
+            <BookOpen size={16} aria-hidden="true" /> <span className="nav-text">How RCP works</span>
+          </NavLink>
           <a className="nav-item nav-optional" href="https://github.com/DrissiAli221/reliability-control-plane" target="_blank" rel="noreferrer">
             <BookOpen size={16} aria-hidden="true" /> <span className="nav-text">Source</span> <ExternalLink size={12} className="nav-external" aria-hidden="true" />
           </a>
