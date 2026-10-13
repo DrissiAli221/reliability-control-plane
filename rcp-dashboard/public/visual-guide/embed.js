@@ -1,6 +1,7 @@
 // Only report content size; figures never receive session data or make API calls.
 (() => {
   const main = document.querySelector('main');
+  if (parent !== window) document.body.dataset.embedded = 'true';
   let scheduled = false;
   function measure() {
     if (scheduled) return;
