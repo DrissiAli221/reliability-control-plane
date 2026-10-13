@@ -16,16 +16,17 @@ import java.util.UUID;
 
 @Service
 public class ReliabilityReportService {
-    private static final int MAX_INCIDENT_EVENTS = 100;
     private static final int MINIMUM_LATENCY_SAMPLES = 20;
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
-    private static final List<String> LIMITATIONS = List.of(
-            "Coverage includes due schedule slots without an execution and excludes recorded paused periods; maintenance and late-correction policies remain incomplete.",
-            "Maintenance windows and regional SLIs are not implemented.",
-            "Incident timeline contains transitions in the requested window; an incident opened earlier may still be active.",
-            "Latency percentiles use HTTP-response samples only and require at least 20 samples.",
-            "Local region labels do not prove geographic probe execution or AWS production operation."
+    /** The one place the report's stated limits live; `limitations` in the JSON is derived from these texts. */
+    static final List<ReportCaveat> CAVEATS = List.of(
+            new ReportCaveat("Coverage", "Counts checks that never ran and skips paused periods; maintenance and late corrections are not modelled yet."),
+            new ReportCaveat("Scope", "One availability number for the whole monitor; there are no per-region SLIs yet."),
+            new ReportCaveat("Incidents", "Shows transitions inside this window only; an incident opened earlier may still be active."),
+            new ReportCaveat("Latency", "HTTP responses only, at least 20 of them; timeouts and refused connections are not in the percentiles."),
+            new ReportCaveat("Regions", "Labels come from the probe configuration; locally they do not prove where a check ran.")
     );
+    private static final List<String> LIMITATIONS = CAVEATS.stream().map(ReportCaveat::text).toList();
 
     private final AvailabilityService availabilityService;
     private final ReliabilityReportRepository repository;
@@ -57,13 +58,10 @@ public class ReliabilityReportService {
             throw new dev.ali.rcp.availability.AvailabilityMonitorNotFoundException();
         }
 
-        List<ReportIncidentEvent> events = repository.incidentTimeline(
-                monitorId, from, to, MAX_INCIDENT_EVENTS + 1
-        );
-        boolean truncated = events.size() > MAX_INCIDENT_EVENTS;
-        List<ReportIncidentEvent> timeline = truncated
-                ? List.copyOf(events.subList(0, MAX_INCIDENT_EVENTS))
-                : List.copyOf(events);
+        // Exports contain every retained transition in the requested period. HTML chooses its ten rows later;
+        // truncating here would also lose the latest incidents on the page and in JSON/CSV.
+        List<ReportIncidentEvent> timeline = List.copyOf(repository.incidentTimeline(monitorId, from, to));
+        boolean truncated = false;
 
         ReliabilityReportRepository.LatencySamples samples = repository.latencySamples(monitorId, from, to);
         ReportLatency latency = new ReportLatency(
@@ -93,7 +91,8 @@ public class ReliabilityReportService {
                 latency,
                 timeline,
                 truncated,
-                LIMITATIONS
+                LIMITATIONS,
+                CAVEATS
         );
     }
 }

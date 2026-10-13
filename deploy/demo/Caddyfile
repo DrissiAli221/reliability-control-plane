@@ -1,0 +1,70 @@
+{
+	email {$ACME_EMAIL}
+	admin off
+}
+
+{$RCP_API_DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+	@drill {
+		method GET HEAD
+		path /drill/status.html
+	}
+	handle @drill {
+		header Cache-Control "no-store"
+		reverse_proxy drill:8080 {
+			header_up -Authorization
+			header_up -Cookie
+			transport http {
+				dial_timeout 2s
+				response_header_timeout 6s
+			}
+		}
+	}
+	# Only a coarse readiness signal is public; upstream bodies and headers stay private.
+	@health {
+		method GET
+		path /healthz
+	}
+	handle @health {
+		header Cache-Control "no-store"
+		header Content-Type "text/plain; charset=utf-8"
+		reverse_proxy control-plane:9091 {
+			rewrite /actuator/health/readiness?
+			header_up -Authorization
+			header_up -Cookie
+			transport http {
+				dial_timeout 2s
+				response_header_timeout 3s
+			}
+			@ready status 200
+			handle_response @ready {
+				respond "UP" 200
+			}
+			handle_response {
+				respond "DOWN" 503
+			}
+		}
+	}
+	# A failed connection to the management listener also produces only the coarse signal.
+	handle_errors {
+		@healthError path /healthz
+		handle @healthError {
+			header Cache-Control "no-store"
+			header Content-Type "text/plain; charset=utf-8"
+			respond "DOWN" 503
+		}
+	}
+	# Detailed health and metrics are available within Docker, not on the public API origin.
+	@management path /actuator /actuator/*
+	handle @management {
+		respond "Not found" 404
+	}
+	handle {
+		reverse_proxy control-plane:8080
+	}
+}

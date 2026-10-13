@@ -27,9 +27,9 @@ function Toast({ change, dismiss }: { change: IncidentChange; dismiss: (key: str
       </div>
       <div className="toast-actions">
         <Link className="icon-button" to={`/monitors/${change.monitorId}`} aria-label={`Open ${change.monitorName}`} onClick={onDismiss}>
-          <ArrowUpRight size={15} />
+          <ArrowUpRight size={16} />
         </Link>
-        <button type="button" className="icon-button" aria-label="Dismiss" onClick={onDismiss}><X size={15} /></button>
+        <button type="button" className="icon-button" aria-label="Dismiss" onClick={onDismiss}><X size={16} /></button>
       </div>
     </li>
   );

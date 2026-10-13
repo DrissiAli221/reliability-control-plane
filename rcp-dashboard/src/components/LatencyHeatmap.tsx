@@ -20,8 +20,10 @@ function axisLabel(bounds: number[], band: number): string {
   return band === bounds.length ? `${shortBound(bounds[band - 1])}+` : shortBound(bounds[band - 1]);
 }
 
-function clock(value: number): string {
-  return new Date(value).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+function clock(value: number, long = false): string {
+  return new Date(value).toLocaleString("en-GB", long
+    ? { weekday: "short", hour: "2-digit", minute: "2-digit" }
+    : { hour: "2-digit", minute: "2-digit" });
 }
 
 /**
@@ -34,6 +36,8 @@ export function LatencyHeatmap({ heatmap }: { heatmap: Heatmap }) {
   const max = Math.max(1, ...heatmap.regions.flatMap((region) => region.counts.flat()));
   const from = new Date(heatmap.from).getTime();
   const columnMs = heatmap.bucketSeconds * 1000;
+  // A window longer than a day needs the weekday to place a column.
+  const long = new Date(heatmap.to).getTime() - from > 26 * 3600 * 1000;
   const intensity = (value: number) => (value === 0 ? 0 : 0.18 + 0.82 * (Math.log1p(value) / Math.log1p(max)));
 
   if (heatmap.regions.length === 0) return <p className="subtle">No HTTP responses in this window.</p>;
@@ -42,7 +46,7 @@ export function LatencyHeatmap({ heatmap }: { heatmap: Heatmap }) {
     <div className="heatmap">
       <p className="heatmap-readout mono" aria-live="polite">
         {hover
-          ? <>{hover.region} · {clock(from + hover.column * columnMs)}–{clock(from + (hover.column + 1) * columnMs)} · {bandLabel(heatmap.latencyBoundsMs, hover.band)} · <b>{count(hover.samples)}</b> responses</>
+          ? <>{hover.region} · {clock(from + hover.column * columnMs, long)}–{clock(from + (hover.column + 1) * columnMs)} · {bandLabel(heatmap.latencyBoundsMs, hover.band)} · <b>{count(hover.samples)}</b> responses</>
           : "Hover a cell to read it."}
       </p>
       {heatmap.regions.map((region) => (
@@ -79,7 +83,7 @@ export function LatencyHeatmap({ heatmap }: { heatmap: Heatmap }) {
         </div>
       ))}
       <div className="heatmap-time" aria-hidden="true">
-        <span>{clock(from)}</span>
+        <span>{clock(from, long)}</span>
         <span>now</span>
       </div>
     </div>

@@ -12,6 +12,15 @@ const days: DailyEvidence[] = [
 ];
 
 describe("Tracker", () => {
+  it("preserves all 90 UTC days and uses dense spacing without inventing failures before monitoring", () => {
+    const history = Array.from({ length: 90 }, (_, i) => ({ ...days[i < 81 ? 0 : 1], day: new Date(Date.UTC(2026, 6, i + 1)).toISOString().slice(0, 10) }));
+    render(<Tracker days={history} size="compact" label="Ninety UTC days" />);
+    const bars = screen.getByRole("list", { name: "Ninety UTC days" });
+    expect(bars).toHaveAttribute("data-dense", "true");
+    expect(bars.children).toHaveLength(90);
+    expect(Array.from(bars.children).slice(0, 81).every(bar => bar.children.length === 0)).toBe(true);
+  });
+
   it("keeps a single confirmed DOWN visible without painting the whole day red", () => {
     render(<Tracker days={days} label="Checkout API, last 2 days" />);
 

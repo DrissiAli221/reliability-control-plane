@@ -1,3 +1,4 @@
+import { ApiError } from "./apiError";
 import { accessToken, redirectToSignIn, sessionRejected } from "./auth";
 import type {
   AvailabilityReport,
@@ -48,7 +49,7 @@ async function authorizedResponse(path: string, init: RequestInit = {}, retried 
     const problem = (await response.json().catch(() => null)) as
       | { detail?: string; title?: string }
       | null;
-    throw new Error(problem?.detail ?? problem?.title ?? `Request failed (${response.status})`);
+    throw new ApiError(problem?.detail ?? problem?.title ?? `Request failed (${response.status})`, response.status, problem?.title);
   }
   return response;
 }
@@ -82,11 +83,13 @@ export function latencyHeatmap(monitorId: string, hours = 24): Promise<LatencyHe
   return request(`/api/monitors/${encodeURIComponent(monitorId)}/latency-heatmap?hours=${hours}`);
 }
 
+/** The server resolves a preset window (1, 7, 30 or 90 days) to the instants itself, so its clock decides what "now" is. */
+function reportWindow(days: number): URLSearchParams {
+  return new URLSearchParams({ days: String(days) });
+}
+
 export function reliabilityReport(monitorId: string, days = 7): Promise<ReliabilityReport> {
-  const to = new Date();
-  const from = new Date(to.getTime() - days * 86_400_000);
-  const query = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
-  return request(`/api/monitors/${encodeURIComponent(monitorId)}/reliability-report?${query}`);
+  return request(`/api/monitors/${encodeURIComponent(monitorId)}/reliability-report?${reportWindow(days)}`);
 }
 
 export function executionTrace(monitorId: string, executionId: string): Promise<ExecutionTrace> {
@@ -130,22 +133,21 @@ export async function setMonitorEnabled(monitorId: string, enabled: boolean): Pr
 }
 
 export function availability(monitorId: string, days = 7): Promise<AvailabilityReport> {
-  const to = new Date();
-  const from = new Date(to.getTime() - days * 86_400_000);
-  const query = new URLSearchParams({
-    from: from.toISOString(),
-    to: to.toISOString(),
-  });
-  return request(`/api/monitors/${encodeURIComponent(monitorId)}/availability?${query}`);
+  return request(`/api/monitors/${encodeURIComponent(monitorId)}/availability?${reportWindow(days)}`);
 }
 
 export async function reliabilityReportHtml(monitorId: string, days = 7): Promise<Blob> {
-  const to = new Date();
-  const from = new Date(to.getTime() - days * 86_400_000);
-  const query = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
   const response = await authorizedResponse(
-    `/api/monitors/${encodeURIComponent(monitorId)}/reliability-report/html?${query}`,
+    `/api/monitors/${encodeURIComponent(monitorId)}/reliability-report/html?${reportWindow(days)}`,
     { headers: { Accept: "text/html" } },
+  );
+  return response.blob();
+}
+
+export async function reliabilityReportCsv(monitorId: string, days = 7): Promise<Blob> {
+  const response = await authorizedResponse(
+    `/api/monitors/${encodeURIComponent(monitorId)}/reliability-report/csv?${reportWindow(days)}`,
+    { headers: { Accept: "text/csv" } },
   );
   return response.blob();
 }
@@ -158,4 +160,12 @@ export async function publicStatus(slug: string, signal?: AbortSignal): Promise<
   });
   if (!response.ok) throw new Error(response.status === 404 ? "Status page not found" : "Status page unavailable");
   return response.json() as Promise<PublicStatusPage>;
+}
+
+export async function deleteMonitor(monitorId: string): Promise<void> {
+  await authorizedResponse(`/api/monitors/${encodeURIComponent(monitorId)}`, { method: "DELETE" });
+}
+
+export async function setAcceptedHttpStatuses(monitorId: string, acceptedHttpStatuses: number[] | null): Promise<void> {
+  await request(`/api/monitors/${encodeURIComponent(monitorId)}`, { method: "PATCH", body: JSON.stringify({ acceptedHttpStatuses }) });
 }

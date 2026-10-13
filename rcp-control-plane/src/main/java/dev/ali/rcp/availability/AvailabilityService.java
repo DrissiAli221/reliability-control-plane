@@ -79,7 +79,8 @@ public class AvailabilityService {
                 counts.pending(),
                 Math.max(0, expected - counts.totalCreated()),
                 expected,
-                DENOMINATOR_POLICY
+                DENOMINATOR_POLICY,
+                schedules.get(0).firstCheckAt()
         );
     }
 

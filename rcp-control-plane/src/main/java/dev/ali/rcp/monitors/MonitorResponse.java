@@ -11,7 +11,8 @@ public record MonitorResponse(
         int timeoutMs,
         boolean enabled,
         Instant nextCheckAt,
-        Instant createdAt
+        Instant createdAt,
+        java.util.List<Integer> acceptedHttpStatuses
 ) {
 
     static MonitorResponse from(Monitor monitor) {
@@ -23,7 +24,8 @@ public record MonitorResponse(
                 monitor.getTimeoutMs(),
                 monitor.isEnabled(),
                 monitor.getNextCheckAt(),
-                monitor.getCreatedAt()
+                monitor.getCreatedAt(),
+                monitor.getAcceptedHttpStatuses()
         );
     }
 }

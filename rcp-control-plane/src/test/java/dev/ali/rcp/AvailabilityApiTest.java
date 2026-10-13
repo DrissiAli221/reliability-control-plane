@@ -36,6 +36,24 @@ class AvailabilityApiTest {
     private JdbcTemplate jdbcTemplate;
 
     @Test
+    void presetDaysDefaultToSevenAndRejectOtherLengths() throws Exception {
+        Monitor monitor = createMonitor("ali-subject");
+        for (String days : new String[]{"1", "7", "30", "90"}) {
+            mockMvc.perform(get("/api/monitors/{id}/availability", monitor.getId())
+                            .with(jwt().jwt(token -> token.subject("ali-subject"))).queryParam("days", days))
+                    .andExpect(status().isOk());
+        }
+        mockMvc.perform(get("/api/monitors/{id}/availability", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))))
+                .andExpect(status().isOk());
+        for (String days : new String[]{"0", "14", "91"}) {
+            mockMvc.perform(get("/api/monitors/{id}/availability", monitor.getId())
+                            .with(jwt().jwt(token -> token.subject("ali-subject"))).queryParam("days", days))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test
     void ownerReceivesAvailabilityAndCoverageWithAnExplicitDenominator() throws Exception {
         Monitor monitor = createMonitor("ali-subject");
         insertVerdict(monitor, 0, ExecutionVerdict.UP);

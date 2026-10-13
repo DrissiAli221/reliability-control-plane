@@ -3,34 +3,22 @@ import { useEffect, useLayoutEffect, useState, type CSSProperties } from "react"
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { listMonitors } from "../api";
+import { isDrillMonitor } from "../drill";
 import { TOUR, tour, useTourStep } from "../tour";
+import { cardWidth, CARD_HEIGHT, EDGE, GAP, PAD, placeCard, type Box, type Side } from "../tourLayout";
 
-const CARD_WIDTH = 340;
-const GAP = 14;
+type Frame = Box | null;
 
-type Frame = { top: number; left: number; width: number; height: number } | null;
-type Side = "below" | "above" | "left" | "inside" | "centre";
-
-const PAD = 6;
-const CARD_HEIGHT = 240;
-
-function chooseSide(frame: NonNullable<Frame>): Side {
-  if (frame.top + frame.height + PAD + GAP + CARD_HEIGHT < window.innerHeight) return "below";
+function chooseSide(frame: Box): Side {
+  const { innerWidth, innerHeight } = window;
+  if (frame.top + frame.height + PAD + GAP + CARD_HEIGHT < innerHeight) return "below";
   if (frame.top - PAD - GAP > CARD_HEIGHT) return "above";
-  if (frame.left - PAD - GAP - CARD_WIDTH >= 16) return "left";
+  if (frame.left - PAD - GAP - cardWidth({ width: innerWidth, height: innerHeight }) >= EDGE) return "left";
   return "inside";
 }
 
-function cardPosition(side: Side, frame: Frame): CSSProperties {
-  if (side === "centre" || !frame) return { left: "50%", top: "50%", transform: "translate(-50%, -50%)" };
-  const left = Math.min(Math.max(frame.left, 16), window.innerWidth - CARD_WIDTH - 16);
-  switch (side) {
-    case "below": return { left, top: frame.top + frame.height + PAD + GAP };
-    case "above": return { left, top: frame.top - PAD - GAP, transform: "translateY(-100%)" };
-    // No room above or below: sit beside the target rather than covering it.
-    case "left": return { left: frame.left - PAD - GAP - CARD_WIDTH, top: Math.min(Math.max(16, frame.top), window.innerHeight - CARD_HEIGHT - 16) };
-    default: return { left: Math.min(frame.left + frame.width - CARD_WIDTH, window.innerWidth - CARD_WIDTH - 16), top: Math.max(16, frame.top + 16) };
-  }
+function cardStyle(side: Side, frame: Frame): CSSProperties {
+  return placeCard(side, frame, { width: window.innerWidth, height: window.innerHeight });
 }
 
 function onRoute(pathname: string, route: string): boolean {
@@ -51,19 +39,22 @@ export function Tour() {
 
   // Take the operator to the step's page first.
   useEffect(() => {
-    if (!current || onRoute(pathname, current.route)) return;
+    if (!current) return;
     if (current.route !== "monitor") {
-      navigate(current.route);
+      if (!onRoute(pathname, current.route)) navigate(current.route);
       return;
     }
+    // Any monitor page serves the ordinary monitor steps; the drill step needs the drill monitor's own page.
+    if (onRoute(pathname, current.route) && !current.monitor) return;
     let active = true;
     listMonitors()
       .then((monitors) => {
         if (!active) return;
-        if (monitors[0]) navigate(`/monitors/${monitors[0].id}`);
-        else tour.go(index! + 1);
+        const pick = current.monitor === "drill" ? monitors.find((item) => item.enabled && isDrillMonitor(item.targetUrl)) : monitors[0];
+        if (!pick) tour.skip(index!);
+        else if (pathname !== `/monitors/${pick.id}`) navigate(`/monitors/${pick.id}`);
       })
-      .catch(() => { if (active) tour.go(index! + 1); });
+      .catch(() => { if (active) tour.skip(index!); });
     return () => { active = false; };
   }, [current, pathname, navigate, index]);
 
@@ -99,16 +90,18 @@ export function Tour() {
           decided = true;
           setSide(chooseSide(next));
         }
-      } else if (!decided && performance.now() - started > 1500) {
-        // The target never appeared (for example the fault drill outside the local profile): centre the card.
+      } else if (!decided && performance.now() - started > (current.monitor ? 4000 : 1500)) { // the drill step may first have to find and open its monitor
         decided = true;
-        setSide("centre");
+        // The target never appeared. A step that only makes sense with it (the fault switch for a read-only operator,
+        // the drill on a page without one) is skipped; a core step is centred so the story keeps going.
+        if (current.optional && index != null) tour.skip(index);
+        else setSide("centre");
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [current, pathname]);
+  }, [current, pathname, index]);
 
   useEffect(() => {
     if (index == null) return;
@@ -131,12 +124,12 @@ export function Tour() {
   return createPortal(
     <div className="tour" role="dialog" aria-modal="false" aria-labelledby="tour-title">
       {spotlight ? <div className="tour-spotlight" style={spotlight} /> : <div className="tour-dim" />}
-      {side && <section className="tour-card" style={{ ...cardPosition(side, frame), width: CARD_WIDTH }} key={index}>
+      {side && <section className="tour-card" style={cardStyle(side, frame)} key={index}>
         <header>
           <span className="tour-count" aria-label={`Step ${index + 1} of ${TOUR.length}`}>
             {String(index + 1).padStart(2, "0")}<small>/{TOUR.length}</small>
           </span>
-          <button type="button" className="icon-button" onClick={tour.stop} aria-label="End tour"><X size={15} /></button>
+          <button type="button" className="icon-button" onClick={tour.stop} aria-label="End tour"><X size={16} /></button>
         </header>
         <h2 id="tour-title">{current.title}</h2>
         <p>{current.body}</p>

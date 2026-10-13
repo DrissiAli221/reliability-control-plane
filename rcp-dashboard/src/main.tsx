@@ -5,6 +5,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { App } from "./App";
+import "./dither-kit.css";
 import "./styles.css";
 import { applyTheme } from "./theme";
 

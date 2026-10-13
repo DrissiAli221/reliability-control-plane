@@ -1,0 +1,4 @@
+stack_url              = "https://glowingriver1871.grafana.net"
+sm_api_url             = "https://synthetic-monitoring-api-REPLACE.grafana.net"
+metrics_datasource_uid = "REPLACE_WITH_EXISTING_PROMETHEUS_UID"
+monitoring_enabled     = false

@@ -28,6 +28,7 @@ public class ExecutionFinalizationRepository {
                        result_deadline_at <= CURRENT_TIMESTAMP AS deadline_elapsed
                 FROM probe_executions executions
                 WHERE status = 'PENDING'
+                  AND EXISTS (SELECT 1 FROM monitors m WHERE m.monitor_id = executions.monitor_id AND m.deleted_at IS NULL)
                   AND (
                       result_deadline_at <= CURRENT_TIMESTAMP
                       OR (
@@ -55,15 +56,17 @@ public class ExecutionFinalizationRepository {
     public List<RegionalProbeFact> findFacts(UUID executionId) {
         return jdbcTemplate.query(
                 """
-                SELECT probe_region, outcome, http_status
-                FROM probe_results
-                WHERE execution_id = ?
+                SELECT probe_region, outcome, http_status, results.bot_protection, executions.accepted_http_statuses_snapshot
+                FROM probe_results results JOIN probe_executions executions ON executions.execution_id = results.execution_id
+                WHERE results.execution_id = ?
                 ORDER BY probe_region
                 """,
                 (resultSet, rowNumber) -> new RegionalProbeFact(
                         resultSet.getString("probe_region"),
                         ProbeOutcome.valueOf(resultSet.getString("outcome")),
-                        resultSet.getObject("http_status", Integer.class)
+                        resultSet.getObject("http_status", Integer.class),
+                        dev.ali.rcp.monitors.AcceptedHttpStatuses.read(resultSet, "accepted_http_statuses_snapshot"),
+                        resultSet.getString("bot_protection")
                 ),
                 executionId
         );

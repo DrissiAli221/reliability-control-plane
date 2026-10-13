@@ -31,7 +31,7 @@ public class PipelineRepository {
 
     public boolean ownsMonitor(String ownerSubject, UUID monitorId) {
         Boolean owned = jdbcTemplate.queryForObject(
-                "SELECT EXISTS (SELECT 1 FROM monitors WHERE monitor_id = ? AND owner_subject = ?)",
+                "SELECT EXISTS (SELECT 1 FROM monitors WHERE monitor_id = ? AND owner_subject = ? AND deleted_at IS NULL)",
                 Boolean.class, monitorId, ownerSubject
         );
         return Boolean.TRUE.equals(owned);
@@ -43,7 +43,7 @@ public class PipelineRepository {
                 SELECT jobs.job_id, jobs.probe_region, jobs.created_at,
                        outbox.published_at, outbox.attempt_count, outbox.failed_at, outbox.last_error,
                        results.started_at, results.completed_at, results.received_at, results.outcome,
-                       results.http_status, results.latency_ms, results.response_bytes, results.error_type
+                       results.http_status, results.latency_ms, results.response_bytes, results.error_type, results.bot_protection
                 FROM probe_jobs jobs
                 LEFT JOIN outbox_events outbox
                   ON outbox.event_type = 'PROBE_JOB_REQUESTED'
@@ -67,7 +67,7 @@ public class PipelineRepository {
                         resultSet.getObject("http_status", Integer.class),
                         resultSet.getObject("latency_ms", Long.class),
                         resultSet.getObject("response_bytes", Long.class),
-                        resultSet.getString("error_type")
+                        resultSet.getString("error_type"), resultSet.getString("bot_protection")
                 ),
                 executionId
         );
@@ -85,7 +85,7 @@ public class PipelineRepository {
         return jdbcTemplate.query(
                 """
                 SELECT execution_id, monitor_id, scheduled_at, created_at, result_deadline_at,
-                       status, verdict, finalized_at, expected_region_count
+                       status, verdict, finalized_at, expected_region_count, accepted_http_statuses_snapshot
                 FROM probe_executions
                 WHERE execution_id = ? AND monitor_id = ?
                 """,
@@ -100,7 +100,8 @@ public class PipelineRepository {
                         instant(resultSet, "finalized_at"),
                         resultSet.getInt("expected_region_count"),
                         jobs,
-                        evaluation.stream().findFirst().orElse(null)
+                        evaluation.stream().findFirst().orElse(null),
+                        dev.ali.rcp.monitors.AcceptedHttpStatuses.read(resultSet,"accepted_http_statuses_snapshot")
                 ),
                 executionId, monitorId
         ).stream().findFirst();
@@ -165,7 +166,7 @@ public class PipelineRepository {
                 JOIN probe_jobs jobs ON jobs.execution_id = executions.execution_id
                 JOIN outbox_events outbox
                   ON outbox.event_type = 'PROBE_JOB_REQUESTED' AND outbox.aggregate_id = jobs.job_id
-                WHERE monitors.owner_subject = ?
+                WHERE monitors.owner_subject = ? AND monitors.deleted_at IS NULL
                   AND executions.scheduled_at >= ?
                   AND outbox.published_at >= ?
                 GROUP BY outbox.destination_region
@@ -181,10 +182,10 @@ public class PipelineRepository {
                 SELECT results.probe_region AS region,
                        COUNT(*) AS received,
                        percentile_disc(0.5) WITHIN GROUP (ORDER BY results.latency_ms)
-                           FILTER (WHERE results.outcome = 'HTTP_RESPONSE') AS p50_ms
+                           FILTER (WHERE results.outcome = 'HTTP_RESPONSE' AND results.bot_protection IS NULL) AS p50_ms
                 FROM monitors
                 JOIN probe_results results ON results.monitor_id = monitors.monitor_id
-                WHERE monitors.owner_subject = ?
+                WHERE monitors.owner_subject = ? AND monitors.deleted_at IS NULL
                   AND results.scheduled_at >= ?
                   AND results.received_at >= ?
                 GROUP BY results.probe_region
@@ -215,7 +216,7 @@ public class PipelineRepository {
                     LIMIT 15
                 ) latest
                 LEFT JOIN incident_evaluations evaluations ON evaluations.execution_id = latest.execution_id
-                WHERE monitors.owner_subject = ?
+                WHERE monitors.owner_subject = ? AND monitors.deleted_at IS NULL
                 ORDER BY latest.scheduled_at DESC, latest.execution_id
                 LIMIT 15
                 """,
@@ -234,7 +235,7 @@ public class PipelineRepository {
         return jdbcTemplate.queryForObject(
                 """
                 WITH owned AS (
-                    SELECT monitor_id, enabled, next_check_at FROM monitors WHERE owner_subject = ?
+                    SELECT monitor_id, enabled, next_check_at FROM monitors WHERE owner_subject = ? AND deleted_at IS NULL
                 ),
                 owned_outbox AS (
                     SELECT outbox.published_at, outbox.failed_at, outbox.created_at
@@ -296,7 +297,7 @@ public class PipelineRepository {
                            executions.finalized_at, executions.verdict
                     FROM monitors
                     JOIN probe_executions executions ON executions.monitor_id = monitors.monitor_id
-                    WHERE monitors.owner_subject = ? AND executions.scheduled_at >= ?
+                    WHERE monitors.owner_subject = ? AND monitors.deleted_at IS NULL AND executions.scheduled_at >= ?
                 )
                 SELECT * FROM (
                     SELECT outbox.published_at AS at, 'OutboxPublished' AS type, recent.monitor_id, recent.name,
@@ -352,7 +353,7 @@ public class PipelineRepository {
                        COUNT(*) FILTER (WHERE executions.verdict = 'NO_DATA') AS no_data
                 FROM monitors
                 JOIN probe_executions executions ON executions.monitor_id = monitors.monitor_id
-                WHERE monitors.owner_subject = ?
+                WHERE monitors.owner_subject = ? AND monitors.deleted_at IS NULL
                   AND executions.status = 'FINALIZED'
                   AND executions.scheduled_at >= ? AND executions.scheduled_at < ?
                 GROUP BY 1
@@ -377,7 +378,7 @@ public class PipelineRepository {
                 SELECT incidents.incident_id, incidents.monitor_id, monitors.name, incidents.opened_at, incidents.resolved_at
                 FROM monitors
                 JOIN incidents ON incidents.monitor_id = monitors.monitor_id
-                WHERE monitors.owner_subject = ?
+                WHERE monitors.owner_subject = ? AND monitors.deleted_at IS NULL
                   AND (incidents.status = 'OPEN' OR incidents.resolved_at >= ?)
                 ORDER BY incidents.opened_at DESC
                 LIMIT ?

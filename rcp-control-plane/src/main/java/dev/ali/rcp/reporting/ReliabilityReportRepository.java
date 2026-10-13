@@ -20,7 +20,7 @@ public class ReliabilityReportRepository {
 
     public MonitorLabel monitorLabel(UUID monitorId, String ownerSubject) {
         return jdbcTemplate.queryForObject(
-                "SELECT name, target_url FROM monitors WHERE monitor_id = ? AND owner_subject = ?",
+                "SELECT name, target_url FROM monitors WHERE monitor_id = ? AND owner_subject = ? AND deleted_at IS NULL",
                 (resultSet, rowNumber) -> new MonitorLabel(
                         resultSet.getString("name"),
                         resultSet.getString("target_url")
@@ -60,7 +60,7 @@ public class ReliabilityReportRepository {
         return watermark == null ? null : watermark.toInstant();
     }
 
-    public List<ReportIncidentEvent> incidentTimeline(UUID monitorId, Instant from, Instant to, int limit) {
+    public List<ReportIncidentEvent> incidentTimeline(UUID monitorId, Instant from, Instant to) {
         return jdbcTemplate.query(
                 """
                 SELECT events.incident_id, events.event_type, events.occurred_at
@@ -69,7 +69,6 @@ public class ReliabilityReportRepository {
                 WHERE incidents.monitor_id = ?
                   AND events.occurred_at >= ? AND events.occurred_at < ?
                 ORDER BY events.occurred_at, events.event_id
-                LIMIT ?
                 """,
                 (resultSet, rowNumber) -> new ReportIncidentEvent(
                         resultSet.getObject("incident_id", UUID.class),
@@ -78,8 +77,7 @@ public class ReliabilityReportRepository {
                 ),
                 monitorId,
                 timestamp(from),
-                timestamp(to),
-                limit
+                timestamp(to)
         );
     }
 
@@ -93,6 +91,7 @@ public class ReliabilityReportRepository {
                 WHERE monitor_id = ?
                   AND scheduled_at >= ? AND scheduled_at < ?
                   AND outcome = 'HTTP_RESPONSE'
+                  AND bot_protection IS NULL
                 """,
                 (resultSet, rowNumber) -> new LatencySamples(
                         resultSet.getLong("sample_count"),

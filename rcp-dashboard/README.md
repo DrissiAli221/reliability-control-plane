@@ -15,7 +15,7 @@ Vite proxies `/api`, `/local`, and `/status` to `http://localhost:8080`. Local m
 
 ## AWS authentication boundary
 
-Set `VITE_AUTH_MODE=cognito`, `VITE_COGNITO_AUTHORITY`, and `VITE_COGNITO_CLIENT_ID` at build time. `oidc-client-ts` performs authorization-code flow with PKCE and keeps the token in session storage. The current Terraform model serves the SPA from CloudFront and uses an explicit CloudFront origin in the backend's CORS allowlist; it does not yet proxy API paths through CloudFront. A future same-origin proxy would be a separate reviewed change.
+Set `VITE_AUTH_MODE=cognito`, `VITE_COGNITO_AUTHORITY`, and `VITE_COGNITO_CLIENT_ID` at build time. The sign-in page signs in with email and password over SRP (`amazon-cognito-identity-js`) and stores the tokens through `oidc-client-ts`, which also performs the authorization-code flow with PKCE for Google and GitHub (`VITE_SOCIAL_PROVIDERS=Google,GitHub`, only for providers configured in the pool) and keeps the token in session storage. The current Terraform model serves the SPA from CloudFront and uses an explicit CloudFront origin in the backend's CORS allowlist; it does not yet proxy API paths through CloudFront. A future same-origin proxy would be a separate reviewed change.
 
 Production builds default to Cognito mode and fail closed when its configuration is absent. Local-token mode must be selected explicitly in a production build; it cannot authenticate against an AWS-profile backend because that backend does not expose `/local/token`.
 

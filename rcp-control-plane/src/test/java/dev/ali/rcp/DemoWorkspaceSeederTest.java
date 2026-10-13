@@ -2,8 +2,10 @@ package dev.ali.rcp;
 
 import dev.ali.rcp.monitors.MonitorQueryService;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -20,9 +22,30 @@ class DemoWorkspaceSeederTest {
 
     @Autowired MonitorQueryService monitors;
     @Autowired JdbcTemplate jdbc;
+    @Autowired ApplicationRunner demoWorkspaceSeeder;
+
+    // The seeder already ran at startup; running it again is a no-op unless the previous test emptied the account.
+    @BeforeEach
+    void seed() throws Exception {
+        demoWorkspaceSeeder.run(null);
+    }
 
     @Test
     void anEmptyDemoAccountIsSeededOnStartup() {
+        assertThat(monitors.listForOwner(OWNER))
+                .extracting(monitor -> monitor.name())
+                .containsExactlyInAnyOrder("Cloudflare DNS", "Cloudflare secondary");
+    }
+
+    @Test
+    void aConfiguredMonitorTheDemoLacksIsAddedWithoutDuplicatingTheOthers() throws Exception {
+        jdbc.update("DELETE FROM monitor_schedule_periods WHERE monitor_id IN (SELECT monitor_id FROM monitors WHERE owner_subject = ? AND name = ?)",
+                OWNER, "Cloudflare secondary");
+        jdbc.update("DELETE FROM monitors WHERE owner_subject = ? AND name = ?", OWNER, "Cloudflare secondary");
+
+        demoWorkspaceSeeder.run(null);
+        demoWorkspaceSeeder.run(null);
+
         assertThat(monitors.listForOwner(OWNER))
                 .extracting(monitor -> monitor.name())
                 .containsExactlyInAnyOrder("Cloudflare DNS", "Cloudflare secondary");

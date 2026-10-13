@@ -16,6 +16,7 @@ public record ReliabilityReport(
         ReportLatency latency,
         List<ReportIncidentEvent> incidentTimeline,
         boolean incidentTimelineTruncated,
-        List<String> limitations
+        List<String> limitations,
+        List<ReportCaveat> caveats
 ) {
 }

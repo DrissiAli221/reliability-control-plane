@@ -68,6 +68,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
   /api/monitors/{monitorId}:
+    patch:
+      operationId: setAcceptedHttpStatuses
+      summary: Change the accepted HTTP statuses for future checks only
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [acceptedHttpStatuses]
+              properties:
+                acceptedHttpStatuses:
+                  $ref: '#/components/schemas/AcceptedHttpStatuses'
+      responses:
+        '200':
+          description: Updated monitor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Monitor'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          description: Read-only demo role cannot change statuses
+    delete:
+      summary: Delete an owned monitor
+      description: Soft deletion stops scheduling, frees quota, removes public-page memberships and discards late results. Retained evidence is hidden; this is not a data-erasure endpoint.
+      parameters:
+        - $ref: '#/components/parameters/MonitorId'
+      responses:
+        '204':
+          description: Monitor deleted
+        '404':
+          description: Monitor missing, deleted or owned by someone else
+        '403':
+          description: Read-only demo role cannot delete monitors
     parameters:
       - $ref: '#/components/parameters/MonitorId'
     get:
@@ -273,7 +311,8 @@ paths:
       summary: The caller's session as this deployment sees it
       description: >-
         Whether the caller is in the read-only group (`rcp.identity.read-only-group`, the public demo account),
-        and the monitor limits this deployment enforces, so clients offer only choices that will be accepted.
+        the monitor limits this deployment enforces, so clients offer only choices that will be accepted, and how much of
+        those limits is in use.
         Members of the read-only group receive 403 "Read-only account" on every POST, PUT, PATCH or DELETE under /api.
       responses:
         '200':
@@ -292,6 +331,12 @@ paths:
                       maxTotal: { type: integer, description: 0 means no deployment-wide cap }
                       minIntervalSeconds: { type: integer }
                       maxTimeoutMs: { type: integer }
+                  usage:
+                    type: object
+                    description: Live visitor monitors counted against the limits; deleted and configured demo-owner monitors are excluded
+                    properties:
+                      ownedMonitors: { type: integer, description: Visitor monitors owned by the caller; zero for the configured demo subject }
+                      totalMonitors: { type: integer, description: Visitor monitors across all owners, excluding the configured demo subject; compare with limits.maxTotal }
         '401':
           $ref: '#/components/responses/Unauthorized'
   /api/overview:
@@ -385,6 +430,7 @@ paths:
       - $ref: '#/components/parameters/MonitorId'
       - $ref: '#/components/parameters/From'
       - $ref: '#/components/parameters/To'
+      - $ref: '#/components/parameters/Days'
       - $ref: '#/components/parameters/SloTarget'
     get:
       operationId: getAvailability
@@ -407,6 +453,7 @@ paths:
       - $ref: '#/components/parameters/MonitorId'
       - $ref: '#/components/parameters/From'
       - $ref: '#/components/parameters/To'
+      - $ref: '#/components/parameters/Days'
       - $ref: '#/components/parameters/SloTarget'
     get:
       operationId: getReliabilityReport
@@ -429,6 +476,7 @@ paths:
       - $ref: '#/components/parameters/MonitorId'
       - $ref: '#/components/parameters/From'
       - $ref: '#/components/parameters/To'
+      - $ref: '#/components/parameters/Days'
       - $ref: '#/components/parameters/SloTarget'
     get:
       operationId: downloadReliabilityReportHtml
@@ -571,19 +619,30 @@ components:
     From:
       name: from
       in: query
-      required: true
-      description: UTC inclusive start instant
+      required: false
+      description: UTC inclusive start instant; give it together with `to`, and not with `days`
       schema:
         type: string
         format: date-time
     To:
       name: to
       in: query
-      required: true
-      description: UTC exclusive end instant
+      required: false
+      description: UTC exclusive end instant; give it together with `from`, and not with `days`
       schema:
         type: string
         format: date-time
+    Days:
+      name: days
+      in: query
+      required: false
+      description: >-
+        A preset window ending now: 1, 7, 30 or 90 days (checks are kept 90 days). Any other value, or combining it
+        with `from` or `to`, is a 400. With none of `days`, `from` and `to` the window is the last 7 days. Downloads
+        from a preset window are named with it, for example `rcp-reliability-report-30d.html`.
+      schema:
+        type: integer
+        enum: [1, 7, 30, 90]
     SloTarget:
       name: sloTargetPercent
       in: query
@@ -626,10 +685,27 @@ components:
           type: string
         instance:
           type: string
+    BotProtection:
+      type: string
+      nullable: true
+      enum: [CLOUDFLARE_CHALLENGE, null]
+      description: Known cf-mitigated challenge marker, never inferred from a 403 alone. Older probes omit it. A challenged region is not evidence about the target: both regions challenged gives NO_DATA, one challenged with one real answer gives DISAGREEMENT, unless the response status is in the monitor's accepted statuses, which keeps it UP.
+    AcceptedHttpStatuses:
+      type: array
+      nullable: true
+      description: Null or omitted on create means 200–399. An explicit set replaces the default; each execution snapshots its rule. Duplicate entries are normalized and sorted. Null on PATCH restores the default; omitting the PATCH field is invalid.
+      minItems: 1
+      maxItems: 500
+      items:
+        type: integer
+        minimum: 100
+        maximum: 599
     CreateMonitorRequest:
       type: object
       required: [name, targetUrl, checkIntervalSeconds, timeoutMs]
       properties:
+        acceptedHttpStatuses:
+          $ref: '#/components/schemas/AcceptedHttpStatuses'
         name:
           type: string
           minLength: 1
@@ -651,6 +727,8 @@ components:
       type: object
       required: [id, name, targetUrl, checkIntervalSeconds, timeoutMs, enabled, nextCheckAt, createdAt]
       properties:
+        acceptedHttpStatuses:
+          $ref: '#/components/schemas/AcceptedHttpStatuses'
         id:
           type: string
           format: uuid
@@ -698,6 +776,9 @@ components:
           type: string
           format: date-time
           nullable: true
+        latestBlocked:
+          type: boolean
+          description: Latest finalized check is NO_DATA with an unaccepted Cloudflare challenge in every expected region; uses the check's saved status policy.
     Availability:
       type: object
       required: [monitorId, from, to, sloTargetPercent, evidenceCoveragePercent, minimumEvidenceCoveragePercent, upExecutions, downExecutions, disagreementExecutions, noDataExecutions, conclusiveExecutions, totalFinalizedExecutions, pendingExecutions, missingExecutions, expectedOpportunities, denominatorPolicy]
@@ -753,6 +834,12 @@ components:
           format: int64
         denominatorPolicy:
           type: string
+        monitoringSince:
+          type: string
+          format: date-time
+          description: >-
+            When the monitor was first scheduled. Expected checks are counted only from then, so a period that starts
+            earlier (a 90-day period for a 9-day-old monitor) is not diluted; clients should say where the data starts.
     ReliabilityReport:
       type: object
       required: [schemaVersion, generatedAt, monitorName, targetUrl, availability, errorBudget, latency, incidentTimeline, incidentTimelineTruncated, limitations]
@@ -819,6 +906,18 @@ components:
           type: array
           items:
             type: string
+        caveats:
+          type: array
+          description: The same limits as `limitations`, grouped by topic.
+          items:
+            type: object
+            required: [topic, text]
+            properties:
+              topic:
+                type: string
+                example: Coverage
+              text:
+                type: string
     CreateStatusPageRequest:
       type: object
       required: [name, slug, monitorIds]
@@ -948,6 +1047,8 @@ components:
                 nullable: true
               lastOutcome:
                 type: string
+              lastAcceptedHttpStatuses:
+                $ref: '#/components/schemas/AcceptedHttpStatuses'
               lastHttpStatus:
                 type: integer
                 nullable: true
@@ -962,6 +1063,8 @@ components:
           items:
             type: object
             properties:
+              acceptedHttpStatuses:
+                $ref: '#/components/schemas/AcceptedHttpStatuses'
               executionId:
                 type: string
                 format: uuid
@@ -979,6 +1082,8 @@ components:
                       type: string
                     outcome:
                       type: string
+                    botProtection:
+                      $ref: '#/components/schemas/BotProtection'
                     httpStatus:
                       type: integer
                       nullable: true
@@ -1063,6 +1168,8 @@ components:
     ExecutionTrace:
       type: object
       properties:
+        acceptedHttpStatuses:
+          $ref: '#/components/schemas/AcceptedHttpStatuses'
         executionId:
           type: string
           format: uuid
@@ -1141,6 +1248,8 @@ components:
               responseBytes:
                 type: integer
                 nullable: true
+              botProtection:
+                $ref: '#/components/schemas/BotProtection'
               errorType:
                 type: string
                 nullable: true

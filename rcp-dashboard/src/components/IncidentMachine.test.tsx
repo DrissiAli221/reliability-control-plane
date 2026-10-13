@@ -30,9 +30,12 @@ describe("IncidentMachine", () => {
     render(<IncidentMachine state={{ ...base, consecutiveDown: 1 }} now={Date.parse("2026-09-29T12:01:00Z")} />);
 
     expect(screen.getByText("1 of 2 DOWN")).toBeInTheDocument();
-    expect(screen.getByText("2nd DOWN")).toBeInTheDocument();
-    expect(screen.getByText("2nd UP · resolved")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Incident state machine" })).toHaveAccessibleDescription("Current state: Suspect, 1 of 2 DOWN.");
+    expect(screen.getByText("on 2nd DOWN")).toBeInTheDocument();
+    expect(screen.getByText("on 2nd UP · resolved")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Incident state machine" })).toHaveAccessibleDescription("Current state: Suspect, 1 of 2 DOWN.");
+    expect(screen.getByText("Suspect").closest("li")).toHaveAttribute("aria-current", "true");
+    // Only the moves leaving the current state are highlighted.
+    expect(screen.getByText("on UP", { selector: ".machine-moves li.out .on" })).toBeInTheDocument();
   });
 
   it("marks evaluations that opened or resolved an incident on the tape", () => {

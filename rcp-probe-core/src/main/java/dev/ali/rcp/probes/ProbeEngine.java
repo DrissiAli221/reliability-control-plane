@@ -14,6 +14,8 @@ import java.util.Objects;
 import java.util.function.LongSupplier;
 
 public final class ProbeEngine {
+    // Bounds how much of a body a probe downloads. A larger body still counts as a response: its status code is
+    // the evidence, so the probe stops reading at the cap instead of discarding the answer.
     static final int MAXIMUM_BODY_BYTES = 65_536;
 
     private final ProbeTargetPolicy targetPolicy;
@@ -113,7 +115,7 @@ public final class ProbeEngine {
         return new ProbeResult(
                 job.jobId(), job.executionId(), job.monitorId(), job.probeRegion(), job.scheduledAt(),
                 startedAt, completedAt, ProbeOutcome.HTTP_RESPONSE, response.statusCode(), latencyMillis,
-                response.responseBytes(), null, job.monitorBehaviorVersion()
+                response.responseBytes(), null, job.monitorBehaviorVersion(), response.botProtection()
         );
     }
 

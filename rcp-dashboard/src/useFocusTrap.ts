@@ -2,6 +2,17 @@ import { useEffect, useRef } from "react";
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+/** The opener can vanish while a modal is open (a navigation, a removed row); land on the search trigger or the page instead of <body>. */
+function focusFallback() {
+  const trigger = document.querySelector<HTMLElement>("[data-tour='palette']");
+  trigger?.focus();
+  if (trigger && document.activeElement === trigger) return;
+  const main = document.querySelector<HTMLElement>("main, .main");
+  if (!main) return;
+  if (!main.hasAttribute("tabindex")) main.setAttribute("tabindex", "-1");
+  main.focus();
+}
+
 /**
  * Keeps Tab and Shift+Tab inside a modal while it is open, and returns focus to whatever opened it when it closes,
  * so keyboard users neither wander behind the backdrop nor lose their place.
@@ -34,7 +45,8 @@ export function useFocusTrap<T extends HTMLElement>() {
     container.addEventListener("keydown", onKey);
     return () => {
       container.removeEventListener("keydown", onKey);
-      returnTo?.focus?.();
+      if (returnTo && returnTo !== document.body && returnTo.isConnected) returnTo.focus();
+      else focusFallback();
     };
   }, []);
 

@@ -2,12 +2,13 @@ package dev.ali.rcp.identity;
 
 import dev.ali.rcp.monitors.MonitorLimits;
 import dev.ali.rcp.monitors.MonitorService;
+import dev.ali.rcp.monitors.MonitorUsage;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Who the caller is to this deployment: whether they may change anything, and the limits their monitors must fit. */
+/** Who the caller is to this deployment: whether they may change anything, the limits their monitors must fit, and how much of them is in use. */
 @RestController
 public class SessionController {
     private final ReadOnlyAccess readOnlyAccess;
@@ -20,9 +21,10 @@ public class SessionController {
 
     @GetMapping("/api/me")
     public Session me(@AuthenticationPrincipal Jwt jwt) {
-        return new Session(jwt.getSubject(), readOnlyAccess.isReadOnly(jwt), monitorService.limits());
+        return new Session(jwt.getSubject(), readOnlyAccess.isReadOnly(jwt), monitorService.limits(),
+                monitorService.usage(jwt.getSubject()));
     }
 
-    public record Session(String subject, boolean readOnly, MonitorLimits limits) {
+    public record Session(String subject, boolean readOnly, MonitorLimits limits, MonitorUsage usage) {
     }
 }

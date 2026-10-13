@@ -155,8 +155,8 @@ function Link({ pulseKey, order }: { pulseKey?: string; order: number }) {
   return <Connector build={(width, height) => [{ d: `M0 ${at(height / 2)} H${width}`, flow: true }]} pulseKey={pulseKey} order={order} />;
 }
 
-// Vertical centre of region box `index` among `count` equal boxes separated by the 8px column gap.
-const REGION_GAP = 8;
+// Vertical centre of region box `index` among `count` equal boxes that overlap by their shared 1px hairline.
+const REGION_GAP = -1;
 function branchY(index: number, count: number, height: number): number {
   const box = (height - (count - 1) * REGION_GAP) / count;
   return at(index * (box + REGION_GAP) + box / 2);

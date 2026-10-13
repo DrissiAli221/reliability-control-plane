@@ -13,7 +13,7 @@ describe("LatencyHeatmap", () => {
     render(<LatencyHeatmap heatmap={{
       monitorId: "monitor-1", from: "2026-09-29T00:00:00Z", to: "2026-09-30T00:00:00Z", bucketSeconds: 1800,
       latencyBoundsMs: [50, 100, 200, 400, 800, 1600, 3200],
-      regions: [{ region: "eu-west-1", samples: 14, counts }],
+      regions: [{ region: "eu-west-1", samples: 14, counts, p50Ms: [], p95Ms: [] }],
     }} />);
 
     const grid = screen.getByRole("img", { name: "eu-west-1 latency heatmap, 14 responses" });

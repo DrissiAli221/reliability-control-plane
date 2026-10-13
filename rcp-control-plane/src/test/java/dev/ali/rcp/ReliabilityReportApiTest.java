@@ -68,9 +68,52 @@ class ReliabilityReportApiTest {
                         .queryParam("to", WINDOW_START.plusSeconds(120).toString()))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", "attachment; filename=rcp-reliability-report.html"))
+                .andExpect(header().string("Content-Security-Policy",
+                        "sandbox; default-src 'none'; style-src 'unsafe-inline'"))
                 .andReturn().getResponse().getContentAsString();
-        assertThat(html).contains("50.00000%", "OPENED", "RESOLVED", "&lt;script&gt;");
+        assertThat(html).contains("50.00%", "RESOLVED", "&lt;script&gt;");
         assertThat(html).doesNotContain("<script>");
+    }
+
+    @Test
+    void csvListsIncidentsAsAnAttachment() throws Exception {
+        Monitor monitor = monitor("ali-subject", "CSV target");
+        UUID down = execution(monitor, WINDOW_START, "DOWN", 503);
+        UUID up = execution(monitor, WINDOW_START.plusSeconds(60), "UP", 200);
+        incident(monitor, down, up);
+
+        var response = mockMvc.perform(get("/api/monitors/{id}/reliability-report/csv", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject")))
+                        .queryParam("from", WINDOW_START.toString())
+                        .queryParam("to", WINDOW_START.plusSeconds(120).toString()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=rcp-reliability-incidents.csv"))
+                .andReturn().getResponse();
+
+        assertThat(response.getContentType()).startsWith("text/csv");
+        String[] lines = response.getContentAsString().split("\r\n");
+        assertThat(lines).hasSize(2);
+        assertThat(lines[0]).isEqualTo("incident_id,state,opened_at,resolved_at,duration_seconds");
+        assertThat(lines[1]).matches("[0-9a-f-]{36},RESOLVED,2026-09-07T12:00:00Z,2026-09-07T12:01:00Z,60");
+    }
+
+    @Test
+    void anotherOwnerCannotExportTheCsv() throws Exception {
+        Monitor monitor = monitor("ali-subject", "Private target");
+
+        mockMvc.perform(get("/api/monitors/{id}/reliability-report/csv", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("other-subject")))
+                        .queryParam("from", WINDOW_START.toString())
+                        .queryParam("to", WINDOW_START.plusSeconds(120).toString()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void csvRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/monitors/{id}/reliability-report/csv", UUID.randomUUID())
+                        .queryParam("from", WINDOW_START.toString())
+                        .queryParam("to", WINDOW_START.plusSeconds(120).toString()))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -109,6 +152,103 @@ class ReliabilityReportApiTest {
                         .queryParam("from", WINDOW_START.toString())
                         .queryParam("to", WINDOW_START.toString()))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void presetWindowsAreNamedByDaysAndTheDefaultIsSevenDays() throws Exception {
+        Monitor monitor = monitor("ali-subject", "Window target");
+        for (int days : new int[]{1, 7, 30, 90}) {
+            String body = mockMvc.perform(get("/api/monitors/{id}/reliability-report", monitor.getId())
+                            .with(jwt().jwt(token -> token.subject("ali-subject")))
+                            .queryParam("days", Integer.toString(days)))
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(windowDays(body)).isEqualTo(days);
+        }
+        String defaulted = mockMvc.perform(get("/api/monitors/{id}/reliability-report", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(windowDays(defaulted)).isEqualTo(7);
+    }
+
+    @Test
+    void rejectsWindowsOutsideThePresetsAndMixedWindowParameters() throws Exception {
+        Monitor monitor = monitor("ali-subject", "Window target");
+        for (String path : new String[]{"", "/html", "/csv"}) {
+            for (String days : new String[]{"0", "2", "14", "91", "365", "-7"}) {
+                mockMvc.perform(get("/api/monitors/{id}/reliability-report" + path, monitor.getId())
+                                .with(jwt().jwt(token -> token.subject("ali-subject")))
+                                .queryParam("days", days))
+                        .andExpect(status().isBadRequest());
+            }
+            mockMvc.perform(get("/api/monitors/{id}/reliability-report" + path, monitor.getId())
+                            .with(jwt().jwt(token -> token.subject("ali-subject")))
+                            .queryParam("days", "30")
+                            .queryParam("from", WINDOW_START.toString())
+                            .queryParam("to", WINDOW_START.plusSeconds(60).toString()))
+                    .andExpect(status().isBadRequest());
+            mockMvc.perform(get("/api/monitors/{id}/reliability-report" + path, monitor.getId())
+                            .with(jwt().jwt(token -> token.subject("ali-subject")))
+                            .queryParam("from", WINDOW_START.toString()))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test
+    void downloadsNameTheirPresetWindow() throws Exception {
+        Monitor monitor = monitor("ali-subject", "Window target");
+        mockMvc.perform(get("/api/monitors/{id}/reliability-report/html", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))).queryParam("days", "30"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=rcp-reliability-report-30d.html"));
+        mockMvc.perform(get("/api/monitors/{id}/reliability-report/csv", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))).queryParam("days", "90"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=rcp-reliability-incidents-90d.csv"));
+        String html = mockMvc.perform(get("/api/monitors/{id}/reliability-report/html", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))).queryParam("days", "30"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("30 days");
+    }
+
+    @Test
+    void aNinetyDayPeriodForAYoungMonitorOnlyExpectsChecksFromItsFirstSchedule() throws Exception {
+        // Created 9 days ago, hourly: 216 expected checks in a 90-day period, not 2160, so coverage is not diluted.
+        Instant created = Instant.now().minus(java.time.Duration.ofDays(9));
+        Monitor monitor = monitorRepository.saveAndFlush(Monitor.create(
+                "ali-subject", "Young monitor", "https://example.com", 3600, 5_000, created));
+        for (int hour = 0; hour < 9 * 24; hour++) {
+            execution(monitor, created.plusSeconds(hour * 3600L), "UP", 200);
+        }
+
+        String body = mockMvc.perform(get("/api/monitors/{id}/reliability-report", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject")))
+                        .queryParam("days", "90"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.availability.expectedOpportunities").value(org.hamcrest.Matchers.allOf(
+                        org.hamcrest.Matchers.greaterThanOrEqualTo(215), org.hamcrest.Matchers.lessThanOrEqualTo(217))))
+                .andExpect(jsonPath("$.availability.evidenceCoveragePercent").value(org.hamcrest.Matchers.greaterThan(95.0)))
+                .andExpect(jsonPath("$.availability.sloMet").value(true))
+                .andReturn().getResponse().getContentAsString();
+        Instant since = Instant.parse(com.jayway.jsonpath.JsonPath.read(body, "$.availability.monitoringSince"));
+        assertThat(java.time.Duration.between(created, since).abs().toMillis()).isLessThan(1000);
+
+        String html = mockMvc.perform(get("/api/monitors/{id}/reliability-report/html", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))).queryParam("days", "90"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("90 days", "data from ");
+        // A period the monitor fully covers carries no such note.
+        String sevenDays = mockMvc.perform(get("/api/monitors/{id}/reliability-report/html", monitor.getId())
+                        .with(jwt().jwt(token -> token.subject("ali-subject"))).queryParam("days", "7"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(sevenDays).doesNotContain("data from ");
+    }
+
+    private static long windowDays(String json) {
+        Instant from = Instant.parse(com.jayway.jsonpath.JsonPath.read(json, "$.availability.from"));
+        Instant to = Instant.parse(com.jayway.jsonpath.JsonPath.read(json, "$.availability.to"));
+        return java.time.Duration.between(from, to).toDays();
     }
 
     @Test
@@ -170,7 +310,40 @@ class ReliabilityReportApiTest {
         return executionId;
     }
 
+    @Test
+    void aBusyReportExportsAllTransitionsAndPrintsOnlyTheLatestTenIncidents() throws Exception {
+        Instant busyStart = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS).minus(java.time.Duration.ofDays(90));
+        Monitor monitor = monitorRepository.saveAndFlush(Monitor.create("ali-subject", "Busy drill", "https://example.com", 60, 5000, busyStart));
+        for (int i = 0; i < 1080; i++) {
+            Instant start = busyStart.plusSeconds(i * 7200L);
+            UUID down = execution(monitor, start, "DOWN", 503);
+            UUID up = execution(monitor, start.plusSeconds(60), "UP", 200);
+            incident(monitor, down, up, start);
+        }
+        var request = get("/api/monitors/{id}/reliability-report", monitor.getId())
+                .with(jwt().jwt(token -> token.subject("ali-subject")))
+                .queryParam("from", busyStart.toString()).queryParam("to", busyStart.plusSeconds(90 * 86400L).toString());
+        mockMvc.perform(request).andExpect(status().isOk())
+                .andExpect(jsonPath("$.incidentTimeline.length()").value(2160))
+                .andExpect(jsonPath("$.incidentTimelineTruncated").value(false))
+                .andExpect(jsonPath("$.incidentTimeline[2159].occurredAt").value(busyStart.plusSeconds(1079 * 7200L + 60).toString()));
+        String csv = mockMvc.perform(get("/api/monitors/{id}/reliability-report/csv", monitor.getId())
+                .with(jwt().jwt(token -> token.subject("ali-subject")))
+                .queryParam("from", busyStart.toString()).queryParam("to", busyStart.plusSeconds(90 * 86400L).toString()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(csv.lines().count()).isEqualTo(1081);
+        String html = mockMvc.perform(get("/api/monitors/{id}/reliability-report/html", monitor.getId())
+                .with(jwt().jwt(token -> token.subject("ali-subject")))
+                .queryParam("from", busyStart.toString()).queryParam("to", busyStart.plusSeconds(90 * 86400L).toString()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("1070 earlier incidents");
+    }
+
     private void incident(Monitor monitor, UUID down, UUID up) {
+        incident(monitor, down, up, WINDOW_START);
+    }
+
+    private void incident(Monitor monitor, UUID down, UUID up, Instant start) {
         UUID incidentId = UUID.randomUUID();
         jdbcTemplate.update(
                 """
@@ -179,8 +352,8 @@ class ReliabilityReportApiTest {
                  resolved_by_execution_id, resolved_at)
                 VALUES (?, ?, 'RESOLVED', ?, ?, ?, ?)
                 """,
-                incidentId, monitor.getId(), down, timestamp(WINDOW_START),
-                up, timestamp(WINDOW_START.plusSeconds(60))
+                incidentId, monitor.getId(), down, timestamp(start),
+                up, timestamp(start.plusSeconds(60))
         );
         jdbcTemplate.update(
                 """
@@ -188,8 +361,8 @@ class ReliabilityReportApiTest {
                 (event_id, incident_id, execution_id, event_type, occurred_at)
                 VALUES (?, ?, ?, 'OPENED', ?), (?, ?, ?, 'RESOLVED', ?)
                 """,
-                UUID.randomUUID(), incidentId, down, timestamp(WINDOW_START),
-                UUID.randomUUID(), incidentId, up, timestamp(WINDOW_START.plusSeconds(60))
+                UUID.randomUUID(), incidentId, down, timestamp(start),
+                UUID.randomUUID(), incidentId, up, timestamp(start.plusSeconds(60))
         );
     }
 

@@ -70,6 +70,44 @@ class ExecutionVerdictPolicyTest {
         ))).contains(ExecutionVerdict.NO_DATA);
     }
 
+    @Test
+    void challengedRegionsInBothPlacesAreNoData() {
+        assertThat(policy.evaluate(2, false, List.of(challenged("eu", 403, null), challenged("us", 403, null))))
+                .contains(ExecutionVerdict.NO_DATA);
+    }
+
+    @Test
+    void oneChallengedRegionAndOneRealAnswerIsDisagreement() {
+        assertThat(policy.evaluate(2, false, List.of(challenged("eu", 403, null), http("us", 200))))
+                .contains(ExecutionVerdict.DISAGREEMENT);
+        assertThat(policy.evaluate(2, false, List.of(challenged("eu", 403, null), http("us", 503))))
+                .contains(ExecutionVerdict.DISAGREEMENT);
+    }
+
+    @Test
+    void acceptedChallengeStatusOverridesAndStaysUp() {
+        List<Integer> accepted = List.of(200, 403);
+        assertThat(policy.evaluate(2, false, List.of(challenged("eu", 403, accepted), challenged("us", 403, accepted))))
+                .contains(ExecutionVerdict.UP);
+    }
+
+    @Test
+    void plainForbiddenWithoutChallengeHeaderStaysDown() {
+        assertThat(policy.evaluate(2, false, List.of(http("eu", 403), http("us", 403))))
+                .contains(ExecutionVerdict.DOWN);
+    }
+
+    @Test
+    void challengeFactIsNotTargetEvidenceUnlessAccepted() {
+        assertThat(challenged("eu", 403, null).isTargetEvidence()).isFalse();
+        assertThat(challenged("eu", 403, List.of(403)).isTargetEvidence()).isTrue();
+        assertThat(http("eu", 403).isTargetEvidence()).isTrue();
+    }
+
+    private RegionalProbeFact challenged(String region, int status, List<Integer> accepted) {
+        return new RegionalProbeFact(region, ProbeOutcome.HTTP_RESPONSE, status, accepted, "CLOUDFLARE_CHALLENGE");
+    }
+
     private RegionalProbeFact http(String region, int status) {
         return new RegionalProbeFact(region, ProbeOutcome.HTTP_RESPONSE, status);
     }

@@ -21,6 +21,8 @@ public class MonitorService {
 
     private final JdbcTemplate jdbcTemplate;
     private final MonitorLimits limits;
+    private final String demoOwnerSubject;
+    private final int maxDemoMonitors;
 
     public MonitorService(
             MonitorRepository monitorRepository,
@@ -29,17 +31,42 @@ public class MonitorService {
             @Value("${rcp.monitors.max-per-owner:25}") int maxPerOwner,
             @Value("${rcp.monitors.max-total:0}") int maxTotal,
             @Value("${rcp.monitors.min-interval-seconds:30}") int minIntervalSeconds,
-            @Value("${rcp.monitors.max-timeout-ms:30000}") int maxTimeoutMs
+            @Value("${rcp.monitors.max-timeout-ms:30000}") int maxTimeoutMs,
+            @Value("${rcp.demo.owner-subject:}") String demoOwnerSubject,
+            @Value("${rcp.demo.max-monitors:15}") int maxDemoMonitors
     ) {
         this.monitorRepository = monitorRepository;
         this.safeTargetPolicy = safeTargetPolicy;
         this.jdbcTemplate = jdbcTemplate;
         this.limits = new MonitorLimits(maxPerOwner, maxTotal, minIntervalSeconds, maxTimeoutMs);
+        this.demoOwnerSubject = demoOwnerSubject.trim();
+        if (maxDemoMonitors < 1 || maxDemoMonitors > 15) {
+            throw new IllegalArgumentException("rcp.demo.max-monitors must be between 1 and the hard ceiling of 15");
+        }
+        this.maxDemoMonitors = maxDemoMonitors;
     }
 
     /** The limits this deployment enforces, so clients can offer only choices that will be accepted. */
     public MonitorLimits limits() {
         return limits;
+    }
+
+    /** Visitor capacity excludes only the server-configured demo subject, never a caller-supplied group claim. */
+    @Transactional(readOnly = true)
+    public MonitorUsage usage(String ownerSubject) {
+        Long owned = isDemoOwner(ownerSubject) ? 0L : jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM monitors WHERE owner_subject = ? AND deleted_at IS NULL", Long.class, ownerSubject);
+        Long total = visitorCount();
+        return new MonitorUsage(owned == null ? 0 : owned, total == null ? 0 : total);
+    }
+
+    private boolean isDemoOwner(String subject) {
+        return !demoOwnerSubject.isBlank() && demoOwnerSubject.equals(subject);
+    }
+
+    private Long visitorCount() {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM monitors WHERE deleted_at IS NULL AND owner_subject <> ?",
+                Long.class, demoOwnerSubject);
     }
 
     @Transactional
@@ -59,9 +86,10 @@ public class MonitorService {
 
         // Locks are always taken in the same order (global, then owner) so concurrent creations cannot deadlock.
         // The global lock only exists when a deployment-wide cap is configured.
-        if (limits.maxTotal() > 0) {
+        boolean demo = isDemoOwner(ownerSubject);
+        if (!demo && limits.maxTotal() > 0) {
             jdbcTemplate.queryForList("SELECT pg_advisory_xact_lock(?, ?)", CAPACITY_LOCK, 0);
-            Long total = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM monitors", Long.class);
+            Long total = visitorCount();
             if (total != null && total >= limits.maxTotal()) {
                 throw new MonitorCapacityReachedException(limits.maxTotal());
             }
@@ -73,11 +101,12 @@ public class MonitorService {
         jdbcTemplate.queryForList("SELECT pg_advisory_xact_lock(?, ?)",
                 OWNER_LOCK, ownerSubject.hashCode());
         Long existing = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM monitors WHERE owner_subject = ?",
+                "SELECT COUNT(*) FROM monitors WHERE owner_subject = ? AND deleted_at IS NULL",
                 Long.class, ownerSubject
         );
-        if (existing != null && existing >= limits.maxPerOwner()) {
-            throw new MonitorQuotaExceededException(limits.maxPerOwner());
+        int ownerLimit = demo ? maxDemoMonitors : limits.maxPerOwner();
+        if (existing != null && existing >= ownerLimit) {
+            throw new MonitorQuotaExceededException(ownerLimit);
         }
 
         Monitor monitor = Monitor.create(
@@ -89,6 +118,7 @@ public class MonitorService {
                 databaseNow()
         );
 
+        monitor.changeAcceptedHttpStatuses(request.acceptedHttpStatuses(), monitor.getCreatedAt());
         Monitor saved = monitorRepository.saveAndFlush(monitor);
 
         return MonitorResponse.from(saved);
@@ -110,6 +140,32 @@ public class MonitorService {
         monitor.changeEnabled(enabled, databaseNow());
         monitorRepository.flush();
         return MonitorResponse.from(monitor);
+    }
+
+    @Transactional
+    public MonitorResponse setAcceptedHttpStatuses(String ownerSubject, UUID monitorId, java.util.List<Integer> codes) {
+        Monitor monitor = monitorRepository.findOwnedForUpdate(monitorId, ownerSubject)
+                .orElseThrow(MonitorNotFoundException::new);
+        monitor.changeAcceptedHttpStatuses(codes, databaseNow());
+        monitorRepository.flush();
+        return MonitorResponse.from(monitor);
+    }
+
+    @Transactional
+    public void delete(String ownerSubject, UUID monitorId) {
+        Monitor monitor = monitorRepository.findOwnedForUpdate(monitorId, ownerSubject)
+                .orElseThrow(MonitorNotFoundException::new);
+        monitor.markDeleted(databaseNow());
+        monitorRepository.flush();
+        jdbcTemplate.update("DELETE FROM status_page_monitors WHERE monitor_id = ?", monitorId);
+        // Do not lock executions here: incident evaluation locks execution then monitor.
+        // An already published/leased job may still run; ingestion serializes on the monitor row and drops it.
+        jdbcTemplate.update("""
+                UPDATE outbox_events SET failed_at = clock_timestamp(), last_error = 'monitor_deleted',
+                    claimed_by = NULL, claimed_until = NULL
+                WHERE published_at IS NULL AND failed_at IS NULL
+                  AND payload->>'monitorId' = ?
+                """, monitorId.toString());
     }
 
     @Transactional(readOnly = true)

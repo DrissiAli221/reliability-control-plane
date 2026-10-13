@@ -17,9 +17,19 @@ public record ProbeResult(
         long latencyMillis,
         long responseBytes,
         String errorType,
-        int monitorBehaviorVersion
+        int monitorBehaviorVersion,
+        String botProtection
 ) {
+    public ProbeResult(UUID jobId, UUID executionId, UUID monitorId, String probeRegion, Instant scheduledAt,
+            Instant startedAt, Instant completedAt, ProbeOutcome outcome, Integer httpStatus, long latencyMillis,
+            long responseBytes, String errorType, int monitorBehaviorVersion) {
+        this(jobId,executionId,monitorId,probeRegion,scheduledAt,startedAt,completedAt,outcome,httpStatus,
+                latencyMillis,responseBytes,errorType,monitorBehaviorVersion,null);
+    }
+
     public ProbeResult {
+        if (botProtection != null && (!botProtection.equals("CLOUDFLARE_CHALLENGE") || outcome != ProbeOutcome.HTTP_RESPONSE))
+            throw new IllegalArgumentException("bot protection requires a known HTTP-response marker");
         Objects.requireNonNull(jobId, "jobId must not be null");
         Objects.requireNonNull(executionId, "executionId must not be null");
         Objects.requireNonNull(monitorId, "monitorId must not be null");

@@ -1,5 +1,5 @@
 import { ArrowUpRight, Bell, Command, CornerDownLeft, Gauge, Keyboard, LayoutList, Play, Plus, Search, SunMoon, Workflow } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { listMonitors } from "../api";
@@ -8,6 +8,7 @@ import { fuzzyScore, SHORTCUTS } from "../commands";
 import { useReadOnly } from "../session";
 import { toggleTheme } from "../theme";
 import { tour } from "../tour";
+import { useFocusTrap } from "../useFocusTrap";
 import type { MonitorOverview } from "../types";
 import { StatusDot } from "./StatusBadge";
 
@@ -28,6 +29,12 @@ function typing(target: EventTarget | null): boolean {
 
 export function Keys({ keys }: { keys: string[] }) {
   return <span className="keys">{keys.map((key) => <kbd key={key}>{key}</kbd>)}</span>;
+}
+
+/** The dialog surface: traps Tab inside and gives focus back to whatever opened the palette once it unmounts. */
+function Dialog(props: ComponentProps<"section">) {
+  const ref = useFocusTrap<HTMLElement>();
+  return <section ref={ref} {...props} />;
 }
 
 /**
@@ -86,9 +93,9 @@ export function CommandPalette() {
       action();
     };
     const all: Item[] = [
-      { id: "go-overview", group: "Go to", label: "Overview", keys: ["G", "O"], icon: <Gauge size={15} />, run: close(() => navigate("/")) },
-      { id: "go-monitors", group: "Go to", label: "Monitors", keys: ["G", "M"], icon: <LayoutList size={15} />, run: close(() => navigate("/monitors")) },
-      { id: "go-pipeline", group: "Go to", label: "Pipeline", keys: ["G", "P"], icon: <Workflow size={15} />, run: close(() => navigate("/pipeline")) },
+      { id: "go-overview", group: "Go to", label: "Overview", keys: ["G", "O"], icon: <Gauge size={16} />, run: close(() => navigate("/")) },
+      { id: "go-monitors", group: "Go to", label: "Monitors", keys: ["G", "M"], icon: <LayoutList size={16} />, run: close(() => navigate("/monitors")) },
+      { id: "go-pipeline", group: "Go to", label: "Pipeline", keys: ["G", "P"], icon: <Workflow size={16} />, run: close(() => navigate("/pipeline")) },
       ...monitors.map((monitor): Item => {
         const state = monitorState(monitor);
         return {
@@ -100,15 +107,15 @@ export function CommandPalette() {
           run: close(() => navigate(`/monitors/${monitor.id}`)),
         };
       }),
-      { id: "tour", group: "Actions", label: "Take the tour", hint: "a two-minute walk through the system", icon: <Play size={15} />, run: close(tour.start) },
-      { id: "theme", group: "Actions", label: "Toggle light / dark theme", icon: <SunMoon size={15} />, run: close(toggleTheme) },
-      ...(readOnly ? [] : [{ id: "create", group: "Actions" as const, label: "Create monitor", keys: ["C"], icon: <Plus size={15} />, run: close(() => navigate("/monitors?create=1")) }]),
+      { id: "tour", group: "Actions", label: "Take the tour", hint: "a two-minute walk through the system", icon: <Play size={16} />, run: close(tour.start) },
+      { id: "theme", group: "Actions", label: "Toggle light / dark theme", icon: <SunMoon size={16} />, run: close(toggleTheme) },
+      ...(readOnly ? [] : [{ id: "create", group: "Actions" as const, label: "Create monitor", keys: ["C"], icon: <Plus size={16} />, run: close(() => navigate("/monitors?create=1")) }]),
       // Asked only when the operator chooses it, never on page load.
       ...(typeof Notification !== "undefined" && Notification.permission === "default" ? [{
         id: "alerts", group: "Actions" as const, label: "Enable desktop alerts", hint: "notify when an incident opens in a background tab",
-        icon: <Bell size={15} />, run: close(() => void Notification.requestPermission()),
+        icon: <Bell size={16} />, run: close(() => void Notification.requestPermission()),
       }] : []),
-      { id: "shortcuts", group: "Actions", label: "Keyboard shortcuts", keys: ["?"], icon: <Keyboard size={15} />, run: () => setMode("help") },
+      { id: "shortcuts", group: "Actions", label: "Keyboard shortcuts", keys: ["?"], icon: <Keyboard size={16} />, run: () => setMode("help") },
     ];
     return all
       .map((item) => ({ item, score: fuzzyScore(query, `${item.label} ${item.hint ?? ""}`) }))
@@ -125,24 +132,6 @@ export function CommandPalette() {
 
   const close = () => setMode("closed");
 
-  if (mode === "help") {
-    return createPortal(
-      <div className="dialog-backdrop palette-backdrop" onMouseDown={close} onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
-        <section className="palette help" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" onMouseDown={(event) => event.stopPropagation()}>
-          <header className="palette-head"><Keyboard size={15} aria-hidden="true" /><strong>Keyboard shortcuts</strong></header>
-          <dl className="shortcut-list">
-            {SHORTCUTS.map((shortcut) => (
-              <div key={shortcut.label}><dt>{shortcut.label}</dt><dd><Keys keys={shortcut.keys} /></dd></div>
-            ))}
-          </dl>
-          <footer className="palette-foot"><span><kbd>esc</kbd> close</span></footer>
-          <button type="button" className="sr-only" autoFocus onClick={close}>Close</button>
-        </section>
-      </div>,
-      document.body,
-    );
-  }
-
   function onKeyDown(event: React.KeyboardEvent) {
     if (event.key === "Escape") close();
     else if (event.key === "ArrowDown") {
@@ -157,12 +146,32 @@ export function CommandPalette() {
     }
   }
 
+  // One Dialog serves both views, so switching from the palette to the shortcut list keeps the original opener.
+  const help = mode === "help";
   let lastGroup = "";
   return createPortal(
-    <div className="dialog-backdrop palette-backdrop" onMouseDown={close}>
-      <section className="palette" role="dialog" aria-modal="true" aria-label="Command palette" onMouseDown={(event) => event.stopPropagation()}>
+    <div className="dialog-backdrop palette-backdrop" onMouseDown={close} onKeyDown={help ? (event) => { if (event.key === "Escape") close(); } : undefined}>
+      <Dialog
+        className={help ? "palette help" : "palette"}
+        role="dialog"
+        aria-modal="true"
+        aria-label={help ? "Keyboard shortcuts" : "Command palette"}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        {help ? (
+          <>
+            <header className="palette-head"><Keyboard size={16} aria-hidden="true" /><strong>Keyboard shortcuts</strong></header>
+            <dl className="shortcut-list">
+              {SHORTCUTS.map((shortcut) => (
+                <div key={shortcut.label}><dt>{shortcut.label}</dt><dd><Keys keys={shortcut.keys} /></dd></div>
+              ))}
+            </dl>
+            <footer className="palette-foot"><span><kbd>esc</kbd> close</span></footer>
+            <button type="button" className="sr-only" autoFocus onClick={close}>Close</button>
+          </>
+        ) : (<>
         <label className="palette-search">
-          <Search size={15} aria-hidden="true" />
+          <Search size={16} aria-hidden="true" />
           <input
             ref={input}
             value={query}
@@ -196,7 +205,7 @@ export function CommandPalette() {
                 >
                   <span className="palette-icon" aria-hidden="true">{item.icon}</span>
                   <span className="palette-label">{item.label}{item.hint && <small>{item.hint}</small>}</span>
-                  {item.keys ? <Keys keys={item.keys} /> : <ArrowUpRight size={13} className="palette-go" aria-hidden="true" />}
+                  {item.keys ? <Keys keys={item.keys} /> : <ArrowUpRight size={14} className="palette-go" aria-hidden="true" />}
                 </div>
               </li>
             );
@@ -207,7 +216,8 @@ export function CommandPalette() {
           <span><kbd><CornerDownLeft size={10} /></kbd> open</span>
           <span className="palette-brand"><Command size={11} aria-hidden="true" /> RCP</span>
         </footer>
-      </section>
+        </>)}
+      </Dialog>
     </div>,
     document.body,
   );

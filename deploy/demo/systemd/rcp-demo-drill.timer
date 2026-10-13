@@ -1,0 +1,12 @@
+[Unit]
+Description=Check the deterministic RCP drill schedule each UTC minute
+
+[Timer]
+OnCalendar=*-*-* *:*:00 UTC
+AccuracySec=1s
+# Never replay a missed outage when the VM boots.
+Persistent=false
+Unit=rcp-demo-drill.service
+
+[Install]
+WantedBy=timers.target

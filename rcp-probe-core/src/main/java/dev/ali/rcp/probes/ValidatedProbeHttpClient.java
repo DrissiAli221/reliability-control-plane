@@ -29,15 +29,35 @@ public final class ValidatedProbeHttpClient implements ProbeHttpClient {
                 return thread;
             });
 
+    static final String REGION_HEADER_PATH = "/drill/status.html";
+
     private final CloseableHttpClient client;
     private final Duration connectTimeout;
+    private final String probeRegion;
+    private final String regionHeaderHost;
 
     public ValidatedProbeHttpClient(SafeTargetPolicy policy, Duration connectTimeout) {
+        this(policy, connectTimeout, null, null);
+    }
+
+    /**
+     * The optional region is diagnostic metadata, never an authentication credential. It is sent
+     * only to {@code regionHeaderHost} and only for {@value #REGION_HEADER_PATH}; a null or blank
+     * host means the header is never sent.
+     */
+    public ValidatedProbeHttpClient(
+            SafeTargetPolicy policy, Duration connectTimeout, String probeRegion, String regionHeaderHost) {
         Objects.requireNonNull(policy);
         if (connectTimeout == null || connectTimeout.isZero() || connectTimeout.isNegative()) {
             throw new IllegalArgumentException("connectTimeout must be positive");
         }
         this.connectTimeout = connectTimeout;
+        if (probeRegion != null && !probeRegion.matches("[a-z]{2}(?:-[a-z]+)+-[0-9]+")) {
+            throw new IllegalArgumentException("probeRegion must be an AWS region name");
+        }
+        this.probeRegion = probeRegion;
+        this.regionHeaderHost = regionHeaderHost == null || regionHeaderHost.isBlank()
+                ? null : regionHeaderHost.strip().toLowerCase(java.util.Locale.ROOT);
         var manager = PoolingHttpClientConnectionManagerBuilder.create()
                 .setDnsResolver(new ValidatedDnsResolver(policy))
                 .setMaxConnTotal(32)
@@ -55,6 +75,12 @@ public final class ValidatedProbeHttpClient implements ProbeHttpClient {
                 .build();
     }
 
+    private boolean wantsRegionHeader(URI uri) {
+        return uri.getHost() != null
+                && regionHeaderHost.equals(uri.getHost().toLowerCase(java.util.Locale.ROOT))
+                && REGION_HEADER_PATH.equals(uri.getPath());
+    }
+
     @Override
     public ProbeHttpResponse get(String normalizedUrl, Duration timeout, int maximumBodyBytes)
             throws IOException {
@@ -64,8 +90,12 @@ public final class ValidatedProbeHttpClient implements ProbeHttpClient {
         if (maximumBodyBytes < 1) {
             throw new IllegalArgumentException("maximumBodyBytes must be positive");
         }
-        HttpGet request = new HttpGet(URI.create(normalizedUrl));
+        URI uri = URI.create(normalizedUrl);
+        HttpGet request = new HttpGet(uri);
         request.setHeader("Accept", "*/*");
+        if (probeRegion != null && regionHeaderHost != null && wantsRegionHeader(uri)) {
+            request.setHeader("X-RCP-Probe-Region", probeRegion);
+        }
         request.setConfig(RequestConfig.custom()
                 .setConnectionRequestTimeout(Timeout.ofMilliseconds(Math.max(1, timeout.toMillis())))
                 .setConnectTimeout(Timeout.ofMilliseconds(Math.max(1, Math.min(connectTimeout.toMillis(), timeout.toMillis()))))
@@ -80,17 +110,29 @@ public final class ValidatedProbeHttpClient implements ProbeHttpClient {
         );
         try {
             ProbeHttpResponse result = client.execute(request, response -> {
+                var marker = response.getFirstHeader("cf-mitigated");
+                String botProtection = marker != null && "challenge".equalsIgnoreCase(marker.getValue().trim())
+                        ? "CLOUDFLARE_CHALLENGE" : null;
                 if (response.getEntity() == null) {
-                    return new ProbeHttpResponse(response.getCode(), 0);
+                    return new ProbeHttpResponse(response.getCode(), 0, botProtection);
                 }
-                try (InputStream body = response.getEntity().getContent()) {
-                    return new ProbeHttpResponse(response.getCode(), readWithLimit(body, maximumBodyBytes));
+                InputStream body = response.getEntity().getContent();
+                long bytesRead = countUpTo(body, maximumBodyBytes);
+                if (bytesRead > maximumBodyBytes) {
+                    // The status line already answers the probe. Closing the stream normally would drain
+                    // the rest of a huge or endless body, so drop the connection instead.
+                    request.cancel();
+                    throw new BodyCapReached(new ProbeHttpResponse(response.getCode(), bytesRead, botProtection));
                 }
+                body.close();
+                return new ProbeHttpResponse(response.getCode(), bytesRead, botProtection);
             });
             if (request.isCancelled()) {
                 throw new SocketTimeoutException("total probe request deadline exceeded");
             }
             return result;
+        } catch (BodyCapReached capReached) {
+            return capReached.response;
         } catch (IOException exception) {
             if (request.isCancelled()) {
                 SocketTimeoutException timeoutException =
@@ -104,16 +146,27 @@ public final class ValidatedProbeHttpClient implements ProbeHttpClient {
         }
     }
 
-    static long readWithLimit(InputStream body, int maximumBodyBytes) throws IOException {
+    /** Counts the body without keeping it, stopping as soon as it passes the cap. */
+    static long countUpTo(InputStream body, int maximumBodyBytes) throws IOException {
         byte[] buffer = new byte[8_192];
         long total = 0;
         int read;
         while ((read = body.read(buffer)) != -1) {
             total += read;
             if (total > maximumBodyBytes) {
-                throw new ResponseTooLargeException(maximumBodyBytes);
+                return total;
             }
         }
         return total;
+    }
+
+    /** Carries the response out of the handler, the only path that skips draining the body. */
+    private static final class BodyCapReached extends IOException {
+        private final transient ProbeHttpResponse response;
+
+        BodyCapReached(ProbeHttpResponse response) {
+            super("response body reached the probe cap");
+            this.response = response;
+        }
     }
 }

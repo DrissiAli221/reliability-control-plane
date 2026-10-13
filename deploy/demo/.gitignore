@@ -1,0 +1,13 @@
+.env
+secrets/
+backups/
+*.dump
+terraform-outputs.json
+
+dashboard.env
+
+__pycache__/
+
+# Runtime drill contents are restored at boot, never by git checkout.
+drill/*
+!drill/.gitkeep

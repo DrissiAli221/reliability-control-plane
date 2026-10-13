@@ -1,0 +1,97 @@
+logging {
+	level = "warn"
+}
+
+// Use host mounts for CPU, memory and disk metrics. Network namespaces are not
+// shared: do not mistake container interface counters for the VM's network.
+prometheus.exporter.unix "host" {
+	procfs_path    = "/host/proc"
+	sysfs_path     = "/host/sys"
+	rootfs_path    = "/host/root"
+	set_collectors = ["cpu", "meminfo", "filesystem", "diskstats", "loadavg"]
+
+	filesystem {
+		fs_types_exclude     = "^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|mqueue|nsfs|overlay|proc|pstore|rpc_pipefs|securityfs|sysfs|tracefs|tmpfs)$"
+		mount_points_exclude = "^/(dev|proc|sys|run|var/lib/docker)($|/)"
+	}
+}
+
+prometheus.scrape "host" {
+	targets         = prometheus.exporter.unix.host.targets
+	job_name        = "rcp-host"
+	scrape_interval = "60s"
+	forward_to      = [prometheus.relabel.host.receiver]
+}
+
+prometheus.relabel "host" {
+	forward_to = [prometheus.remote_write.cloud.receiver]
+
+	rule {
+		source_labels = ["__name__"]
+		regex         = "up|node_cpu_seconds_total|node_memory_(MemTotal|MemAvailable)_bytes|node_load(1|5|15)|node_filesystem_(size|avail|readonly)_bytes|node_disk_(read_bytes|written_bytes|io_time_seconds)_total"
+		action        = "keep"
+	}
+
+	rule {
+		target_label = "instance"
+		replacement  = "rcp-demo"
+	}
+
+	// The exporter's targets carry job="integrations/unix", which overrides job_name above.
+	rule {
+		target_label = "job"
+		replacement  = "rcp-host"
+	}
+}
+
+prometheus.scrape "app" {
+	targets         = [{"__address__" = "control-plane:9091"}]
+	job_name        = "rcp-app"
+	metrics_path    = "/actuator/prometheus"
+	scrape_interval = "60s"
+	scrape_timeout  = "10s"
+	forward_to      = [prometheus.relabel.app.receiver]
+}
+
+// No monitor IDs, URLs, request paths, histograms, logs or traces are exported.
+prometheus.relabel "app" {
+	forward_to = [prometheus.remote_write.cloud.receiver]
+
+	rule {
+		source_labels = ["__name__"]
+		regex         = "up|process_start_time_seconds|jvm_memory_(used|committed|max)_bytes|rcp_system_.*|rcp_probe_results_.*_total|rcp_outbox_events_(published|failed)_total|rcp_executions_finalized_total|rcp_incident_evaluations_processed_total"
+		action        = "keep"
+	}
+
+	rule {
+		target_label = "instance"
+		replacement  = "rcp-demo"
+	}
+}
+
+prometheus.remote_write "cloud" {
+	external_labels = {"project" = "rcp", "environment" = "demo"}
+
+	endpoint {
+		url = sys.env("GRAFANA_METRICS_URL")
+
+		basic_auth {
+			username      = sys.env("GRAFANA_METRICS_USERNAME")
+			password_file = "/run/secrets/grafana_metrics_token"
+		}
+
+		queue_config {
+			capacity             = 2500
+			min_shards           = 1
+			max_shards           = 2
+			max_samples_per_send = 500
+			sample_age_limit     = "30m"
+		}
+	}
+	// WAL uses disk, not tmpfs: even a small installation needs 128 MB segments.
+	wal {
+		truncate_frequency = "15m"
+		min_keepalive_time = "5m"
+		max_keepalive_time = "30m"
+	}
+}

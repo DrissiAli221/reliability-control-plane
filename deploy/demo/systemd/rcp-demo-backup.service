@@ -1,0 +1,11 @@
+[Unit]
+Description=RCP demo PostgreSQL backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/rcp/deploy/demo
+Environment=RCP_BACKUP_RETENTION_DAYS=7
+ExecStart=/opt/rcp/deploy/demo/scripts/backup.sh
+UMask=0077

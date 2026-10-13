@@ -1,7 +1,9 @@
+import { OverviewSkeleton } from "../components/Skeleton";
 import { ArrowUpRight, Play, RefreshCw } from "lucide-react";
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { fleetOverview, listMonitors, pipelineSnapshot } from "../api";
+import { BlockMeter } from "../components/BlockMeter";
 import { EventStream } from "../components/EventStream";
 import { IncidentTimeline } from "../components/IncidentTimeline";
 import { PulseStrip } from "../components/PulseStrip";
@@ -10,6 +12,8 @@ import { LiveLed, StatusDot } from "../components/StatusBadge";
 import { compactUrl, count, elapsed, milliseconds, monitorState, relativeTime } from "../format";
 import type { FleetOverview, MonitorOverview, PipelineSnapshot } from "../types";
 import { tour } from "../tour";
+import { regionCells } from "../regionMeter";
+import { drillPhase, isDrillMonitor, utcClock } from "../drill";
 import { useLiveData, useNow } from "../useLiveData";
 import { ErrorState, LiveIndicator } from "./MonitorsPage";
 
@@ -29,21 +33,24 @@ export function OverviewPage() {
       <header className="page-header">
         <div>
           <h1>Overview</h1>
-          <p>Every monitor, every region, the last 24 hours. Only checks where the regions agreed count toward uptime.</p>
+          <p>
+            {monitors.data && <><strong>{fleetSentence(monitors.data)}</strong>{" "}{contextSentence(monitors.data, pipeline.data, now)}{" "}</>}
+            Only checks where the regions agreed count toward uptime.
+          </p>
         </div>
         <div className="page-actions">
           <LiveIndicator updatedAt={overview.updatedAt} now={now} error={overview.error} />
           <button type="button" className="icon-button bordered" onClick={() => void refresh()} aria-label="Refresh" disabled={overview.loading}>
-            <RefreshCw size={15} className={overview.loading ? "spin" : undefined} />
+            <RefreshCw size={16} className={overview.loading ? "spin" : undefined} />
           </button>
           <button type="button" className="button primary" onClick={tour.start}>
-            <Play size={13} aria-hidden="true" /> Take the tour
+            <Play size={14} aria-hidden="true" /> Take the tour
           </button>
         </div>
       </header>
 
       {error && !loaded && <ErrorState message={error} retry={refresh} />}
-      {!loaded && !error && <div className="skeletons"><div className="skeleton tall" /><div className="skeleton tall" /></div>}
+      {!loaded && !error && <OverviewSkeleton />}
 
       {overview.data && monitors.data && (
         <>
@@ -62,14 +69,41 @@ export function OverviewPage() {
             <Regions snapshot={pipeline.data} />
           </div>
 
-          <div className="split">
+          <div className="split overview-tail">
             <Fleet monitors={monitors.data} now={now} />
-            <EventStream limit={10} />
+        <EventStream />
           </div>
         </>
       )}
     </>
   );
+}
+
+/** The fleet's state as one plain sentence, counted from the backend's own verdicts and incident status. */
+function fleetSentence(monitors: MonitorOverview[]): string {
+  const enabled = monitors.filter((monitor) => monitor.enabled);
+  if (enabled.length === 0) return monitors.length ? "Every monitor is paused." : "No monitors yet.";
+  const incidents = enabled.filter((monitor) => monitor.incidentStatus === "OPEN").length;
+  if (incidents > 0) return incidents === 1 ? "1 incident is open." : `${incidents} incidents are open.`;
+  const up = enabled.filter((monitor) => monitor.latestVerdict === "UP").length;
+  if (up === enabled.length) return enabled.length === 1 ? "The monitor is up." : `All ${enabled.length} monitors are up.`;
+  return `${up} of ${enabled.length} monitors are up.`;
+}
+
+function contextSentence(monitors: MonitorOverview[], snapshot: PipelineSnapshot | null, now: number): string {
+  const parts: string[] = [];
+  if (snapshot && snapshot.regions.length > 0) {
+    const reporting = snapshot.regions.filter((region) => region.resultsReceived > 0).length;
+    const total = snapshot.regions.length;
+    parts.push(reporting === total ? (total === 2 ? "Both regions are reporting" : `All ${total} regions are reporting`) : `${reporting} of ${total} regions are reporting`);
+  }
+  if (monitors.some((monitor) => monitor.enabled && isDrillMonitor(monitor.targetUrl))) {
+    const phase = drillPhase(now);
+    parts.push(phase.active ? "a demo drill is scheduled now" : `the next planned drill is at ${utcClock(phase.nextStart)} UTC`);
+  }
+  if (parts.length === 0) return "";
+  const sentence = parts.join("; ");
+  return `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}.`;
 }
 
 function Hero({ overview, monitors, regions, now, updatedAt }: {
@@ -147,7 +181,7 @@ function Regions({ snapshot }: { snapshot: PipelineSnapshot | null }) {
       ) : (
         <ul className="regions">
           {snapshot.regions.map((region) => {
-            const share = region.jobsPublished ? Math.min(1, region.resultsReceived / region.jobsPublished) : 0;
+            const { cells, filled, tone } = regionCells(region.resultsReceived, region.jobsPublished);
             return (
               <li key={region.region}>
                 <div className="region-head">
@@ -157,7 +191,8 @@ function Regions({ snapshot }: { snapshot: PipelineSnapshot | null }) {
                 </div>
                 <span className="region-value">{milliseconds(region.p50LatencyMs)}</span>
                 <span className="region-caption">p50 · {count(region.resultsReceived)} of {count(region.jobsPublished)} results back</span>
-                <div className="meter" aria-hidden="true"><div className={`meter-fill${share < 0.9 ? " warn" : ""}`} style={{ width: `${share * 100}%` }} /></div>
+                {/* One cell per expected result; the caption above carries the exact counts. */}
+                <BlockMeter className="region-meter" blocks={cells} value={filled / cells} tone={tone} decorative label="" />
               </li>
             );
           })}
@@ -172,7 +207,7 @@ function Fleet({ monitors, now }: { monitors: MonitorOverview[]; now: number }) 
     <section className="panel">
       <header className="panel-header">
         <h2>Monitors</h2>
-        <Link className="subtle panel-link" to="/monitors">View all <ArrowUpRight size={12} aria-hidden="true" /></Link>
+        <Link className="subtle panel-link" to="/monitors">View all <ArrowUpRight size={14} aria-hidden="true" /></Link>
       </header>
       {monitors.length === 0 ? (
         <p className="panel-body subtle">No monitors yet. <Link to="/monitors">Create one</Link> to start collecting evidence.</p>

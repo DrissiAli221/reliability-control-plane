@@ -1,0 +1,11 @@
+name                 = "rcp-demo"
+region               = "af-casablanca-1" # Must be your tenancy's home region.
+tenancy_ocid         = "ocid1.tenancy.oc1..REPLACE"
+compartment_ocid     = "ocid1.tenancy.oc1..REPLACE" # Or an existing compartment.
+availability_domain  = "REPLACE_WITH_EXACT_AD_NAME"
+image_ocid           = "ocid1.image.oc1.af-casablanca-1.REPLACE"
+ssh_public_key       = "ssh-ed25519 REPLACE_WITH_YOUR_PUBLIC_KEY"
+ssh_allowed_cidrs    = ["203.0.113.10/32"] # Replace with your current public IPv4/32.
+config_file_profile  = "rcp-operator"
+# Defaults: VM.Standard.A1.Flex, 1 OCPU, 6 GB RAM, 50 GB Balanced boot disk.
+# Check account-wide free usage before planning. offline_mode must remain false.
