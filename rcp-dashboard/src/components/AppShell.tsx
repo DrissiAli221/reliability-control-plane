@@ -252,8 +252,15 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
           {readOnly && (
             <div className="demo-banner" role="note">
               <Eye size={16} aria-hidden="true" />
-              <span><strong>You're exploring the live demo.</strong><span className="demo-banner-detail"> Everything is real and running; changes are switched off.</span></span>
-              <button type="button" className="demo-banner-cta" onClick={onLogout}>Monitor your own site <ArrowRight size={14} aria-hidden="true" /></button>
+              <div className="demo-banner-body">
+                <span className="demo-banner-text">
+                  <strong className="demo-banner-full">You're exploring the live demo.</strong>
+                  <span className="demo-banner-detail"> Everything is real and running; changes are switched off.</span>
+                  <strong className="demo-banner-short">Live demo · read-only</strong>
+                </span>
+                {" "}
+                <button type="button" className="demo-banner-cta" onClick={onLogout}>Monitor your own site <ArrowRight size={14} aria-hidden="true" /></button>
+              </div>
             </div>
           )}
         </div>
