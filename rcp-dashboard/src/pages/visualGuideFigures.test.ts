@@ -13,7 +13,7 @@ function load(name: string) {
   const dom = new JSDOM(FIGURES[name], {
     runScripts: "dangerously",
     pretendToBeVisual: true,
-    beforeParse(window) {
+    beforeParse(window: Window) {
       (window as unknown as { ResizeObserver: unknown }).ResizeObserver = class { observe() {} disconnect() {} unobserve() {} };
     },
   });
