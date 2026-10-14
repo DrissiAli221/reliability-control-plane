@@ -12,6 +12,8 @@ function Figure({ name, title }: { name: string; title: string }) {
   const [document, setDocument] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const theme = useTheme();
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -25,7 +27,9 @@ function Figure({ name, title }: { name: string; title: string }) {
       .then((html) => {
         if (!controller.signal.aborted) {
           const base = new URL("/visual-guide/", window.location.href).href;
+          // The figure starts in the dashboard's theme so it never flashes the other one before the first theme message.
           const embedded = html
+            .replace(/<html\b/, `<html data-theme="${themeRef.current}"`)
             .replace('<meta charset', `<base href="${base}"><meta charset`)
             .replace('<script src="./embed.js"></script>', () => `<script>${embedScript.replace(/<\/script/gi, "<\\/script")}</script>`);
           setDocument(embedded);

@@ -54,3 +54,27 @@ describe("embedded figures", () => {
     expect(embed).not.toContain("figure-open");
   });
 });
+
+describe("figure themes", () => {
+  it.each(["deployment", "lifecycle", "verdicts", "availability"])("%s drives its colours from tokens with a light set and follows the system when standalone", (name) => {
+    const html = FIGURES[name];
+    const tokens = html.slice(html.indexOf('<style id="theme-tokens">'), html.indexOf("</style>", html.indexOf('<style id="theme-tokens">')));
+    expect(tokens).toContain(':root[data-theme="light"]');
+    expect(tokens).toContain("@media(prefers-color-scheme:light){:root:not([data-theme])");
+    expect(tokens).toMatch(/--c-111111:#111111;/);
+    // The dark surface and text colours are only ever referenced through their tokens in the figure's own CSS.
+    const rest = html.replace(tokens, "");
+    expect(rest).not.toMatch(/(?:fill|background|stroke):#111111/);
+    expect(rest).toContain("var(--c-111111)");
+  });
+
+  it("exports the svg in the current theme", () => {
+    for (const name of ["deployment", "lifecycle", "verdicts", "availability"]) expect(FIGURES[name]).toContain("copy.setAttribute('data-theme'");
+  });
+
+  it("applies the dashboard theme to every figure, and follows the system setting only when standalone", () => {
+    expect(embed).toContain("document.documentElement.dataset.theme = theme");
+    expect(embed).toContain("if (!embedded) scheme.addEventListener");
+  });
+});
+

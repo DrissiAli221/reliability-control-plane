@@ -80,4 +80,12 @@ describe("visual guide", () => {
     const embed = (await import("../../public/visual-guide/embed.js?raw")).default;
     expect(embed).toMatch(/requestAnimationFrame\(run\);\s*setTimeout\(run,/);
   });
+
+  it("starts the figure in the dashboard theme", async () => {
+    localStorage.setItem("rcp.theme", "light");
+    render(<MemoryRouter initialEntries={["/learn/deployment"]}><VisualGuidePage /></MemoryRouter>);
+    const frame = await screen.findByTitle("Deployment") as HTMLIFrameElement;
+    expect(frame.srcdoc).toContain('<html data-theme=');
+    localStorage.removeItem("rcp.theme");
+  });
 });
