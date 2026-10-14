@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { useTheme } from "../theme";
+import embedScript from "../../public/visual-guide/embed.js?raw";
 
 import { guideForPath, GUIDE_VIEWS, legacyGuidePath } from "../visualGuide";
 import { NotFoundPage } from "./NotFoundPage";
@@ -24,7 +25,10 @@ function Figure({ name, title }: { name: string; title: string }) {
       .then((html) => {
         if (!controller.signal.aborted) {
           const base = new URL("/visual-guide/", window.location.href).href;
-          setDocument(html.replace('<meta charset', `<base href="${base}"><meta charset`));
+          const embedded = html
+            .replace('<meta charset', `<base href="${base}"><meta charset`)
+            .replace('<script src="./embed.js"></script>', () => `<script>${embedScript.replace(/<\/script/gi, "<\\/script")}</script>`);
+          setDocument(embedded);
         }
       })
       .catch(() => { if (!controller.signal.aborted) setFailed(true); });
@@ -51,7 +55,7 @@ function Figure({ name, title }: { name: string; title: string }) {
 
   if (failed) return <p className="panel-body" role="alert">The figure could not load. Reload the page and try again.</p>;
   if (!document) return <p className="panel-body subtle" role="status">Loading figure…</p>;
-  return <iframe ref={frame} title={title} srcDoc={document} sandbox="allow-scripts allow-downloads allow-popups" onLoad={sendTheme} className="guide-frame" scrolling="no" style={{ height: height ?? 240 }} />;
+  return <iframe ref={frame} title={title} srcDoc={document} sandbox="allow-scripts allow-downloads allow-popups" onLoad={sendTheme} className="guide-frame" scrolling={height === null ? "auto" : "no"} style={{ height: height ?? "max(480px, 75vh)" }} />;
 }
 
 export function VisualGuidePage() {

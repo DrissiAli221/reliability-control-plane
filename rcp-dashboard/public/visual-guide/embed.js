@@ -2,7 +2,12 @@
 (() => {
   const main = document.querySelector('main');
   const embedded = parent !== window;
-  if (embedded) document.body.dataset.embedded = 'true';
+  if (embedded) {
+    document.body.dataset.embedded = 'true';
+    const style = document.createElement('style');
+    style.textContent = 'body[data-embedded]{background:var(--bg,#0a0a0a)}body[data-embedded] .map-card,body[data-embedded] .machine-card,body[data-embedded] .machine-sidebar,body[data-embedded] .controls,body[data-embedded] .toolbar{background:transparent}';
+    document.head.append(style);
+  }
   const name = document.body.dataset.figure;
   const controls = document.querySelector('.toolbar .tools, .controls .secondary-actions');
   if (controls && ['deployment', 'lifecycle', 'verdicts', 'availability', 'machine'].includes(name)) {
