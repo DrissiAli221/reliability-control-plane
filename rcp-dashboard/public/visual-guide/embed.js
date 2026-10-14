@@ -37,6 +37,9 @@ const EMBED_CSS = "/* Dashboard tokens, copied from src/styles.css (:root and :r
 
   let scheduled = false;
   let lastHeight = 0;
+  let posted = false;
+  let candidate = 0;
+  let candidateAt = 0;
   function measure() {
     if (scheduled) return;
     scheduled = true;
@@ -49,6 +52,22 @@ const EMBED_CSS = "/* Dashboard tokens, copied from src/styles.css (:root and :r
       // Hold the first report until the inspector has been sized for its longest text.
       if (embedded && !reserved) return;
       const height = Math.ceil((main || document.body).getBoundingClientRect().height) + 2;
+      // The first report must be the settled one: the diagram fits itself as fonts and the frame width arrive, so
+      // wait until two measurements 100ms apart agree before telling the dashboard how tall to make the frame.
+      if (embedded && !posted) {
+        const now = performance.now();
+        if (height !== candidate) {
+          candidate = height;
+          candidateAt = now;
+          setTimeout(measure, 110);
+          return;
+        }
+        if (now - candidateAt < 100) {
+          setTimeout(measure, 110 - (now - candidateAt));
+          return;
+        }
+        posted = true;
+      }
       if (height === lastHeight) return;
       lastHeight = height;
       if (embedded) parent.postMessage({ type: 'rcp-guide-size', height }, '*');

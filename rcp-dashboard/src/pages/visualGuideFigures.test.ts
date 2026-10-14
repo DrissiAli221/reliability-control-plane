@@ -78,3 +78,12 @@ describe("figure themes", () => {
   });
 });
 
+describe("layout stability", () => {
+  it("reserves the tallest inspector text up front and reports only a settled first height", () => {
+    expect(embed).toContain("function reserveInspector()");
+    expect(embed).toContain("box.style.minHeight");
+    expect(embed).toContain("if (embedded && !reserved) return;");
+    expect(embed).toContain("two measurements 100ms apart agree");
+  });
+});
+
