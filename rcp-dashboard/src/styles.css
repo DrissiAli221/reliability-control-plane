@@ -1863,11 +1863,13 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
 .sidebar-footer .env-note { padding: 8px 16px; }
 
 /* The visual guide reuses .panel and .segmented; the figure frame sits flush under the header. */
-.guide-header { flex-wrap: wrap; }
+.guide-header { flex-wrap: nowrap; }
+.guide-header .segmented { flex: 0 1 auto; min-width: 0; }
 .guide-header .segmented button { white-space: nowrap; }
-.guide-header .subtle { flex: 1 1 280px; text-align: right; }
+/* Plain muted sans on one line; the full text is in the title attribute. */
+.guide-header .subtle { flex: 1 1 0; min-width: 0; overflow: hidden; text-align: right; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-sans); font-size: 12.5px; letter-spacing: normal; color: var(--text-2); }
+@media (max-width: 900px) { .guide-header .subtle { display: none; } }
 @media (max-width: 640px) {
-  .guide-header .subtle { text-align: left; }
   .guide-header .segmented { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
   .guide-header .segmented::-webkit-scrollbar { display: none; }
 }
