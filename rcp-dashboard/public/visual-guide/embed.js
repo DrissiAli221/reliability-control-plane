@@ -46,6 +46,8 @@ const EMBED_CSS = "/* Dashboard tokens, copied from src/styles.css (:root and :r
       if (ran) return;
       ran = true;
       scheduled = false;
+      // Hold the first report until the inspector has been sized for its longest text.
+      if (embedded && !reserved) return;
       const height = Math.ceil((main || document.body).getBoundingClientRect().height) + 2;
       if (height === lastHeight) return;
       lastHeight = height;
@@ -53,6 +55,39 @@ const EMBED_CSS = "/* Dashboard tokens, copied from src/styles.css (:root and :r
     };
     requestAnimationFrame(run);
     setTimeout(run, 100);
+  }
+  // The inspector's text changes with every selection. Reserve room for the longest one up front, so choosing a chip,
+  // node or stage never changes the frame height (and with it the page layout below the figure).
+  let reserved = !embedded;
+  let reservedWidth = 0;
+  function reserveInspector() {
+    const box = document.querySelector('.inspector, .story');
+    const previousStage = document.querySelector('.stages button.active');
+    const targets = [...document.querySelectorAll('[data-filter],[data-node],[data-rule],[data-example],[data-step]')];
+    if (box && targets.length) {
+      box.style.minHeight = '0px';
+      let tallest = box.getBoundingClientRect().height;
+      for (const target of targets) {
+        target.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        tallest = Math.max(tallest, box.getBoundingClientRect().height);
+      }
+      const clear = previousStage || document.querySelector('#clear-selection:not([hidden]), #clear') || document.querySelector('[data-filter="all"]');
+      clear?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      box.style.minHeight = `${Math.ceil(tallest)}px`;
+    }
+    reservedWidth = document.documentElement.clientWidth;
+    reserved = true;
+    measure();
+  }
+  const atRest = () => !document.querySelector('[data-node][aria-pressed="true"],[data-rule][aria-pressed="true"],[data-example][aria-pressed="true"]')
+    && (!document.querySelector('[data-filter]') || document.querySelector('[data-filter="all"][aria-pressed="true"]'));
+  if (embedded) {
+    document.fonts.ready.then(() => setTimeout(reserveInspector, 0));
+    setTimeout(() => { if (!reserved) reserveInspector(); }, 1500);
+    // Text wraps differently at a new width; measure again, but never in the middle of someone's selection.
+    window.addEventListener('resize', () => {
+      if (reserved && Math.abs(document.documentElement.clientWidth - reservedWidth) > 4 && atRest()) reserveInspector();
+    });
   }
   if (main) new ResizeObserver(measure).observe(main);
   document.fonts.ready.then(measure);
