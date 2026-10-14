@@ -1873,4 +1873,12 @@ body:has(.tracker-tooltip) .row-preview { display: none; }
   .guide-header .segmented { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
   .guide-header .segmented::-webkit-scrollbar { display: none; }
 }
-.guide-frame { display: block; width: 100%; border: 0; background: transparent; }
+/* The stage reserves the figure's height, so the skeleton, the fade-in and the finished figure all occupy the same box. */
+.guide-stage { position: relative; }
+.guide-frame { position: absolute; inset: 0; display: block; width: 100%; border: 0; background: transparent; opacity: 0; pointer-events: none; transition: opacity 150ms ease; }
+.guide-frame[data-ready="true"] { opacity: 1; pointer-events: auto; }
+.guide-skeleton { position: absolute; inset: 0; display: grid; grid-template-rows: 49px minmax(0, 1fr); }
+.guide-skeleton-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px; border-bottom: 1px solid var(--border); }
+.guide-skeleton-canvas { padding: 16px; }
+@media (max-width: 640px) { .guide-skeleton-actions { display: none; } }
+@media (prefers-reduced-motion: reduce) { .guide-frame { transition: none; } }

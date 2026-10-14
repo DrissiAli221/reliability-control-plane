@@ -409,10 +409,10 @@ function EmptyState({ onCreate }: { onCreate?: () => void }) {
   );
 }
 
-export function ErrorState({ message, retry }: { message: string; retry: () => Promise<void> }) {
+export function ErrorState({ message, retry, title = "The control plane did not answer" }: { message: string; retry: () => Promise<void>; title?: string }) {
   return (
     <div className="empty" role="alert">
-      <h2>The control plane did not answer</h2>
+      <h2>{title}</h2>
       <p>{message}</p>
       <button type="button" className="button secondary" onClick={() => void retry()}>Try again</button>
     </div>
