@@ -1,0 +1,94 @@
+import { useEffect, useRef, useState } from "react";
+import { Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useTheme } from "../theme";
+import embedScript from "../../public/visual-guide/embed.js?raw";
+
+import { guideForPath, GUIDE_VIEWS, legacyGuidePath } from "../visualGuide";
+import { NotFoundPage } from "./NotFoundPage";
+
+function Figure({ name, title }: { name: string; title: string }) {
+  const frame = useRef<HTMLIFrameElement>(null);
+  const [height, setHeight] = useState<number | null>(null);
+  const [document, setDocument] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const theme = useTheme();
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    // CloudFront deliberately denies framing HTTP responses. srcDoc preserves that policy
+    // while isolating the exported figure in an opaque-origin sandbox.
+    fetch(`/visual-guide/${name}.html`, { signal: controller.signal, credentials: "omit" })
+      .then((response) => {
+        if (!response.ok) throw new Error("Figure unavailable");
+        return response.text();
+      })
+      .then((html) => {
+        if (!controller.signal.aborted) {
+          const base = new URL("/visual-guide/", window.location.href).href;
+          // The figure starts in the dashboard's theme so it never flashes the other one before the first theme message.
+          const embedded = html
+            .replace(/<html\b/, `<html data-theme="${themeRef.current}"`)
+            .replace('<meta charset', `<base href="${base}"><meta charset`)
+            .replace('<script src="./embed.js"></script>', () => `<script>${embedScript.replace(/<\/script/gi, "<\\/script")}</script>`);
+          setDocument(embedded);
+        }
+      })
+      .catch(() => { if (!controller.signal.aborted) setFailed(true); });
+    return () => controller.abort();
+  }, [name]);
+
+  useEffect(() => {
+    function resize(event: MessageEvent) {
+      // Sandboxed figures have opaque origins. Identify the exact mounted frame instead.
+      if (event.source !== frame.current?.contentWindow || event.data?.type !== "rcp-guide-size") return;
+      const next = event.data.height;
+      if (typeof next === "number" && Number.isFinite(next) && next >= 200 && next <= 14000) setHeight(Math.ceil(next));
+    }
+    window.addEventListener("message", resize);
+    return () => window.removeEventListener("message", resize);
+  }, []);
+
+  function sendTheme() {
+    frame.current?.contentWindow?.postMessage({ type: "rcp-guide-theme", theme }, "*");
+  }
+  useEffect(() => {
+    frame.current?.contentWindow?.postMessage({ type: "rcp-guide-theme", theme }, "*");
+  }, [theme]);
+
+  if (failed) return <p className="panel-body" role="alert">The figure could not load. Reload the page and try again.</p>;
+  if (!document) return <p className="panel-body subtle" role="status">Loading figure…</p>;
+  return <iframe ref={frame} title={title} srcDoc={document} sandbox="allow-scripts allow-downloads" onLoad={sendTheme} className="guide-frame" scrolling={height === null ? "auto" : "no"} style={{ height: height ?? "max(480px, 75vh)" }} />;
+}
+
+export function VisualGuidePage() {
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  if (pathname === "/learn") return <Navigate replace to={legacyGuidePath(params.get("diagram"))} />;
+  const selected = guideForPath(pathname);
+  if (!selected) return <NotFoundPage />;
+
+  return (
+    <>
+      <header className="page-header">
+        <div>
+          <h1>How RCP works</h1>
+          <p><strong>Five views of how a check becomes a verdict and an incident decision.</strong> Illustrative examples; they don't query live services or change your monitors.</p>
+        </div>
+      </header>
+      <section className="panel" aria-label={selected.title}>
+        <header className="panel-header guide-header">
+          <nav className="segmented" aria-label="Visual guide">
+            {GUIDE_VIEWS.map((view) => (
+              <button key={view.id} type="button" aria-pressed={view.id === selected.id} onClick={() => navigate(`/learn/${view.id}`)}>{view.label}</button>
+            ))}
+          </nav>
+          <span className="subtle" title={selected.intro}>{selected.intro}</span>
+        </header>
+        <Figure key={selected.id} name={selected.artifact} title={selected.title} />
+      </section>
+    </>
+  );
+}

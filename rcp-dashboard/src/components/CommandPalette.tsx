@@ -1,4 +1,4 @@
-import { ArrowUpRight, Bell, Command, CornerDownLeft, Gauge, Keyboard, LayoutList, Play, Plus, Search, SunMoon, Workflow } from "lucide-react";
+import { BookOpen, ArrowUpRight, Bell, Command, CornerDownLeft, Gauge, Keyboard, LayoutList, Play, Plus, Search, SunMoon, Workflow } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
@@ -96,6 +96,8 @@ export function CommandPalette() {
       { id: "go-overview", group: "Go to", label: "Overview", keys: ["G", "O"], icon: <Gauge size={16} />, run: close(() => navigate("/")) },
       { id: "go-monitors", group: "Go to", label: "Monitors", keys: ["G", "M"], icon: <LayoutList size={16} />, run: close(() => navigate("/monitors")) },
       { id: "go-pipeline", group: "Go to", label: "Pipeline", keys: ["G", "P"], icon: <Workflow size={16} />, run: close(() => navigate("/pipeline")) },
+      { id: "go-guide", group: "Go to", label: "How RCP works", icon: <BookOpen size={16} />, run: close(() => navigate("/learn")) },
+      { id: "go-machine", group: "Go to", label: "Interactive machine", icon: <Play size={16} />, run: close(() => navigate("/learn/machine")) },
       ...monitors.map((monitor): Item => {
         const state = monitorState(monitor);
         return {

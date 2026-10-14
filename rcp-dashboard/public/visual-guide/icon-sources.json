@@ -1,0 +1,75 @@
+{
+  "cloudfront": {
+    "vendor": "AWS",
+    "source": "https://aws.amazon.com/architecture/icons/",
+    "package": "Architecture-Service-Icons_07312026/Arch_Networking-Content-Delivery/64/Arch_Amazon-CloudFront_64.svg"
+  },
+  "s3": {
+    "vendor": "AWS",
+    "source": "https://aws.amazon.com/architecture/icons/",
+    "package": "Architecture-Service-Icons_07312026/Arch_Storage/64/Arch_Amazon-Simple-Storage-Service_64.svg"
+  },
+  "cognito": {
+    "vendor": "AWS",
+    "source": "https://aws.amazon.com/architecture/icons/",
+    "package": "Architecture-Service-Icons_07312026/Arch_Security-Identity/64/Arch_Amazon-Cognito_64.svg"
+  },
+  "lambda": {
+    "vendor": "AWS",
+    "source": "https://aws.amazon.com/architecture/icons/",
+    "package": "Architecture-Service-Icons_07312026/Arch_Compute/64/Arch_AWS-Lambda_64.svg"
+  },
+  "sqs": {
+    "vendor": "AWS",
+    "source": "https://aws.amazon.com/architecture/icons/",
+    "package": "Architecture-Service-Icons_07312026/Arch_Application-Integration/64/Arch_Amazon-Simple-Queue-Service_64.svg"
+  },
+  "grafana": {
+    "source": "https://raw.githubusercontent.com/grafana/grafana/main/public/img/grafana_icon.svg"
+  },
+  "spring": {
+    "source": "https://spring.io/img/projects/spring-boot.svg"
+  },
+  "caddy": {
+    "source": "https://raw.githubusercontent.com/caddyserver/website/master/src/resources/images/logo-light.svg"
+  },
+  "postgres": {
+    "source": "https://wiki.postgresql.org/wiki/File:PostgreSQL_logo.3colors.svg"
+  },
+  "google": {
+    "source": "https://developers.google.com/static/identity/images/signin-assets.zip",
+    "file": "Android + Web/SVG/Dark/Theme=Dark, Show text=No, Shape=Square, Platform=Android+Web.svg",
+    "adaptation": "Sign-in button background and border removed; viewBox cropped to the original Google G paths. Mark geometry and colors retained."
+  },
+  "github": {
+    "source": "https://developers.google.com/static/site-assets/logo-github.svg"
+  },
+  "alloy": {
+    "source": "https://raw.githubusercontent.com/grafana/alloy/main/docs/sources/assets/alloy_icon_orange.svg"
+  },
+  "aws": {
+    "source": "https://aws.amazon.com/architecture/icons/",
+    "package": "Architecture-Group-Icons_07312026/AWS-Cloud-logo_32_Dark.svg"
+  },
+  "browser": {
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/app-window.svg",
+    "license": "ISC"
+  },
+  "globe": {
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/globe.svg",
+    "license": "ISC"
+  },
+  "timer": {
+    "source": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/timer.svg",
+    "license": "ISC"
+  },
+  "oracle": {
+    "source": "https://docs.oracle.com/iaas/Content/Resources/Assets/OCI-Style-Guide-for-Drawio.zip",
+    "entry": "Compute - Flex Virtual Machine Flex VM",
+    "conversion": "Original stencil paths converted to SVG, icon crop excludes text label; original colors retained"
+  },
+  "caddy-mark": {
+    "source": "https://raw.githubusercontent.com/caddyserver/website/master/src/resources/images/logo-light.svg",
+    "conversion": "ViewBox crop of the vendor logomark; original paths and colors retained"
+  }
+}

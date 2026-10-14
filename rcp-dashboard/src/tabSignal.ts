@@ -1,3 +1,4 @@
+import { guideForPath } from "./visualGuide";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listMonitors } from "./api";
 import { APERTURE_CORE, APERTURE_LEFT, APERTURE_RIGHT } from "./brand";
@@ -29,6 +30,7 @@ function pageName(pathname: string): string {
   if (pathname.startsWith("/monitors/")) return "Monitor";
   if (pathname.startsWith("/monitors")) return "Monitors";
   if (pathname.startsWith("/pipeline")) return "Pipeline";
+  if (pathname.startsWith("/learn")) return guideForPath(pathname)?.title ?? "How RCP works";
   return pathname === "/" ? "Overview" : "Not found";
 }
 
