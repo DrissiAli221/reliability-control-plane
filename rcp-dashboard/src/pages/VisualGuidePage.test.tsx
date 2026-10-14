@@ -28,7 +28,7 @@ describe("visual guide", () => {
     expect(fetch).toHaveBeenCalledWith("/visual-guide/availability.html", expect.objectContaining({ credentials: "omit" }));
     fireEvent.click(screen.getByRole("button", { name: "Machine" }));
     expect(diagram.isConnected).toBe(false);
-    expect(await screen.findByTitle("The monitoring machine")).toHaveAttribute("sandbox", "allow-scripts allow-downloads allow-popups");
+    expect(await screen.findByTitle("The monitoring machine")).toHaveAttribute("sandbox", "allow-scripts allow-downloads");
     expect(screen.queryByRole("navigation", { name: "Choose a diagram" })).not.toBeInTheDocument();
     const nav = screen.getByRole("navigation", { name: "Visual guide" });
     expect(nav).toHaveClass("segmented");

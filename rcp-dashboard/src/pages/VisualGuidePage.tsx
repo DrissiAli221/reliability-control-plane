@@ -55,7 +55,7 @@ function Figure({ name, title }: { name: string; title: string }) {
 
   if (failed) return <p className="panel-body" role="alert">The figure could not load. Reload the page and try again.</p>;
   if (!document) return <p className="panel-body subtle" role="status">Loading figure…</p>;
-  return <iframe ref={frame} title={title} srcDoc={document} sandbox="allow-scripts allow-downloads allow-popups" onLoad={sendTheme} className="guide-frame" scrolling={height === null ? "auto" : "no"} style={{ height: height ?? "max(480px, 75vh)" }} />;
+  return <iframe ref={frame} title={title} srcDoc={document} sandbox="allow-scripts allow-downloads" onLoad={sendTheme} className="guide-frame" scrolling={height === null ? "auto" : "no"} style={{ height: height ?? "max(480px, 75vh)" }} />;
 }
 
 export function VisualGuidePage() {
@@ -81,7 +81,7 @@ export function VisualGuidePage() {
               <button key={view.id} type="button" aria-pressed={view.id === selected.id} onClick={() => navigate(`/learn/${view.id}`)}>{view.label}</button>
             ))}
           </nav>
-          <span className="subtle">{selected.intro}</span>
+          <span className="subtle" title={selected.intro}>{selected.intro}</span>
         </header>
         <Figure key={selected.id} name={selected.artifact} title={selected.title} />
       </section>
