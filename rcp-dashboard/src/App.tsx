@@ -52,7 +52,7 @@ export function App() {
       <Route path="/monitors" element={<AppShell onLogout={() => void logout()}><MonitorsPage /></AppShell>} />
       <Route path="/pipeline" element={<AppShell onLogout={() => void logout()}><PipelinePage /></AppShell>} />
       <Route path="/learn" element={<AppShell onLogout={() => void logout()}><VisualGuidePage /></AppShell>} />
-      <Route path="/learn/machine" element={<AppShell onLogout={() => void logout()}><VisualGuidePage /></AppShell>} />
+      <Route path="/learn/:figure" element={<AppShell onLogout={() => void logout()}><VisualGuidePage /></AppShell>} />
       <Route path="/monitors/:monitorId" element={<AppShell onLogout={() => void logout()}><MonitorDetailPage /></AppShell>} />
       <Route path="/signin" element={<SignInPage />} />
       <Route path="/auth/callback" element={<AuthCallback />} />

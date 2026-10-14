@@ -8,15 +8,30 @@ beforeEach(() => vi.stubGlobal("fetch", vi.fn().mockImplementation(() => Promise
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("visual guide", () => {
+  it.each([
+    ["/learn/deployment", "Deployment", "deployment"],
+    ["/learn/lifecycle", "Life of one check", "lifecycle"],
+    ["/learn/verdicts", "Verdicts and incidents", "verdicts"],
+    ["/learn/coverage", "Availability and coverage", "availability"],
+    ["/learn/machine", "The monitoring machine", "machine"],
+    ["/learn?diagram=lifecycle", "Life of one check", "lifecycle"],
+    ["/learn?diagram=unknown", "Deployment", "deployment"],
+  ])("opens %s", async (path, title, artifact) => {
+    render(<MemoryRouter initialEntries={[path]}><VisualGuidePage /></MemoryRouter>);
+    expect(await screen.findByTitle(title)).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(`/visual-guide/${artifact}.html`, expect.objectContaining({ credentials: "omit" }));
+  });
+
   it("deep-links to a diagram and removes its frame when switching to the machine", async () => {
     render(<MemoryRouter initialEntries={["/learn?diagram=availability"]}><VisualGuidePage /></MemoryRouter>);
     const diagram = await screen.findByTitle("Availability and coverage");
     expect(fetch).toHaveBeenCalledWith("/visual-guide/availability.html", expect.objectContaining({ credentials: "omit" }));
-    fireEvent.click(screen.getByRole("link", { name: "Interactive machine" }));
+    fireEvent.click(screen.getByRole("link", { name: "Machine" }));
     expect(diagram.isConnected).toBe(false);
-    expect(await screen.findByTitle("The monitoring machine")).toHaveAttribute("sandbox", "allow-scripts allow-downloads");
+    expect(await screen.findByTitle("The monitoring machine")).toHaveAttribute("sandbox", "allow-scripts allow-downloads allow-popups");
     expect(screen.queryByRole("navigation", { name: "Choose a diagram" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("link", { name: "Diagrams" }));
+    expect(screen.getByRole("navigation", { name: "Visual guide" }).querySelectorAll("a")).toHaveLength(5);
+    fireEvent.click(screen.getByRole("link", { name: "Deployment" }));
     expect(screen.queryByTitle("The monitoring machine")).not.toBeInTheDocument();
     expect(await screen.findByTitle("Deployment")).toBeInTheDocument();
   });
@@ -26,15 +41,15 @@ describe("visual guide", () => {
     const frame = await screen.findByTitle("Deployment") as HTMLIFrameElement;
     const send = (source: Window | null, height: unknown) => fireEvent(window, new MessageEvent("message", { source, data: { type: "rcp-guide-size", height } }));
     send(window, 900);
-    expect(frame.style.height).toBe("1000px");
+    expect(frame.style.height).toBe("240px");
     send(frame.contentWindow, 1800);
     expect(frame.style.height).toBe("1800px");
     for (const invalid of [NaN, Infinity, -1, 15000, "500"]) send(frame.contentWindow, invalid);
     expect(frame.style.height).toBe("1800px");
     const staleSource = frame.contentWindow;
-    fireEvent.click(screen.getByRole("button", { name: "Life of one check" }));
+    fireEvent.click(screen.getByRole("link", { name: "Life of a check" }));
     const next = await screen.findByTitle("Life of one check") as HTMLIFrameElement;
     send(staleSource, 3000);
-    expect(next.style.height).toBe("1000px");
+    expect(next.style.height).toBe("240px");
   });
 });

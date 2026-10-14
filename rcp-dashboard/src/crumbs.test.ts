@@ -10,5 +10,7 @@ describe("top bar path", () => {
       { label: "Monitors", to: "/monitors" },
       { label: "3f2a9c1e" },
     ]);
+    expect(crumbs("/learn/coverage").map((c) => c.label)).toEqual(["rcp", "How RCP works", "Coverage"]);
+    expect(crumbs("/learn/lifecycle").at(-1)?.label).toBe("Life of a check");
   });
 });

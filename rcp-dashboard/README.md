@@ -37,6 +37,6 @@ The visual system is a dark, Vercel-inspired console (Geist Sans/Mono, neutral s
 
 ## Visual guide
 
-The sidebar’s **How RCP works** entry opens `/learn`, with the four reviewed service and behavior diagrams. `/learn/machine` opens the interactive isometric machine: step through a check, change the example scenario, or play outage and recovery. Both are available in the command palette.
+The sidebar’s **How RCP works** entry opens `/learn`, with one navigation row for deployment, check lifecycle, verdicts, coverage and the machine. Each figure has a direct `/learn/…` route; existing links still work. `/learn/machine` opens the interactive isometric machine: step through a check, change the example scenario, or play outage and recovery. Both are available in the command palette.
 
 These figures work without the backend. Only the selected artifact loads, and switching views removes the previous frame and its animation. The shell may show unavailable telemetry while the backend is stopped. See [the artifact notes](public/visual-guide/README.md) for hosting, isolation and font/icon attribution.
