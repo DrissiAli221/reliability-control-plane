@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, Navigate, useLocation, useSearchParams } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useTheme } from "../theme";
 import embedScript from "../../public/visual-guide/embed.js?raw";
 
@@ -60,6 +60,7 @@ function Figure({ name, title }: { name: string; title: string }) {
 
 export function VisualGuidePage() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const [params] = useSearchParams();
   if (pathname === "/learn") return <Navigate replace to={legacyGuidePath(params.get("diagram"))} />;
   const selected = guideForPath(pathname);
@@ -67,15 +68,23 @@ export function VisualGuidePage() {
 
   return (
     <>
-      <header className="page-header"><h1>How RCP works</h1></header>
-      <nav className="guide-nav" aria-label="Visual guide">
-        {GUIDE_VIEWS.map((view) => <Link key={view.id} to={`/learn/${view.id}`} aria-current={view.id === selected.id ? "page" : undefined}>{view.label}</Link>)}
-      </nav>
-      <p className="guide-intro">{selected.intro}</p>
-      <section className="guide-figure" aria-label={selected.title}>
+      <header className="page-header">
+        <div>
+          <h1>How RCP works</h1>
+          <p><strong>Five views of how a check becomes a verdict and an incident decision.</strong> Illustrative examples; they don't query live services or change your monitors.</p>
+        </div>
+      </header>
+      <section className="panel" aria-label={selected.title}>
+        <header className="panel-header guide-header">
+          <nav className="segmented" aria-label="Visual guide">
+            {GUIDE_VIEWS.map((view) => (
+              <button key={view.id} type="button" aria-pressed={view.id === selected.id} onClick={() => navigate(`/learn/${view.id}`)}>{view.label}</button>
+            ))}
+          </nav>
+          <span className="subtle">{selected.intro}</span>
+        </header>
         <Figure key={selected.id} name={selected.artifact} title={selected.title} />
       </section>
-      <p className="guide-note">Configuration and illustrative examples; these figures do not query live cloud services or change your monitors.</p>
     </>
   );
 }
