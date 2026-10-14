@@ -5,7 +5,30 @@
   if (embedded) {
     document.body.dataset.embedded = 'true';
     const style = document.createElement('style');
-    style.textContent = 'body[data-embedded]{background:var(--bg,#0a0a0a)}body[data-embedded] .map-card,body[data-embedded] .machine-card,body[data-embedded] .machine-sidebar,body[data-embedded] .controls,body[data-embedded] .toolbar{background:transparent}';
+    style.textContent = [
+      // Sit flush in the dashboard panel: no figure background, outer padding, margins or borders.
+      'html:not(:has(body.light)),body[data-embedded]:not(.light){background:#111111}',
+      'body[data-embedded] main{margin:0!important;padding:0!important;max-width:none}',
+      'body[data-embedded] main>header,body[data-embedded] .eyebrow:first-child{display:none!important}',
+      'body[data-embedded] .map-card,body[data-embedded] .machine-card,body[data-embedded] .machine-sidebar,body[data-embedded] .controls,body[data-embedded] .toolbar{background:transparent;border-left:0;border-right:0}',
+      // Dashboard density: 8px rows, 26px controls, 11px captions, 16px content padding.
+      'body[data-embedded] .toolbar,body[data-embedded] .controls{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;border-top:0;border-bottom:1px solid var(--border,#242424)}',
+      'body[data-embedded] .lenses,body[data-embedded] .tools,body[data-embedded] .playback,body[data-embedded] .buttons,body[data-embedded] .secondary-actions{gap:8px}',
+      'body[data-embedded] .controls label{flex:0 1 auto;display:flex;align-items:center;gap:8px;width:auto}',
+      'body[data-embedded] .controls .micro,body[data-embedded] .control-hint,body[data-embedded] .preset-label{margin:0;font:400 11px "Geist Mono",ui-monospace,monospace;letter-spacing:0;color:#6b6b6b}',
+      'body[data-embedded] button,body[data-embedded] .figure-open{min-height:0;height:26px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;border-radius:0;font:500 12.5px Geist,system-ui,sans-serif;letter-spacing:0}',
+      'body[data-embedded] select{height:26px;padding:0 8px;border-radius:0;font:500 12.5px Geist,system-ui,sans-serif}',
+      'body[data-embedded] .secondary-actions button{padding:0 10px}',
+      'body[data-embedded] #zoom-level{min-width:40px;text-align:center;font:400 11px "Geist Mono",ui-monospace,monospace}',
+      'body[data-embedded] .inspector,body[data-embedded] .simulator{margin:0;padding:16px;border:0;border-top:1px solid var(--border,#242424);min-height:0}',
+      'body[data-embedded] .inspector h2,body[data-embedded] .simulator h2{margin:8px 0 4px;font-size:13px;font-weight:500;letter-spacing:0}',
+      'body[data-embedded] .inspector p,body[data-embedded] .simulator p{font-size:12.5px;line-height:1.5;margin:0}',
+      'body[data-embedded] .sim-heading{gap:16px}body[data-embedded] .sim-actions{margin:12px 0;gap:8px}body[data-embedded] .sim-readout>div{padding:12px}body[data-embedded] .inputs{gap:8px}',
+      'body[data-embedded] figcaption,body[data-embedded] .pan-hint{padding:8px 16px;font:400 11px "Geist Mono",ui-monospace,monospace;letter-spacing:0}',
+      'body[data-embedded] .viewport{padding:0}',
+      'body[data-embedded] .machine-sidebar .story{padding:16px}body[data-embedded] .machine-sidebar .evidence-log{padding:16px}body[data-embedded] .machine-bottom>div{padding:12px 16px}',
+      'body[data-embedded] .stages button{height:32px;padding:0 4px}'
+    ].join('');
     document.head.append(style);
   }
   const name = document.body.dataset.figure;
@@ -45,15 +68,21 @@
   function measure() {
     if (scheduled) return;
     scheduled = true;
-    requestAnimationFrame(() => {
+    // requestAnimationFrame is paused in hidden or background frames; the timer guarantees a report.
+    let ran = false;
+    const run = () => {
+      if (ran) return;
+      ran = true;
       scheduled = false;
-      const height = Math.ceil(main.getBoundingClientRect().height) + 2;
+      const height = Math.ceil((main || document.body).getBoundingClientRect().height) + 2;
       if (height === lastHeight) return;
       lastHeight = height;
       if (embedded) parent.postMessage({ type: 'rcp-guide-size', height }, '*');
-    });
+    };
+    requestAnimationFrame(run);
+    setTimeout(run, 100);
   }
-  new ResizeObserver(measure).observe(main);
+  if (main) new ResizeObserver(measure).observe(main);
   document.fonts.ready.then(measure);
   window.addEventListener('load', measure);
   window.addEventListener('resize', measure);
