@@ -227,3 +227,13 @@ normal ingestion, a stalled counter, disabled monitors, startup, counter reset,
 scrape failure, stale database metrics, missing telemetry and URL recovery.
 The native Alloy test validates syntax; Linux collector accuracy, memory usage,
 real credentials, live probe reachability and email delivery need deployment checks.
+
+CI runs the mock Terraform tests and the full deployment Python suite. It installs
+the pinned Caddy, Alloy and promtool binaries and PostgreSQL 17 on an isolated
+runner, verifies release checksums and fails if no deployment tests are found or
+any deployment test is skipped. Regression tests also verify the runner rejects
+failures, errors and missing tools.
+For the same strict local check, put those tools and Docker Compose on your PATH
+and run `python3 .github/scripts/test-demo.py` from the repository root. The SQL
+tests create their own temporary database; no running Docker daemon is needed.
+Neither CI job uses cloud credentials, applies Terraform or contacts the live demo.
