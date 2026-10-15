@@ -93,11 +93,13 @@ resource "aws_lambda_function" "probe" {
   s3_object_version              = aws_s3_object.artifact.version_id
   source_code_hash               = var.offline_mode ? null : filebase64sha256(var.artifact_path)
   environment {
-    variables = {
+    variables = merge({
       PROBE_REGION        = var.region
       RESULT_QUEUE_URL    = var.result_queue_url
       RESULT_QUEUE_REGION = "us-east-1"
-    }
+      }, var.region_header_host == "" ? {} : {
+      PROBE_REGION_HEADER_HOST = var.region_header_host
+    })
   }
   tracing_config { mode = "PassThrough" }
   depends_on = [aws_cloudwatch_log_group.probe, aws_iam_role_policy.probe]

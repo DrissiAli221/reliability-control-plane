@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -69,14 +70,38 @@ public class MonitorHistoryService {
             grid.get(Math.min(cell.column(), HEATMAP_COLUMNS - 1)).set(cell.band(), cell.samples());
         }
 
+        Map<String, Long[]> p50ByRegion = new TreeMap<>();
+        Map<String, Long[]> p95ByRegion = new TreeMap<>();
+        for (MonitorHistoryRepository.ColumnPercentiles column
+                : historyRepository.latencyPercentiles(monitorId, from, to, bucketSeconds)) {
+            int index = Math.min(column.column(), HEATMAP_COLUMNS - 1);
+            p50ByRegion.computeIfAbsent(column.region(), region -> new Long[HEATMAP_COLUMNS])[index] = column.p50Ms();
+            p95ByRegion.computeIfAbsent(column.region(), region -> new Long[HEATMAP_COLUMNS])[index] = column.p95Ms();
+        }
+
+        Map<String, MonitorHistoryRepository.WindowPercentiles> window =
+                historyRepository.windowPercentiles(monitorId, from, to);
+
         List<LatencyHeatmap.RegionHeatmap> regions = byRegion.entrySet().stream()
-                .map(entry -> new LatencyHeatmap.RegionHeatmap(
-                        entry.getKey(),
-                        entry.getValue().stream().flatMap(List::stream).mapToLong(Long::longValue).sum(),
-                        entry.getValue().stream().map(List::copyOf).toList()
-                ))
+                .map(entry -> {
+                    MonitorHistoryRepository.WindowPercentiles overall = window.get(entry.getKey());
+                    return new LatencyHeatmap.RegionHeatmap(
+                            entry.getKey(),
+                            entry.getValue().stream().flatMap(List::stream).mapToLong(Long::longValue).sum(),
+                            entry.getValue().stream().map(List::copyOf).toList(),
+                            nullableColumns(p50ByRegion.get(entry.getKey())),
+                            nullableColumns(p95ByRegion.get(entry.getKey())),
+                            overall == null ? null : overall.p50Ms(),
+                            overall == null ? null : overall.p95Ms()
+                    );
+                })
                 .toList();
         return new LatencyHeatmap(monitorId, from, to, bucketSeconds, LATENCY_BOUNDS_MS, regions);
+    }
+
+    /** Columns without an HTTP response stay null; List.copyOf would reject them. */
+    private static List<Long> nullableColumns(Long[] columns) {
+        return Collections.unmodifiableList(Arrays.asList(columns == null ? new Long[HEATMAP_COLUMNS] : columns));
     }
 
     private static List<List<Long>> emptyGrid() {

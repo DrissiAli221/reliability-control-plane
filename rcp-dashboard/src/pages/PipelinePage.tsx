@@ -4,6 +4,7 @@ import { isLocalAuth } from "../auth";
 import { ChaosPanel } from "../components/ChaosPanel";
 import { DecisionTimes } from "../components/DecisionTimes";
 import { EventStream } from "../components/EventStream";
+import { PipelineSkeleton } from "../components/Skeleton";
 import { PipelineMap } from "../components/PipelineMap";
 import { useReadOnly } from "../session";
 import { useLiveData, useNow } from "../useLiveData";
@@ -20,18 +21,18 @@ export function PipelinePage() {
       <header className="page-header">
         <div>
           <h1>Pipeline</h1>
-          <p>How every check travels from the scheduler to an incident decision. Counts cover your monitors only.</p>
+          <p><strong>How every check travels from the scheduler to an incident decision.</strong> Counts cover your monitors only.</p>
         </div>
         <div className="page-actions">
           <LiveIndicator updatedAt={snapshot.updatedAt} now={now} error={snapshot.error} />
           <button type="button" className="icon-button bordered" onClick={() => void snapshot.refresh()} aria-label="Refresh" disabled={snapshot.loading}>
-            <RefreshCw size={15} className={snapshot.loading ? "spin" : undefined} />
+            <RefreshCw size={16} className={snapshot.loading ? "spin" : undefined} />
           </button>
         </div>
       </header>
 
       {snapshot.error && !snapshot.data && <ErrorState message={snapshot.error} retry={snapshot.refresh} />}
-      {!snapshot.data && !snapshot.error && <div className="skeletons"><div className="skeleton tall" /></div>}
+      {!snapshot.data && !snapshot.error && <PipelineSkeleton />}
 
       {snapshot.data && (
         <>

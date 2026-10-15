@@ -1,6 +1,7 @@
 package dev.ali.rcp.monitors;
 
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
@@ -14,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.UUID;
 
 @Repository
@@ -53,7 +55,9 @@ public class MonitorHistoryRepository {
                        COUNT(*) FILTER (WHERE executions.verdict = 'DISAGREEMENT') AS disagreement,
                        COUNT(*) FILTER (WHERE executions.verdict = 'NO_DATA') AS no_data
                 FROM unnest(ARRAY[%s]::uuid[]) AS ids(monitor_id)
-                CROSS JOIN generate_series(?::date, ?::date, INTERVAL '1 day') AS days(day)
+                -- Generate UTC wall-clock midnights before applying the explicit UTC zone.
+                -- Date arguments alone choose timestamptz and inherit the connection zone.
+                CROSS JOIN generate_series(?::date::timestamp, ?::date::timestamp, INTERVAL '1 day') AS days(day)
                 LEFT JOIN probe_executions executions
                   ON executions.monitor_id = ids.monitor_id
                  AND executions.status = 'FINALIZED'
@@ -82,10 +86,10 @@ public class MonitorHistoryRepository {
         jdbcTemplate.query(
                 """
                 SELECT DISTINCT ON (probe_region)
-                       probe_region, outcome, http_status, latency_ms, completed_at
-                FROM probe_results
-                WHERE monitor_id = ? AND scheduled_at >= ?
-                ORDER BY probe_region, scheduled_at DESC
+                       probe_region, outcome, http_status, latency_ms, completed_at, executions.accepted_http_statuses_snapshot
+                FROM probe_results results JOIN probe_executions executions ON executions.execution_id = results.execution_id
+                WHERE results.monitor_id = ? AND results.scheduled_at >= ?
+                ORDER BY probe_region, results.scheduled_at DESC
                 """,
                 resultSet -> {
                     String region = resultSet.getString("probe_region");
@@ -94,7 +98,8 @@ public class MonitorHistoryRepository {
                             resultSet.getString("outcome"),
                             resultSet.getObject("http_status", Integer.class),
                             resultSet.getLong("latency_ms"),
-                            resultSet.getObject("completed_at", OffsetDateTime.class).toInstant()
+                            resultSet.getObject("completed_at", OffsetDateTime.class).toInstant(),
+                            dev.ali.rcp.monitors.AcceptedHttpStatuses.read(resultSet, "accepted_http_statuses_snapshot")
                     ));
                 },
                 monitorId, timestamp(since)
@@ -107,7 +112,7 @@ public class MonitorHistoryRepository {
                        percentile_disc(0.5) WITHIN GROUP (ORDER BY latency_ms) AS p50_ms,
                        percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_ms
                 FROM probe_results
-                WHERE monitor_id = ? AND scheduled_at >= ? AND outcome = 'HTTP_RESPONSE'
+                WHERE monitor_id = ? AND scheduled_at >= ? AND outcome = 'HTTP_RESPONSE' AND bot_protection IS NULL
                 GROUP BY probe_region
                 """,
                 resultSet -> {
@@ -121,7 +126,7 @@ public class MonitorHistoryRepository {
                             latest.lastOutcome(),
                             latest.lastHttpStatus(),
                             latest.lastLatencyMs(),
-                            latest.lastCompletedAt()
+                            latest.lastCompletedAt(), latest.lastAcceptedHttpStatuses()
                     ));
                 },
                 monitorId, timestamp(since)
@@ -133,10 +138,10 @@ public class MonitorHistoryRepository {
         Map<UUID, MonitorHistory.RecentCheck> checks = new LinkedHashMap<>();
         jdbcTemplate.query(
                 """
-                SELECT executions.execution_id, executions.scheduled_at, executions.verdict,
-                       results.probe_region, results.outcome, results.http_status, results.latency_ms
+                SELECT executions.execution_id, executions.scheduled_at, executions.verdict, executions.accepted_http_statuses_snapshot,
+                       results.probe_region, results.outcome, results.http_status, results.latency_ms, results.bot_protection
                 FROM (
-                    SELECT execution_id, scheduled_at, verdict
+                    SELECT execution_id, scheduled_at, verdict, accepted_http_statuses_snapshot
                     FROM probe_executions
                     WHERE monitor_id = ? AND status = 'FINALIZED'
                     ORDER BY scheduled_at DESC
@@ -149,15 +154,16 @@ public class MonitorHistoryRepository {
                     UUID executionId = resultSet.getObject("execution_id", UUID.class);
                     Instant scheduledAt = resultSet.getObject("scheduled_at", OffsetDateTime.class).toInstant();
                     String verdict = resultSet.getString("verdict");
+                    List<Integer> accepted = dev.ali.rcp.monitors.AcceptedHttpStatuses.read(resultSet, "accepted_http_statuses_snapshot");
                     MonitorHistory.RecentCheck check = checks.computeIfAbsent(executionId,
-                            id -> new MonitorHistory.RecentCheck(id, scheduledAt, verdict, new ArrayList<>()));
+                            id -> new MonitorHistory.RecentCheck(id, scheduledAt, verdict, new ArrayList<>(), accepted));
                     String region = resultSet.getString("probe_region");
                     if (region != null) {
                         check.results().add(new MonitorHistory.RegionResult(
                                 region,
                                 resultSet.getString("outcome"),
                                 resultSet.getObject("http_status", Integer.class),
-                                resultSet.getLong("latency_ms")
+                                resultSet.getLong("latency_ms"), resultSet.getString("bot_protection")
                         ));
                     }
                 },
@@ -165,7 +171,7 @@ public class MonitorHistoryRepository {
         );
         return checks.values().stream()
                 .map(check -> new MonitorHistory.RecentCheck(
-                        check.executionId(), check.scheduledAt(), check.verdict(), List.copyOf(check.results())))
+                        check.executionId(), check.scheduledAt(), check.verdict(), List.copyOf(check.results()), check.acceptedHttpStatuses()))
                 .toList();
     }
 
@@ -182,7 +188,7 @@ public class MonitorHistoryRepository {
                        width_bucket(latency_ms, ARRAY[%s]::bigint[]) AS band,
                        COUNT(*) AS samples
                 FROM probe_results
-                WHERE monitor_id = ? AND scheduled_at >= ? AND scheduled_at < ? AND outcome = 'HTTP_RESPONSE'
+                WHERE monitor_id = ? AND scheduled_at >= ? AND scheduled_at < ? AND outcome = 'HTTP_RESPONSE' AND bot_protection IS NULL
                 GROUP BY 1, 2, 3
                 """.formatted(bounds),
                 (resultSet, rowNumber) -> new LatencyCell(
@@ -196,6 +202,55 @@ public class MonitorHistoryRepository {
     }
 
     public record LatencyCell(String region, int column, int band, long samples) {
+    }
+
+    /** Nearest-rank p50 and p95 of HTTP-response latency per region and time column, like the region summaries. */
+    public List<ColumnPercentiles> latencyPercentiles(UUID monitorId, Instant from, Instant to, int bucketSeconds) {
+        return jdbcTemplate.query(
+                """
+                SELECT probe_region,
+                       FLOOR(EXTRACT(EPOCH FROM (scheduled_at - ?)) / ?)::int AS column_index,
+                       percentile_disc(0.5) WITHIN GROUP (ORDER BY latency_ms) AS p50_ms,
+                       percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_ms
+                FROM probe_results
+                WHERE monitor_id = ? AND scheduled_at >= ? AND scheduled_at < ? AND outcome = 'HTTP_RESPONSE' AND bot_protection IS NULL
+                GROUP BY 1, 2
+                """,
+                (resultSet, rowNumber) -> new ColumnPercentiles(
+                        resultSet.getString("probe_region"),
+                        resultSet.getInt("column_index"),
+                        resultSet.getLong("p50_ms"),
+                        resultSet.getLong("p95_ms")
+                ),
+                timestamp(from), bucketSeconds, monitorId, timestamp(from), timestamp(to)
+        );
+    }
+
+    public record ColumnPercentiles(String region, int column, long p50Ms, long p95Ms) {
+    }
+
+    /** Nearest-rank p50 and p95 of HTTP-response latency per region over the whole window. */
+    public Map<String, WindowPercentiles> windowPercentiles(UUID monitorId, Instant from, Instant to) {
+        Map<String, WindowPercentiles> byRegion = new TreeMap<>();
+        jdbcTemplate.query(
+                """
+                SELECT probe_region,
+                       percentile_disc(0.5) WITHIN GROUP (ORDER BY latency_ms) AS p50_ms,
+                       percentile_disc(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_ms
+                FROM probe_results
+                WHERE monitor_id = ? AND scheduled_at >= ? AND scheduled_at < ? AND outcome = 'HTTP_RESPONSE' AND bot_protection IS NULL
+                GROUP BY probe_region
+                """,
+                (RowCallbackHandler) resultSet -> byRegion.put(
+                        resultSet.getString("probe_region"),
+                        new WindowPercentiles(resultSet.getLong("p50_ms"), resultSet.getLong("p95_ms"))
+                ),
+                monitorId, timestamp(from), timestamp(to)
+        );
+        return byRegion;
+    }
+
+    public record WindowPercentiles(long p50Ms, long p95Ms) {
     }
 
     private OffsetDateTime timestamp(Instant instant) {

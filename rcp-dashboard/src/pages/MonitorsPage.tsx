@@ -1,17 +1,22 @@
-import { ArrowUpRight, Download, Pause, Play, Plus, RefreshCw, Search } from "lucide-react";
+import { ArrowUpRight, Download, Pause, Play, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { availability, createMonitor, listMonitors, monitorHistory, setMonitorEnabled } from "../api";
+import { LoadingNote, SkLine, SkRows } from "../components/Skeleton";
+import { DeleteMonitorDialog } from "../components/DeleteMonitorDialog";
 import { ActionMenu } from "../components/ActionMenu";
 import { RollingText } from "../components/RollingText";
 import { RowPreview } from "../components/RowPreview";
 import { CreateMonitorDialog } from "../components/CreateMonitorDialog";
+import { DrillLine, DrillTag } from "../components/Drill";
+import { isDrillMonitor } from "../drill";
 import { LiveLed, StatusBadge, StatusDot } from "../components/StatusBadge";
 import { downloadReport } from "../reportDownload";
 import { Tracker } from "../components/Tracker";
 import { compactUrl, milliseconds, monitorState, percent, relativeTime, type Tone } from "../format";
 import type { AvailabilityReport, CreateMonitorInput, MonitorHistory, MonitorOverview } from "../types";
-import { useReadOnly } from "../session";
+import { capacityLine, capacityOf, capacityReason } from "../capacity";
+import { refreshSession, useReadOnly, useSession } from "../session";
 import { useLiveData, useNow } from "../useLiveData";
 
 const TRACKER_DAYS = 30;
@@ -45,8 +50,15 @@ export function MonitorsPage() {
   const navigate = useNavigate();
   const readOnly = useReadOnly();
   const [params, setParams] = useSearchParams();
+  const session = useSession();
+  const capacity = capacityOf(session);
+  const capacityNote = capacityLine(capacity, readOnly);
+  const createBlocked = capacityReason(capacity);
+  // A redirect from a monitor page that no longer exists leaves a one-line explanation here.
+  const arrivalNotice = (useLocation().state as { notice?: string } | null)?.notice ?? null;
   const [showCreate, setShowCreate] = useState(() => params.get("create") === "1");
   const [query, setQuery] = useState("");
+  const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [notice, setNotice] = useState<string | null>(null);
   const previousStates = useRef<Map<string, string> | null>(null);
@@ -67,6 +79,10 @@ export function MonitorsPage() {
     if (!readOnly) setShowCreate(true);
     setParams({}, { replace: true });
   }, [params, setParams, readOnly]);
+
+  useEffect(() => {
+    if (fleet.data) void refreshSession();
+  }, [fleet.data]);
 
   useEffect(() => {
     if (fleet.data) previousStates.current = new Map(fleet.data.map(({ monitor }) => [monitor.id, monitorState(monitor).label]));
@@ -97,7 +113,10 @@ export function MonitorsPage() {
   });
 
   async function handleCreate(input: CreateMonitorInput) {
-    const created = await createMonitor(input);
+    const created = await createMonitor(input).catch((reason: unknown) => {
+      void refreshSession(); // a capacity refusal means the counters shown were stale
+      throw reason;
+    });
     setShowCreate(false);
     navigate(`/monitors/${created.id}`);
   }
@@ -117,32 +136,36 @@ export function MonitorsPage() {
       <header className="page-header">
         <div>
           <h1>Monitors</h1>
-          <p>HTTP(S) targets checked from every configured region. Verdicts need regional agreement.</p>
+          <p><strong>HTTP(S) targets, checked from every region.</strong> A verdict needs the regions to agree.</p>
+          {capacityNote && <p className="capacity-line" data-testid="capacity-line">{capacityNote}</p>}
+          {!readOnly && createBlocked && <p className="capacity-why" id="monitors-capacity-why">{createBlocked}</p>}
         </div>
         <div className="page-actions">
           <LiveIndicator updatedAt={fleet.updatedAt} now={now} error={fleet.error} />
           <button type="button" className="icon-button bordered" onClick={() => void fleet.refresh()} aria-label="Refresh" disabled={fleet.loading}>
-            <RefreshCw size={15} className={fleet.loading ? "spin" : undefined} />
+            <RefreshCw size={16} className={fleet.loading ? "spin" : undefined} />
           </button>
           {!readOnly && (
-            <button type="button" className="button primary" onClick={() => setShowCreate(true)}>
-              <Plus size={15} aria-hidden="true" /> Create monitor
+            <button type="button" className="button primary" onClick={() => setShowCreate(true)} disabled={createBlocked != null}
+              aria-describedby={createBlocked ? "monitors-capacity-why" : undefined} title={createBlocked ?? undefined}>
+              <Plus size={16} aria-hidden="true" /> Create monitor
             </button>
           )}
         </div>
       </header>
 
-      <section className="metric-grid" aria-label="Fleet summary">
-        <Metric label="Operational" value={`${summary.operational}`} suffix={`/ ${summary.total - summary.paused}`} tone="good"
+      <section className="metric-grid fleet-summary" aria-label="Fleet summary">
+        <Metric label="Operational" loading={!fleet.data} value={`${summary.operational}`} suffix={`/ ${summary.total - summary.paused}`} tone="good"
           visual={<FleetCells rows={rows} lit={(monitor) => monitor.enabled && monitor.incidentStatus !== "OPEN" && monitor.latestVerdict === "UP"} tone="good" />} />
-        <Metric label="Open incidents" value={`${summary.incidents}`} tone={summary.incidents ? "fault" : "muted"}
+        <Metric label="Open incidents" loading={!fleet.data} value={`${summary.incidents}`} hint="Active outages" tone={summary.incidents ? "fault" : "muted"}
           visual={<FleetCells rows={rows} lit={(monitor) => monitor.incidentStatus === "OPEN"} tone="fault" />} />
-        <Metric label="Needs attention" value={`${summary.attention}`} hint="Down, disagreement or no data" tone={summary.attention ? "warn" : "muted"}
+        <Metric label="Needs attention" loading={!fleet.data} value={`${summary.attention}`} hint="Down, disagreement or no data" tone={summary.attention ? "warn" : "muted"}
           visual={<FleetCells rows={rows} lit={(monitor) => monitor.enabled && monitor.incidentStatus !== "OPEN" && monitor.latestVerdict !== "UP" && monitor.latestVerdict !== null} tone="warn" />} />
-        <Metric label="Paused" value={`${summary.paused}`} tone="muted"
+        <Metric label="Paused" loading={!fleet.data} value={`${summary.paused}`} hint="Not being checked" tone="muted"
           visual={<FleetCells rows={rows} lit={(monitor) => !monitor.enabled} tone="muted" />} />
       </section>
 
+      {arrivalNotice && <p className="notice info" role="status">{arrivalNotice}</p>}
       {notice && <p className="notice fault" role="alert">{notice}</p>}
 
       <section className="panel">
@@ -160,7 +183,7 @@ export function MonitorsPage() {
 
         {fleet.error && !fleet.data && <ErrorState message={fleet.error} retry={fleet.refresh} />}
         {!fleet.data && !fleet.error && <SkeletonRows />}
-        {fleet.data && rows.length === 0 && <EmptyState onCreate={readOnly ? undefined : () => setShowCreate(true)} />}
+        {fleet.data && rows.length === 0 && <EmptyState onCreate={readOnly || createBlocked ? undefined : () => setShowCreate(true)} />}
         {fleet.data && rows.length > 0 && (
           <div className="table-scroll">
             <table className="table fleet">
@@ -186,6 +209,7 @@ export function MonitorsPage() {
                     onOpen={() => navigate(`/monitors/${row.monitor.id}`)}
                     readOnly={readOnly}
                     onToggle={() => void runAction(() => setMonitorEnabled(row.monitor.id, !row.monitor.enabled), "Monitor could not be updated")}
+                    onDelete={() => setDeleting({ id: row.monitor.id, name: row.monitor.name })}
                     onDownload={() => void runAction(() => downloadReport(row.monitor.id, row.monitor.name), "The report could not be downloaded")}
                   />
                 ))}
@@ -203,12 +227,23 @@ export function MonitorsPage() {
         conclusive verdict; below 95% the SLO is reported as unproven rather than met.
       </p>
 
+      {deleting && !readOnly && (
+        <DeleteMonitorDialog
+          monitorId={deleting.id}
+          name={deleting.name}
+          onClose={() => setDeleting(null)}
+          onDeleted={() => {
+            setDeleting(null);
+            void fleet.refresh();
+          }}
+        />
+      )}
       {showCreate && <CreateMonitorDialog onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
     </>
   );
 }
 
-function FleetTableRow({ row, now, index, changed, readOnly, onOpen, onToggle, onDownload }: {
+function FleetTableRow({ row, now, index, changed, readOnly, onOpen, onToggle, onDelete, onDownload }: {
   row: FleetRow;
   readOnly: boolean;
   now: number;
@@ -216,11 +251,13 @@ function FleetTableRow({ row, now, index, changed, readOnly, onOpen, onToggle, o
   changed: boolean;
   onOpen: () => void;
   onToggle: () => void;
+  onDelete: () => void;
   onDownload: () => void;
 }) {
   const { monitor, availability: report, history } = row;
   const state = monitorState(monitor);
   const latency = aggregateLatency(history);
+  const drill = isDrillMonitor(monitor.targetUrl);
   const [preview, setPreview] = useState<DOMRect | null>(null);
   const hoverTimer = useRef<number | undefined>(undefined);
 
@@ -251,18 +288,20 @@ function FleetTableRow({ row, now, index, changed, readOnly, onOpen, onToggle, o
       style={{ animationDelay: `${index * 35}ms` }}
       onClick={onOpen}
       onKeyDown={(event) => { if (event.key === "Enter") onOpen(); }}
-      aria-label={`Open ${monitor.name}`}
+      aria-label={`Open ${monitor.name}, ${state.label}`}
     >
       <td>
         <div className="monitor-cell">
           <StatusDot tone={state.tone} pulse={state.tone === "fault"} />
           <div>
-            <strong>{monitor.name}</strong>
+            <strong>{monitor.name}{drill && <DrillTag />}</strong>
+            <span className={`status-inline ${state.tone}`}>{state.label}</span>
             <span className="mono subtle">{compactUrl(monitor.targetUrl)}</span>
+            {drill && monitor.enabled && <DrillLine now={now} />}
           </div>
         </div>
       </td>
-      <td className="col-status"><StatusBadge label={state.label} tone={state.tone} /></td>
+      <td className="col-status"><StatusBadge label={state.label} tone={state.tone} blocked={state.label === "Blocked"} /></td>
       <td className="col-tracker">
         {history ? <Tracker days={history.days} size="compact" label={`${monitor.name}, last ${TRACKER_DAYS} days`} /> : <span className="subtle">—</span>}
       </td>
@@ -284,6 +323,7 @@ function FleetTableRow({ row, now, index, changed, readOnly, onOpen, onToggle, o
             { label: "Open details", icon: <ArrowUpRight size={14} />, onSelect: onOpen },
             ...(readOnly ? [] : [{ label: monitor.enabled ? "Pause checks" : "Resume checks", icon: monitor.enabled ? <Pause size={14} /> : <Play size={14} />, onSelect: onToggle }]),
             { label: "Download 7-day report", icon: <Download size={14} />, onSelect: onDownload },
+            ...(readOnly ? [] : [{ label: "Delete monitor", icon: <Trash2 size={14} />, tone: "danger" as const, separatorBefore: true, onSelect: onDelete }]),
           ]}
         />
       </td>
@@ -317,7 +357,7 @@ function aggregateLatency(history?: MonitorHistory): string {
   return `${milliseconds(p50)} · ${milliseconds(p95)}`;
 }
 
-export function Metric({ label, value, suffix, hint, tone, explain, visual }: {
+export function Metric({ label, value, suffix, hint, tone, explain, visual, loading = false }: {
   label: string;
   value: string;
   suffix?: string;
@@ -325,13 +365,15 @@ export function Metric({ label, value, suffix, hint, tone, explain, visual }: {
   tone: Tone;
   explain?: ReactNode;
   visual?: ReactNode;
+  /** Shows a placeholder in place of the number until the first data arrives. */
+  loading?: boolean;
 }) {
-  // Healthy and idle cards stay neutral; attention and informational readouts carry a faint hue.
-  const attention = tone === "fault" || tone === "warn" || tone === "info";
   return (
-    <div className={`metric${attention ? ` attention ${tone}` : ""}`}>
-      <span className="metric-label"><StatusDot tone={tone} />{label}{explain}</span>
-      <span className="metric-value"><RollingText value={value} />{suffix && <small>{suffix}</small>}</span>
+    <div className="metric" data-tone={loading ? "muted" : tone} aria-busy={loading || undefined}>
+      <span className="metric-label"><StatusDot tone={loading ? "muted" : tone} />{label}{explain}</span>
+      <span className="metric-value">
+        {loading ? <SkLine w="1.6em" line="1em" bar="0.7em" /> : <><RollingText value={value} />{suffix && <small>{suffix}</small>}</>}
+      </span>
       {visual && <div className="metric-visual">{visual}</div>}
       {hint && <span className="metric-hint">{hint}</span>}
     </div>
@@ -343,11 +385,17 @@ export function LiveIndicator({ updatedAt, now, error }: { updatedAt: number | n
     return <span className="live stale" title={error}><LiveLed updatedAt={null} tone="warn" /><span>Refresh failed · data from <span className="live-age">{relativeTime(new Date(updatedAt).toISOString(), now)}</span></span></span>;
   }
   if (!updatedAt) return null;
-  return <span className="live"><LiveLed updatedAt={updatedAt} /><span>Live · updated <span className="live-age">{relativeTime(new Date(updatedAt).toISOString(), now)}</span></span></span>;
+  return <span className="live fresh"><LiveLed updatedAt={updatedAt} /><span>Live · updated <span className="live-age">{relativeTime(new Date(updatedAt).toISOString(), now)}</span></span></span>;
 }
 
+/** Rows shaped like the fleet table (name and URL, status, trend, uptime), at the table's row height. */
 function SkeletonRows() {
-  return <div className="skeletons" aria-label="Loading monitors">{[0, 1, 2].map((key) => <div className="skeleton" key={key} />)}</div>;
+  return (
+    <>
+      <LoadingNote label="monitors" />
+      <SkRows count={3} height={62} columns="minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.6fr) 72px" widths={["60%", 72, "80%", 48]} />
+    </>
+  );
 }
 
 function EmptyState({ onCreate }: { onCreate?: () => void }) {
@@ -356,15 +404,15 @@ function EmptyState({ onCreate }: { onCreate?: () => void }) {
       <p className="dot-glyph small" aria-hidden="true">0</p>
       <h2>No monitors yet</h2>
       <p>Add a public HTTP(S) endpoint. Each check runs in every region, and the control plane only calls it down when the regions agree.</p>
-      {onCreate && <button type="button" className="button primary" onClick={onCreate}><Plus size={15} aria-hidden="true" /> Create monitor</button>}
+      {onCreate && <button type="button" className="button primary" onClick={onCreate}><Plus size={16} aria-hidden="true" /> Create monitor</button>}
     </div>
   );
 }
 
-export function ErrorState({ message, retry }: { message: string; retry: () => Promise<void> }) {
+export function ErrorState({ message, retry, title = "The control plane did not answer" }: { message: string; retry: () => Promise<void>; title?: string }) {
   return (
     <div className="empty" role="alert">
-      <h2>The control plane did not answer</h2>
+      <h2>{title}</h2>
       <p>{message}</p>
       <button type="button" className="button secondary" onClick={() => void retry()}>Try again</button>
     </div>

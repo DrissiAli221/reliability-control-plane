@@ -33,8 +33,9 @@ public class IncidentProcessor {
 
     private void process(FinalizedExecution execution) {
         // Serialize with owner pause/resume, which locks this monitor row.
-        MonitorRunState run = repository.lockMonitorRun(execution.monitorId());
-        if (!run.enabled() || execution.monitorBehaviorVersion() != run.behaviorVersion()) {
+        // A deleted monitor has no live row to lock: skip it, like result ingestion's DISCARDED_MONITOR.
+        MonitorRunState run = repository.lockMonitorRun(execution.monitorId()).orElse(null);
+        if (run == null || !run.enabled() || execution.monitorBehaviorVersion() != run.behaviorVersion()) {
             repository.recordEvaluation(execution, IncidentDecision.Transition.IGNORED_STALE);
             return;
         }

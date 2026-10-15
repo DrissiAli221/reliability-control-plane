@@ -50,7 +50,7 @@ export function Explain({ title, lines, note }: { title: string; lines: ExplainL
         aria-controls={position ? id : undefined}
         onClick={toggle}
       >
-        <Info size={13} aria-hidden="true" />
+        <Info size={14} aria-hidden="true" />
       </button>
       {position && createPortal(
         <div className="explain" role="dialog" aria-label={title} id={id} ref={popover} style={position}>
@@ -67,6 +67,18 @@ export function Explain({ title, lines, note }: { title: string; lines: ExplainL
         </div>,
         document.body,
       )}
+    </>
+  );
+}
+
+/** A list of short facts that may wrap between items but never inside one. */
+export function ExplainItems({ items, empty = "Nothing" }: { items: string[]; empty?: string }) {
+  if (items.length === 0) return <>{empty}</>;
+  return (
+    <>
+      {items.map((item, index) => (
+        <span key={item} className="explain-item">{item}{index < items.length - 1 ? " · " : ""}</span>
+      ))}
     </>
   );
 }

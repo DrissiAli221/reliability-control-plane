@@ -1,5 +1,5 @@
 import { MoreHorizontal } from "lucide-react";
-import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 export type MenuAction = {
@@ -7,15 +7,19 @@ export type MenuAction = {
   icon: ReactNode;
   onSelect: () => void;
   disabled?: boolean;
+  /** Danger items read red; the red wash only appears on hover. */
+  tone?: "danger";
+  /** Draws a hairline above this item to set it apart from the group before it. */
+  separatorBefore?: boolean;
 };
 
-const MENU_HEIGHT_ESTIMATE = 140;
+const MENU_HEIGHT_ESTIMATE = 150;
 
 /**
  * The menu renders in a body-level portal with fixed coordinates, so table scroll containers and
  * row stacking contexts can neither clip it nor paint over it.
  */
-export function ActionMenu({ label, actions }: { label: string; actions: MenuAction[] }) {
+export function ActionMenu({ label, actions, bordered = false }: { label: string; actions: MenuAction[]; bordered?: boolean }) {
   const [position, setPosition] = useState<CSSProperties | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
@@ -65,7 +69,7 @@ export function ActionMenu({ label, actions }: { label: string; actions: MenuAct
       <button
         ref={trigger}
         type="button"
-        className="icon-button"
+        className={bordered ? "icon-button bordered" : "icon-button"}
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -77,10 +81,12 @@ export function ActionMenu({ label, actions }: { label: string; actions: MenuAct
       {position && createPortal(
         <div className="menu" role="menu" id={menuId} ref={menu} style={position}>
           {actions.map((action) => (
+            <Fragment key={action.label}>
+            {action.separatorBefore && <div className="menu-separator" role="separator" />}
             <button
-              key={action.label}
               type="button"
               role="menuitem"
+              className={action.tone === "danger" ? "danger" : undefined}
               disabled={action.disabled}
               onClick={() => {
                 setPosition(null);
@@ -90,6 +96,7 @@ export function ActionMenu({ label, actions }: { label: string; actions: MenuAct
               {action.icon}
               {action.label}
             </button>
+            </Fragment>
           ))}
         </div>,
         document.body,

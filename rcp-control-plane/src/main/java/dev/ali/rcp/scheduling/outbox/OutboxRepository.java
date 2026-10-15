@@ -45,6 +45,8 @@ public class OutboxRepository {
                     FROM outbox_events
                     WHERE published_at IS NULL
                       AND failed_at IS NULL
+                      AND NOT EXISTS (SELECT 1 FROM monitors m WHERE m.deleted_at IS NOT NULL
+                                      AND m.monitor_id::text = outbox_events.payload->>'monitorId')
                       AND next_attempt_at <= CURRENT_TIMESTAMP
                       AND
                       (
@@ -97,6 +99,8 @@ public class OutboxRepository {
                   AND claimed_until > CURRENT_TIMESTAMP
                   AND published_at IS NULL
                   AND failed_at IS NULL
+                      AND NOT EXISTS (SELECT 1 FROM monitors m WHERE m.deleted_at IS NOT NULL
+                                      AND m.monitor_id::text = outbox_events.payload->>'monitorId')
                 """,
                 eventId,
                 publisherId
@@ -135,6 +139,8 @@ public class OutboxRepository {
                   AND claimed_until > CURRENT_TIMESTAMP
                   AND published_at IS NULL
                   AND failed_at IS NULL
+                      AND NOT EXISTS (SELECT 1 FROM monitors m WHERE m.deleted_at IS NOT NULL
+                                      AND m.monitor_id::text = outbox_events.payload->>'monitorId')
                 """,
                 maxAttempts,
                 retryDelay.toMillis(),

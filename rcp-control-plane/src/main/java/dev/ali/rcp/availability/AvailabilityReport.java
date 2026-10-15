@@ -22,6 +22,8 @@ public record AvailabilityReport(
         long pendingExecutions,
         long missingExecutions,
         long expectedOpportunities,
-        String denominatorPolicy
+        String denominatorPolicy,
+        /** When the monitor was first scheduled; checks, and so expected checks, only exist from then on. */
+        Instant monitoringSince
 ) {
 }

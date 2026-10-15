@@ -1,8 +1,8 @@
 [Unit]
-Description=RCP demo outage drill every two hours
+Description=Check the deterministic RCP drill schedule each UTC minute
 
 [Timer]
-OnCalendar=*-*-* 00/2:00:00 UTC
+OnCalendar=*-*-* *:*:00 UTC
 AccuracySec=1s
 # Never replay a missed outage when the VM boots.
 Persistent=false

@@ -54,6 +54,7 @@ export function count(value: number): string {
 export function monitorState(monitor: MonitorOverview): { label: string; tone: Tone } {
   if (!monitor.enabled) return { label: "Paused", tone: "muted" };
   if (monitor.incidentStatus === "OPEN") return { label: "Incident", tone: "fault" };
+  if (monitor.latestVerdict === "NO_DATA" && monitor.latestBlocked) return { label: "Blocked", tone: "muted" };
   return verdictState(monitor.latestVerdict);
 }
 
@@ -82,9 +83,26 @@ export function outcomeLabel(outcome: string, httpStatus: number | null): string
 // Mirrors RegionalProbeFact: only network failures and HTTP responses are evidence about the target.
 const TARGET_FAILURES = new Set(["CONNECT_TIMEOUT", "REQUEST_TIMEOUT", "TLS_FAILURE", "CONNECTION_FAILURE"]);
 
-export function outcomeTone(outcome: string, httpStatus: number | null): Tone {
-  if (outcome === "HTTP_RESPONSE") return httpStatus != null && httpStatus >= 200 && httpStatus < 400 ? "good" : "fault";
+/** A Cloudflare challenge means the probe was stopped, so it is no evidence about the target unless its status was accepted. */
+export function outcomeTone(outcome: string, httpStatus: number | null, acceptedHttpStatuses?: number[] | null, botProtection?: string | null): Tone {
+  if (outcome === "HTTP_RESPONSE") {
+    const accepted = httpStatus != null && (acceptedHttpStatuses ? acceptedHttpStatuses.includes(httpStatus) : httpStatus >= 200 && httpStatus < 400);
+    if (!accepted && botProtection === "CLOUDFLARE_CHALLENGE") return "muted";
+    return accepted ? "good" : "fault";
+  }
   return TARGET_FAILURES.has(outcome) ? "fault" : "muted";
+}
+
+export type CheckResultLike = { outcome: string; httpStatus: number | null; botProtection?: string | null };
+
+/** True for a result that is a Cloudflare challenge nobody accepted: the probe was stopped, not the site down. */
+export function isChallenged(result: CheckResultLike, acceptedHttpStatuses?: number[] | null): boolean {
+  return result.botProtection === "CLOUDFLARE_CHALLENGE" && outcomeTone(result.outcome, result.httpStatus, acceptedHttpStatuses, result.botProtection) === "muted";
+}
+
+/** A NO_DATA verdict where every region was challenged is "blocked", not "the probes did not run". */
+export function isBlockedCheck(check: { verdict: Verdict; acceptedHttpStatuses?: number[] | null; results: CheckResultLike[] }): boolean {
+  return check.verdict === "NO_DATA" && check.results.length > 0 && check.results.every((result) => isChallenged(result, check.acceptedHttpStatuses));
 }
 
 export function ordinal(value: number): string {

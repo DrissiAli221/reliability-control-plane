@@ -22,4 +22,9 @@ export default tseslint.config(
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
     },
   },
+  {
+    // Vendored dither-kit chart engine: its context files export hooks next to providers by design.
+    files: ["src/components/dither-kit/**"],
+    rules: { "react-refresh/only-export-components": "off" },
+  },
 );

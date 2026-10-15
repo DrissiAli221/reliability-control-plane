@@ -57,9 +57,9 @@ def verify_phase2(origin):
     status, identity = request_json(origin, "/api/me", token=token)
     assert status == 200 and identity["readOnly"] is True
     assert identity["subject"] == "11111111-2222-3333-4444-555555555555", "Seeding must use the token's subject"
-    assert identity["limits"] == {"maxPerOwner": 3, "maxTotal": 8, "minIntervalSeconds": 60, "maxTimeoutMs": 5000}
+    assert identity["limits"] == {"maxPerOwner": 5, "maxTotal": 30, "minIntervalSeconds": 60, "maxTimeoutMs": 5000}
     status, monitors = request_json(origin, "/api/monitors", token=token)
-    assert status == 200 and {m["name"] for m in monitors} == {"Example Domain", "Wikipedia", "Scheduled outage drill"}
+    assert status == 200 and {m["name"] for m in monitors} == {"Example Domain", "Wikipedia", "Scheduled outage drill", "GitHub Status", "Cloudflare Status"}
     details = [request_json(origin, "/api/monitors/" + m["id"], token=token)[1] for m in monitors]
     assert all(m["checkIntervalSeconds"] == 60 and m["timeoutMs"] <= 5000 for m in details)
     create = {"name": "Forbidden write", "targetUrl": "https://example.com", "checkIntervalSeconds": 60, "timeoutMs": 5000}
@@ -105,9 +105,9 @@ def main():
         }}
         if args.phase2:
             config["rcp"].update({
-                "monitors": {"max-per-owner": 3, "max-total": 8, "min-interval-seconds": 60, "max-timeout-ms": 5000},
+                "monitors": {"max-per-owner": 5, "max-total": 30, "min-interval-seconds": 60, "max-timeout-ms": 5000},
                 "local-worker": {"enabled": False},
-                "demo": {"monitors": "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org, Scheduled outage drill|https://rcp-ali.duckdns.org/drill/status.html",
+                "demo": {"monitors": "Example Domain|https://example.com, Wikipedia|https://www.wikipedia.org, Scheduled outage drill|https://rcp-ali.duckdns.org/drill/status.html, GitHub Status|https://www.githubstatus.com/api/v2/status.json, Cloudflare Status|https://www.cloudflarestatus.com/api/v2/status.json",
                          "example-monitor-url": "https://example.com"},
             })
             config["rcp"]["identity"]["read-only-group"] = "demo"

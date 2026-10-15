@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import { milliseconds, verdictState } from "../format";
 import { labelFits, spanLabel, traceEvents, traceRows, verdictRule, type SpanKind, type TraceRow } from "../trace";
 import type { ExecutionTrace } from "../types";
+import { formatStatusCodes } from "../statusCodes";
+import { BotProtectionHint } from "./BotProtectionHint";
 import { StatusBadge } from "./StatusBadge";
 
 type View = "timeline" | "history";
@@ -34,7 +36,7 @@ export function TraceView({ trace }: { trace: ExecutionTrace }) {
   const [view, setView] = useState<View>("timeline");
   const { rows, totalMs } = useMemo(() => traceRows(trace), [trace]);
   const events = useMemo(() => traceEvents(trace), [trace]);
-  const verdict = trace.verdict ? verdictState(trace.verdict) : { label: "Pending", tone: "info" as const };
+  const verdict = trace.verdict ? verdictState(trace.verdict) : { label: "Pending", tone: "muted" as const };
   const t0 = new Date(trace.scheduledAt).getTime();
   const [hover, setHover] = useState<RowHover | null>(null);
   const axis = useRef<HTMLDivElement>(null);
@@ -172,7 +174,9 @@ export function TraceView({ trace }: { trace: ExecutionTrace }) {
           </table>
         </div>
       )}
+      <BotProtectionHint results={trace.jobs} />
       <p className="trace-note">
+        Accepted statuses for this check: {formatStatusCodes(trace.acceptedHttpStatuses)}.
         Worker start and finish times use the worker's clock; every other timestamp is PostgreSQL time.
         {trace.verdict && <> {trace.verdict} means {verdictRule[trace.verdict]}.</>}
       </p>

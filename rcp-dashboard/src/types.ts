@@ -9,9 +9,11 @@ export type MonitorOverview = {
   incidentStatus: "HEALTHY" | "OPEN" | null;
   latestVerdict: Verdict | null;
   latestCheckedAt: string | null;
+  latestBlocked?: boolean;
 };
 
 export type MonitorDetail = {
+  acceptedHttpStatuses?: number[] | null;
   id: string;
   name: string;
   targetUrl: string;
@@ -23,6 +25,7 @@ export type MonitorDetail = {
 };
 
 export type CreateMonitorInput = {
+  acceptedHttpStatuses?: number[] | null;
   name: string;
   targetUrl: string;
   checkIntervalSeconds: number;
@@ -55,6 +58,8 @@ export type AvailabilityReport = {
   missingExecutions: number;
   expectedOpportunities: number;
   denominatorPolicy: string;
+  /** When the monitor was first scheduled; absent from older servers. */
+  monitoringSince?: string;
 };
 
 export type DayStatus = "OPERATIONAL" | "DEGRADED" | "OUTAGE" | "NO_DATA";
@@ -69,6 +74,7 @@ export type DailyEvidence = {
 };
 
 export type RegionSummary = {
+  lastAcceptedHttpStatuses?: number[] | null;
   region: string;
   httpSamples: number;
   p50Ms: number | null;
@@ -80,10 +86,11 @@ export type RegionSummary = {
 };
 
 export type RecentCheck = {
+  acceptedHttpStatuses?: number[] | null;
   executionId: string;
   scheduledAt: string;
   verdict: Verdict;
-  results: Array<{ region: string; outcome: string; httpStatus: number | null; latencyMs: number }>;
+  results: Array<{ region: string; outcome: string; httpStatus: number | null; latencyMs: number; botProtection?: string | null }>;
 };
 
 export type MonitorHistory = {
@@ -102,7 +109,10 @@ export type ReliabilityReport = {
   incidentTimeline: Array<{ incidentId: string; eventType: "OPENED" | "RESOLVED"; occurredAt: string }>;
   incidentTimelineTruncated: boolean;
   limitations: string[];
+  caveats?: ReportCaveat[];
 };
+
+export type ReportCaveat = { topic: string; text: string };
 
 export type PublicComponentStatus = "OPERATIONAL" | "DEGRADED" | "OUTAGE" | "PAUSED" | "STALE" | "UNKNOWN";
 
@@ -122,6 +132,7 @@ export type PublicStatusPage = {
 };
 
 export type JobTrace = {
+  botProtection?: string | null;
   jobId: string;
   region: string;
   createdAt: string | null;
@@ -140,6 +151,7 @@ export type JobTrace = {
 };
 
 export type ExecutionTrace = {
+  acceptedHttpStatuses?: number[] | null;
   executionId: string;
   monitorId: string;
   scheduledAt: string;
@@ -197,7 +209,19 @@ export type LatencyHeatmap = {
   to: string;
   bucketSeconds: number;
   latencyBoundsMs: number[];
-  regions: Array<{ region: string; samples: number; counts: number[][] }>;
+  /**
+   * p50Ms/p95Ms: per-column nearest-rank percentiles, null where a column has no HTTP response;
+   * windowP50Ms/windowP95Ms: the same over the whole window.
+   */
+  regions: Array<{
+    region: string;
+    samples: number;
+    counts: number[][];
+    p50Ms: Array<number | null>;
+    p95Ms: Array<number | null>;
+    windowP50Ms?: number | null;
+    windowP95Ms?: number | null;
+  }>;
 };
 
 export type PipelineEvent = {
@@ -215,7 +239,10 @@ export type PipelineEvent = {
 
 export type MonitorLimits = { maxPerOwner: number; maxTotal: number; minIntervalSeconds: number; maxTimeoutMs: number };
 
-export type Session = { subject: string; readOnly: boolean; limits: MonitorLimits };
+/** Live monitors counted against the limits; `usage` is absent from servers that predate it. */
+export type MonitorUsage = { ownedMonitors: number; totalMonitors: number };
+
+export type Session = { subject: string; readOnly: boolean; limits: MonitorLimits; usage?: MonitorUsage };
 
 export type VerdictBucket = { up: number; down: number; disagreement: number; noData: number };
 

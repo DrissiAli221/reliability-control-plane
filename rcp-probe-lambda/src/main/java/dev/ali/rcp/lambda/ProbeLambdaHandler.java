@@ -66,7 +66,8 @@ public final class ProbeLambdaHandler implements RequestHandler<SQSEvent, SQSBat
         SafeTargetPolicy targetPolicy = new SafeTargetPolicy();
         ProbeEngine engine = new ProbeEngine(
                 new SafeTargetProbePolicy(targetPolicy),
-                new ValidatedProbeHttpClient(targetPolicy, CONNECT_TIMEOUT)
+                new ValidatedProbeHttpClient(
+                        targetPolicy, CONNECT_TIMEOUT, probeRegion, System.getenv("PROBE_REGION_HEADER_HOST"))
         );
 
         return new ProbeWorker(

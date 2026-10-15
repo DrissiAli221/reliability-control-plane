@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { absoluteTime, durationBetween, relativeTime, verdictState } from "../format";
 import type { PipelineSnapshot } from "../types";
+import { StatusDot } from "./StatusBadge";
 
 /**
  * How long each recent check took to travel the pipeline, from its scheduled time to its verdict. The bar is
@@ -28,7 +29,7 @@ export function DecisionTimes({ activity, now }: { activity: PipelineSnapshot["r
         return (
           <li key={item.executionId} className={fresh.has(item.executionId) ? "fresh" : undefined}>
             <button type="button" onClick={open} style={{ animationDelay: `${index * 25}ms` }} aria-label={`${item.monitorName}, ${verdict.label}, decided in ${durationBetween(item.scheduledAt, item.finalizedAt)}. Open trace`}>
-              <i className={`decision-verdict ${verdict.tone}`} title={verdict.label} />
+              <StatusDot tone={verdict.tone} />
               <span className="decision-monitor">{item.monitorName}</span>
               <span className="decision-track"><b className={verdict.tone} style={{ width: `${(took(item) / slowest) * 100}%` }} /></span>
               <span className="mono decision-took">{durationBetween(item.scheduledAt, item.finalizedAt)}</span>

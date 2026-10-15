@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { listMonitors } from "./api";
+import { listMonitors, getMonitor, availability, reliabilityReportHtml } from "./api";
+import { ApiError, isNotFound } from "./apiError";
 import { accessToken, redirectToSignIn, sessionRejected } from "./auth";
 
 vi.mock("./auth", () => ({ accessToken: vi.fn(), redirectToSignIn: vi.fn(), sessionRejected: vi.fn() }));
@@ -57,5 +58,27 @@ describe("api session handling", () => {
 
     await expect(listMonitors()).rejects.toThrow("Database unavailable");
     expect(sessionRejected).not.toHaveBeenCalled();
+  });
+
+  it("keeps the status on errors so a missing monitor is not mistaken for an outage", async () => {
+    vi.mocked(accessToken).mockResolvedValue("ok");
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(json(404, { title: "Monitor not found", detail: "Monitor not found" }));
+
+    const reason = await getMonitor("gone").catch((error: unknown) => error);
+    expect(reason).toBeInstanceOf(ApiError);
+    expect(isNotFound(reason)).toBe(true);
+    expect(isNotFound(new ApiError("down", 503))).toBe(false);
+    expect(isNotFound(new Error("Monitor not found"))).toBe(false);
+  });
+
+  it("asks for a preset window by days rather than computing instants in the browser", async () => {
+    vi.mocked(accessToken).mockResolvedValue("ok");
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async () => json(200, {}));
+
+    await availability("m1", 30);
+    await reliabilityReportHtml("m1", 90);
+
+    expect(String(fetch.mock.calls[0][0])).toBe("/api/monitors/m1/availability?days=30");
+    expect(String(fetch.mock.calls[1][0])).toBe("/api/monitors/m1/reliability-report/html?days=90");
   });
 });

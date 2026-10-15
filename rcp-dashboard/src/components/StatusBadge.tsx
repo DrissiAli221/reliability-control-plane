@@ -1,13 +1,22 @@
+import { ShieldAlert } from "lucide-react";
 import type { Tone } from "../format";
 
+const CELLS = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+
+/** A static 3×3 dot-matrix block in the status tone, the same shape as LiveLed; `pulse` makes it breathe. */
 export function StatusDot({ tone, pulse = false }: { tone: Tone; pulse?: boolean }) {
-  return <span className={`status-dot ${tone}${pulse ? " pulse" : ""}`} aria-hidden="true" />;
+  return (
+    <span className={`status-dot ${tone}${pulse ? " breathing" : ""}`} aria-hidden="true">
+      {CELLS.map((cell) => <i key={cell} />)}
+    </span>
+  );
 }
 
-export function StatusBadge({ label, tone }: { label: string; tone: Tone }) {
+/** `blocked` swaps the dot for a shield and hatches the badge: the probes were challenged by bot protection, not absent. */
+export function StatusBadge({ label, tone, blocked = false }: { label: string; tone: Tone; blocked?: boolean }) {
   return (
-    <span className={`badge ${tone}`}>
-      <StatusDot tone={tone} />
+    <span className={`badge ${tone}${blocked ? " blocked" : ""}`}>
+      {blocked ? <ShieldAlert size={13} aria-hidden="true" /> : <StatusDot tone={tone} />}
       {label}
     </span>
   );

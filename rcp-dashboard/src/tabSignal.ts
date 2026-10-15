@@ -1,15 +1,25 @@
+import { guideForPath } from "./visualGuide";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listMonitors } from "./api";
+import { APERTURE_CORE, APERTURE_LEFT, APERTURE_RIGHT } from "./brand";
 import type { MonitorOverview } from "./types";
 
-const ACCENT = "#7c6cff";
+const ACCENT = "#7c63ff";
+const LAVENDER = "#b5a1ff";
 const FAULT = "#e5484d";
 const POLL_MS = 15_000;
 
-/** The brand square, drawn red while any incident is open so a background tab still shows trouble. */
+/**
+ * The aperture mark on a transparent background. Its centre square follows the browser's colour scheme (white on a
+ * dark tab bar, near-black on a light one); while an incident is open the brackets turn red, so a background tab
+ * still shows trouble.
+ */
 export function faviconSvg(incident: boolean): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="${incident ? FAULT : ACCENT}"/>`
-    + `<path d="M5 17h4.5l2.8-7.5 5 13.5 3-6H27" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"/></svg>`;
+  const [left, right] = incident ? [FAULT, FAULT] : [ACCENT, LAVENDER];
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 14" shape-rendering="crispEdges">`
+    + `<style>.core{fill:#ffffff}@media (prefers-color-scheme:light){.core{fill:#0a0a0a}}</style>`
+    + `<path fill="${left}" d="${APERTURE_LEFT}"/><path fill="${right}" d="${APERTURE_RIGHT}"/>`
+    + `<path class="core" d="${APERTURE_CORE}"/></svg>`;
 }
 
 export function tabTitle(page: string, openIncidents: number): string {
@@ -20,6 +30,7 @@ function pageName(pathname: string): string {
   if (pathname.startsWith("/monitors/")) return "Monitor";
   if (pathname.startsWith("/monitors")) return "Monitors";
   if (pathname.startsWith("/pipeline")) return "Pipeline";
+  if (pathname.startsWith("/learn")) return guideForPath(pathname)?.title ?? "How RCP works";
   return pathname === "/" ? "Overview" : "Not found";
 }
 

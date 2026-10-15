@@ -43,6 +43,8 @@ module "us_probe" {
   artifact_path       = var.lambda_artifact_path
   offline_mode        = var.offline_mode
   reserve_concurrency = var.reserve_probe_concurrency
+  # Only the demo drill (same host as the monitored /drill/status.html) is told the probe region.
+  region_header_host = regex("^https://([^:/]+)", var.api_origin)[0]
 }
 
 module "europe_probe" {
@@ -56,6 +58,8 @@ module "europe_probe" {
   artifact_path       = var.lambda_artifact_path
   offline_mode        = var.offline_mode
   reserve_concurrency = var.reserve_probe_concurrency
+  # Only the demo drill (same host as the monitored /drill/status.html) is told the probe region.
+  region_header_host = regex("^https://([^:/]+)", var.api_origin)[0]
 }
 
 # No access-key resource: secret material must never enter Terraform state.

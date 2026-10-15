@@ -29,7 +29,7 @@ variable "budget_email" {
 variable "monthly_budget_usd" {
   description = "Account-wide alert threshold; this is not a hard spending cap."
   type        = number
-  default     = 1
+  default     = 10
   validation {
     condition     = var.monthly_budget_usd > 0
     error_message = "Budget must be positive."
@@ -58,7 +58,47 @@ variable "offline_mode" {
 }
 
 variable "reserve_probe_concurrency" {
-  description = "Opt in only after verifying regional account capacity can reserve 10 slots while leaving AWS's 100 unreserved slots. SQS maximum concurrency always caps each worker at 10."
+  description = "Opt in only after verifying regional account capacity can reserve 10 slots while leaving AWS's 100 unreserved slots. SQS maximum concurrency always caps each worker at 10. Also reserves 5 slots for the sign-in adapter when it is enabled."
   type        = bool
   default     = false
+}
+
+variable "social_providers" {
+  description = "Social sign-in providers to enable on the Cognito pool. Each needs its client ID and secret below."
+  type        = set(string)
+  default     = []
+  validation {
+    condition     = alltrue([for p in var.social_providers : contains(["Google", "GitHub"], p)])
+    error_message = "Supported social providers are \"Google\" and \"GitHub\"."
+  }
+}
+
+# Secrets arrive only through an untracked tfvars file or TF_VAR_* environment variables.
+# They are null by default so the current deployment and offline validation need none.
+variable "google_client_id" {
+  description = "Google OAuth client ID (Web application). Required when social_providers includes Google."
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
+variable "google_client_secret" {
+  description = "Google OAuth client secret. Required when social_providers includes Google."
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
+variable "github_client_id" {
+  description = "GitHub OAuth App client ID. Required when social_providers includes GitHub."
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
+variable "github_client_secret" {
+  description = "GitHub OAuth App client secret. Required when social_providers includes GitHub."
+  type        = string
+  default     = null
+  sensitive   = true
 }

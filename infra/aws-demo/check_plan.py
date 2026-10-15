@@ -10,9 +10,65 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def check_social(managed, oidc):
+    """Optional Google/GitHub sign-in: absent by default, tightly scoped when enabled."""
+    def of(kind):
+        return [r["change"]["after"] for r in managed.values() if r["type"] == kind]
+    providers = {p["provider_name"]: p for p in of("aws_cognito_identity_provider")}
+    client = of("aws_cognito_user_pool_client")[0]
+    require(client["supported_identity_providers"] == ["COGNITO"] + sorted(providers), "App client must list COGNITO plus enabled providers")
+    require(set(providers) <= {"Google", "GitHub"}, "Unexpected identity provider")
+    if "Google" in providers:
+        require(providers["Google"]["provider_type"] == "Google", "Wrong Google provider type")
+    if "GitHub" not in providers:
+        require(not oidc and not of("aws_lambda_function_url"), "GitHub adapter must be off when GitHub is disabled")
+        return
+    require(providers["GitHub"]["provider_type"] == "OIDC", "Wrong GitHub provider type")
+    require(len(oidc) == 1 and len(of("aws_lambda_function_url")) == 1, "Expected exactly one GitHub adapter and URL")
+    function = oidc[0]
+    require(function["region"] == "us-east-1" and function["architectures"] == ["arm64"], "Wrong adapter placement")
+    require(function["memory_size"] == 256 and function["timeout"] == 10, "Unexpected adapter sizing")
+    require(not function["vpc_config"], "Adapter must not depend on VPC/NAT")
+    require(of("aws_lambda_function_url")[0]["authorization_type"] == "NONE", "Adapter URL is the public OIDC issuer")
+    require("BEGIN" not in json.dumps(function["environment"]), "Signing key leaked into plan values")
+    require(of("tls_private_key")[0]["rsa_bits"] == 2048, "Signing key must be RSA 2048")
+    logs = [g for g in of("aws_cloudwatch_log_group") if g["name"].endswith("-github-oidc")]
+    require(len(logs) == 1 and logs[0]["retention_in_days"] == 14, "Adapter logs need 14-day retention")
+
+
+def check_social_iam(root):
+    """The adapter may only write its own logs; the key arrives as an env var, so no SSM/KMS access."""
+    policy = next((r for r in root["resources"] if r["address"] == "data.aws_iam_policy_document.github_oidc"), None)
+    if policy is None:
+        return
+    statements = policy["expressions"]["statement"]
+    function = next(r for r in root["resources"] if r["address"] == "aws_lambda_function.github_oidc")
+    env_refs = json.dumps(function["expressions"]["environment"])
+    require("tls_private_key.github_oidc[0].private_key_pem_pkcs8" in env_refs, "Signing key must come from the generated sensitive key")
+    require(len(statements) == 1, "Unexpected adapter grants")
+    require(set(statements[0]["actions"]["constant_value"]) == {"logs:CreateLogStream", "logs:PutLogEvents"}, "Unexpected adapter log actions")
+    require(statements[0]["resources"].get("references", [])[0] == "aws_cloudwatch_log_group.github_oidc[0].arn", "Adapter log scope widened")
+
+
+def check_verification_email(managed):
+    """Cognito requires {####} once in the message and caps it at 20,000 characters."""
+    pool = next(r["change"]["after"] for r in managed.values() if r["type"] == "aws_cognito_user_pool")
+    template = pool["verification_message_template"][0]
+    message = template["email_message"]
+    require(message.count("{####}") == 1, "Verification email must contain {####} exactly once")
+    require(len(message) < 20000, "Verification email exceeds Cognito's 20,000 character limit")
+    require(template["email_subject"], "Verification email needs a subject")
+    require(template["default_email_option"] == "CONFIRM_WITH_CODE", "Verification must use a code")
+    # The one external reference allowed is the Doto stylesheet; clients that block it fall back to monospace.
+    fonts = "https://fonts.googleapis.com/css2?family=Doto:wght@800&amp;display=swap"
+    rest = message.replace(fonts, "").lower()
+    require("<script" not in rest and "http" not in rest, "Verification email must be self-contained apart from the Doto font")
+
+
 def check(plan):
     changes = plan["resource_changes"]
     managed = {r["address"]: r for r in changes if r["mode"] == "managed"}
+    check_verification_email(managed)
     allowed = {
         "aws_budgets_budget", "aws_cognito_user_pool", "aws_cognito_user_pool_client",
         "aws_cognito_user_pool_domain", "aws_cognito_user_group", "aws_iam_user",
@@ -24,15 +80,21 @@ def check(plan):
         "aws_cloudfront_origin_access_control", "aws_cloudfront_function", "aws_cloudfront_cache_policy",
         "aws_cloudfront_response_headers_policy", "aws_cloudfront_distribution", "aws_s3_bucket_policy",
     }
+    social = {
+        "aws_cognito_identity_provider", "aws_lambda_function_url",
+        "aws_lambda_permission", "tls_private_key",
+    }
+    allowed |= social
     for resource in changes:
         if resource["mode"] == "data":
-            require(resource["type"] == "aws_iam_policy_document", "Unexpected API-backed data source")
+            require(resource["type"] in {"aws_iam_policy_document", "archive_file"}, "Unexpected API-backed data source")
     for resource in managed.values():
         require(resource["type"] in allowed, f"Excluded resource type: {resource['type']}")
         require(resource["change"]["actions"] == ["create"], "Offline check must use empty state")
     def resources(kind):
         return [r["change"]["after"] for r in managed.values() if r["type"] == kind]
-    lambdas = resources("aws_lambda_function")
+    oidc = [r for r in resources("aws_lambda_function") if r["runtime"] == "nodejs22.x"]
+    lambdas = [r for r in resources("aws_lambda_function") if r["runtime"] != "nodejs22.x"]
     require(len(lambdas) == 2, "Expected exactly two probe workers")
     require({r["region"] for r in lambdas} == {"eu-west-1", "us-east-1"}, "Wrong worker regions")
     for function in lambdas:
@@ -58,6 +120,7 @@ def check(plan):
         if not queue["name"].endswith("-dlq"):
             require(queue["receive_wait_time_seconds"] == 20, "Use long polling")
             require(queue["visibility_timeout_seconds"] == (180 if "-jobs-" in queue["name"] else 60), "Incorrect visibility timeout")
+    check_social(managed, oidc)
     client = resources("aws_cognito_user_pool_client")[0]
     require(client["generate_secret"] is False and client["allowed_oauth_flows"] == ["code"], "SPA must use public code flow")
     require(set(client["explicit_auth_flows"]) == {"ALLOW_ADMIN_USER_PASSWORD_AUTH", "ALLOW_USER_SRP_AUTH"}, "Unexpected password/refresh flows")
@@ -69,7 +132,7 @@ def check(plan):
     require(pool["auto_verified_attributes"] == ["email"], "Email verification is required")
     require(resources("aws_cognito_user_group")[0]["name"] == "demo", "Wrong demo group")
     budget = resources("aws_budgets_budget")[0]
-    require(float(budget["limit_amount"]) == 1 and budget["time_unit"] == "MONTHLY", "Expected USD1 monthly alert")
+    require(float(budget["limit_amount"]) == 10 and budget["time_unit"] == "MONTHLY", "Expected USD10 monthly alert")
     require(not budget.get("cost_filter"), "Budget must cover the whole account")
     require(budget["cost_types"][0]["include_credit"] is False, "Credits must not hide consumption")
     blocks = resources("aws_s3_bucket_public_access_block")
@@ -88,6 +151,7 @@ def check(plan):
     for statement, (actions, references) in zip(statements, expected):
         require(set(statement["actions"]["constant_value"]) == actions, "Unexpected IAM actions")
         require(set(statement["resources"].get("references", [])) == references, "Server IAM scope widened")
+    check_social_iam(root)
     for module_name in ["us_probe", "europe_probe"]:
         module = root["module_calls"][module_name]["module"]
         policy = next(r for r in module["resources"] if r["address"] == "data.aws_iam_policy_document.probe")

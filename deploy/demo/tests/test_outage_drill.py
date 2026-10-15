@@ -3,12 +3,14 @@ import fcntl
 import importlib.util
 from pathlib import Path
 import signal
+import sys
 import subprocess
 import tempfile
 import time
 import unittest
 
 DEMO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(DEMO / "scripts"))
 SCRIPT = DEMO / "scripts/outage-drill.py"
 spec = importlib.util.spec_from_file_location("outage_drill", SCRIPT)
 drill = importlib.util.module_from_spec(spec)

@@ -28,6 +28,9 @@ resource "aws_cognito_user_pool" "demo" {
   }
   verification_message_template {
     default_email_option = "CONFIRM_WITH_CODE"
+    email_subject        = "Your RCP verification code"
+    # Cognito uses this one template for sign-up confirmation and forgot-password codes.
+    email_message = file("${path.module}/email/verification.html")
   }
   user_attribute_update_settings {
     attributes_require_verification_before_update = ["email"]
@@ -47,7 +50,7 @@ resource "aws_cognito_user_pool_client" "dashboard" {
   allowed_oauth_flows_user_pool_client = true
   allowed_oauth_flows                  = ["code"]
   allowed_oauth_scopes                 = ["openid", "email", "profile"]
-  supported_identity_providers         = ["COGNITO"]
+  supported_identity_providers         = concat(["COGNITO"], local.social_providers)
   callback_urls                        = ["${local.dashboard_origin}/auth/callback"]
   logout_urls                          = [local.dashboard_origin]
   explicit_auth_flows                  = ["ALLOW_ADMIN_USER_PASSWORD_AUTH", "ALLOW_USER_SRP_AUTH"]
@@ -56,6 +59,8 @@ resource "aws_cognito_user_pool_client" "dashboard" {
   refresh_token_validity               = 1
   enable_token_revocation              = true
   prevent_user_existence_errors        = "ENABLED"
+  # Cognito rejects a provider name the pool does not have yet.
+  depends_on = [aws_cognito_identity_provider.google, aws_cognito_identity_provider.github]
 
   token_validity_units {
     access_token  = "minutes"
