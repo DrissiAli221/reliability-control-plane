@@ -35,6 +35,8 @@ Live demo: <https://d2l2dtbol2pu16.cloudfront.net>. "Try the live demo" opens a 
   90 days, exported as HTML, JSON, CSV (incidents), or PDF through the browser's print dialog.
 - **Soft-deletes monitors.** A deleted monitor disappears from reads, status pages and quotas and stops being
   scheduled, while incident and execution evidence stays in the database.
+- **Explains itself in the console.** A "How RCP works" section walks through five interactive figures: the
+  deployment, the life of one check, verdicts, availability and the incident state machine.
 - **Is careful about what it fetches.** Targets are checked against an SSRF policy: no private or reserved
   addresses, no credentials or query strings, DNS revalidated at connection time, redirects disabled.
 
@@ -120,7 +122,7 @@ Each decision has a full record (context, alternatives, consequences, and when t
   backup-and-restore exercise. CI runs the Java suite, the dashboard tests, and Terraform formatting and validation. An offline Terraform plan
   has been run by hand, not in CI.
 - **Not proven:** the Fargate / RDS production design (it was never applied), network-level egress isolation for
-  probes, failover of the control plane,, and production capacity.
+  probes, failover of the control plane, and production capacity.
 
 The [implementation status](docs/implementation-status.md) is the evidence ledger for every claim, and the
 [threat model](docs/threat-model.md) lists the gates that public use still has to meet.
