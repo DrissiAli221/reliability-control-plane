@@ -1,274 +1,189 @@
 # Reliability Control Plane
 
-The [implementation status](docs/implementation-status.md) separates working code from architecture decisions and unverified AWS plans. Do not treat [the original architecture plan](docs/architecture-decisions.md) as a list of completed features.
-For local failure triage, use the [operator runbook](docs/local-operator-runbook.md).
-The [threat model](docs/threat-model.md) records the trust boundaries and deployment security gates; it does not claim those gates have been met.
-The [OpenAPI contract](docs/openapi.yaml) covers the implemented HTTP endpoints; the [local fault-drill postmortem](docs/local-fault-drill-postmortem.md) records one simulated incident and its proof boundary.
-The [accepted ADRs](docs/accepted-adrs.md) record the choices and reconsideration triggers separately from the original plan.
+Uptime monitoring that checks each site from two AWS regions and only declares an outage when both regions see the
+site fail. One region timing out, a probe crashing, or a check that never came back is recorded as *inconclusive*,
+not as downtime, so the availability numbers and incidents it reports are backed by evidence.
 
-RCP accepts HTTP(S) monitors, schedules one probe job per configured region, transports work through SQS-compatible queues, evaluates regional evidence, and maintains availability and incident state in PostgreSQL.
+It is a Java 21 / Spring Boot control plane with PostgreSQL, SQS queues and regional Lambda probe workers, plus a
+React operator console and public status pages.
 
-The local profile runs the real control-plane pipeline with PostgreSQL and ElasticMQ. For convenience, local probe adapters run in the same JVM; the AWS design replaces them with isolated regional Lambda workers. Region names in local logs are simulation labels, not evidence of geographic execution.
+Live demo: <https://d2l2dtbol2pu16.cloudfront.net>. "Try the live demo" opens a read-only workspace with no sign-up. Visitors can also create an account to monitor their own sites, within small per-account limits.
 
-```text
-POST /api/monitors
-        |
-        v
-   PostgreSQL <----- source of truth
-        |
-   due scheduler
-        |
- transactional outbox
-        |
-        +----> probe-jobs-eu-west-1 ----> local worker ---+
-        |                                                |
-        +----> probe-jobs-us-east-1 ----> local worker ---+--> probe-results
-                                                                  |
-                                                                  v
-                                                        idempotent ingestion
-                                                                  |
-                                                   verdict + incident policy
-                                                                  |
-                                                  dashboard/status queries
+![Fleet overview in the live demo: uptime, incidents, regions and a live event feed](docs/screenshots/overview.png)
+
+## What it does
+
+- **Monitors HTTP(S) endpoints** on a schedule, each check fanned out to `eu-west-1` and `us-east-1`.
+- **Decides per check, across regions.** Both regions get an accepted HTTP response (200–399 by default) → `UP`. Both regions observe a
+  target failure (an HTTP error status, a connection or TLS failure, or a timeout) → `DOWN`. Anything else (the
+  regions disagree, a region has no answer, a probe was blocked by policy or failed internally) → inconclusive.
+- **Lets each monitor choose which HTTP statuses count as up.** The default is 200–399. A custom set is copied
+  into each check's execution snapshot when the check is scheduled, so changing it later never reinterprets past
+  checks.
+- **Treats Cloudflare bot challenges as no evidence.** A response marked `cf-mitigated: challenge` says the probe
+  was stopped, not that the target is down. If both regions are challenged the check is shown as *Blocked* (no
+  data); if one is, the regions disagree. Challenged responses are left out of latency figures. Accepting the
+  challenge status for a monitor (for example 403) overrides this.
+- **Opens an incident on the 2nd consecutive `DOWN`** and resolves it after 2 consecutive `UP`s. An inconclusive
+  check resets both streaks, so one flaky region can neither open an incident nor close one.
+- **Measures availability with its evidence.** Reports show measured availability *and* how much conclusive
+  evidence supports it. Coverage is `(UP + DOWN) / max(expected, created)`; below the default 95% threshold,
+  with no conclusive checks, or with inconsistent history, the SLO is **Unproven**.
+- **Shows its work.** Every check has a trace from scheduled to decided, the console draws the incident state
+  machine from the stored streak counters, and a pipeline page shows each stage live.
+- **Publishes status pages** with 45 days of history, and owner-only reliability reports over 24 hours, 7, 30 or
+  90 days, exported as HTML, JSON, CSV (incidents), or PDF through the browser's print dialog.
+- **Soft-deletes monitors.** A deleted monitor disappears from reads, status pages and quotas and stops being
+  scheduled, while incident and execution evidence stays in the database.
+- **Explains itself in the console.** A "How RCP works" section walks through five interactive figures: the
+  deployment, the life of one check, verdicts, availability and the incident state machine.
+- **Is careful about what it fetches.** Targets are checked against an SSRF policy: no private or reserved
+  addresses, no credentials or query strings, DNS revalidated at connection time, redirects disabled.
+
+![A monitor's detail page: planned drill track, latest check from both regions with the UP verdict, and 7-day summary tiles](docs/screenshots/monitor-detail.png)
+
+The monitor in the screenshot is the **scheduled outage drill** on the live demo: a test endpoint that the server
+deliberately faults on a two-hour UTC cycle (outage, slow responses, one-region failure or a short blip, with some
+cycles skipped). The schedule is deterministic ([`drill_schedule.py`](deploy/demo/scripts/drill_schedule.py)) and the
+fault runs through [`outage-drill.py`](deploy/demo/scripts/outage-drill.py), so incidents open and resolve for real.
+
+## Where RCP runs
+
+The live demo runs the control plane on a free Oracle ARM VM and everything else on AWS: probe workers in two regions, sign-in, and the dashboard. Locally, PostgreSQL and ElasticMQ stand in for the cloud and both "regions" run in one JVM, so their names are just labels.
+
+[![RCP demo deployment: Oracle control plane, AWS regional workers, identity and dashboard delivery](docs/diagrams/deployment.png)](docs/diagrams/deployment.svg)
+
+## The life of one check
+
+Scheduling a check is one database transaction: it saves the check, its deadline and one outbox message per region. The regional workers probe the site independently, their results are stored exactly once, and the check is decided when both answers are in or the deadline passes.
+
+[![Check lifecycle from atomic scheduling through regional probes, deduplication, finalization and incident policy](docs/diagrams/lifecycle.png)](docs/diagrams/lifecycle.svg)
+
+## Verdicts and incidents
+
+A result only counts if it says something about the site itself. An incident opens after two DOWN checks in a row and resolves after two UP; an inconclusive check resets both streaks and leaves the incident as it is.
+
+[![Regional evidence classification and the two-state incident policy](docs/diagrams/verdicts.png)](docs/diagrams/verdicts.svg)
+
+## Availability needs evidence
+
+100 UP checks out of 100 and 10 UP checks out of 100 expected both read as 100% availability, but only the first is backed by evidence. When too few checks were conclusive, the SLO is reported as **Unproven** instead of passed or failed.
+
+[![Two windows with the same availability, different evidence coverage and different SLO conclusions](docs/diagrams/availability.png)](docs/diagrams/availability.svg)
+
+Click a figure for the full-size SVG. Interactive versions are in the console under "How RCP works" and in [`docs/diagrams`](docs/diagrams/README.md).
+
+## Two deployment designs
+
+In both, the two regions give independent views of the target, while the control plane and its database stay in
+one place and make every decision. The repository holds two designs:
+
+**Live demo (running).** The control plane and PostgreSQL run in Docker Compose behind Caddy, which handles HTTPS
+certificates automatically, on one Oracle Cloud Always Free ARM VM. Probe Lambdas and SQS job queues run in
+`eu-west-1` and `us-east-1`; the results queue and Cognito (Google and GitHub sign-in, plus email) are in
+`us-east-1`. The dashboard is served from S3 behind CloudFront. The database is backed up daily, and metrics go to
+Grafana Cloud through Alloy. The Lambda and SQS part is modelled at about $2.24/month for ten monitors and $8.96
+for forty (ten demo plus thirty visitor monitors) in [`cost-estimate.py`](infra/aws-demo/cost-estimate.py); S3,
+CloudFront, logs and the VM are not in that model. A $10/month AWS budget alarm warns about overspend but does not
+cap it.
+
+**Production design (Terraform, validated, deliberately not applied).** An ECS Fargate control plane, RDS
+PostgreSQL, an Application Load Balancer and two NAT gateways, described in [`infra/aws`](infra/aws/README.md). That
+layout has an always-on cost that a demo does not justify, which is why the demo uses the cheaper one.
+
+Deployment instructions are in [the single-server runbook](deploy/demo/README.md), [AWS demo infrastructure](infra/aws-demo/README.md)
+and [Oracle infrastructure](infra/oracle-demo/README.md). The shared demo is read-only at the API; visitor
+registrations have separate monitor limits.
+
+## Design decisions
+
+Each decision has a full record (context, alternatives, consequences, and when to revisit it) in the
+[accepted ADRs](docs/accepted-adrs.md).
+
+| Decision | Why | Trade-off accepted |
+| --- | --- | --- |
+| **One modular monolith**, not microservices ([ADR-003](docs/accepted-adrs.md#adr-003--modular-monolith)) | One deployable and one transaction boundary; Spring Modulith tests keep the modules separate | Modules must stay disciplined without a network boundary to force it |
+| **PostgreSQL is the source of truth**; queues only transport ([ADR-004](docs/accepted-adrs.md#adr-004--postgresql-source-of-truth-and-persistence-split)) | Constraints catch the duplicate and out-of-order messages SQS will deliver | Results are checked against the database instead of trusted from the queue |
+| **Scheduling in the database** with `SKIP LOCKED` ([ADR-005](docs/accepted-adrs.md#adr-005--database-due-scheduler)) | Several instances can claim due monitors without double-scheduling, and it is testable locally | More database load than a managed scheduler at very large scale |
+| **Transactional outbox** ([ADR-006](docs/accepted-adrs.md#adr-006--transactional-outbox)) | A crash between "saved the job" and "sent it to SQS" can no longer lose work | A job can be sent twice, so every consumer is idempotent |
+| **Lambda probes, long-running control plane** ([ADR-008](docs/accepted-adrs.md#adr-008--lambda-probe-workers-and-ecs-control-plane)) | Probes are short and bursty; scheduling and decisions are not | Two runtimes, kept consistent by one shared `rcp-probe-core` module. The live demo runs the same control plane on one VM instead of ECS, for cost |
+| **Regions diversify observations, not authority** ([ADR-009](docs/accepted-adrs.md#adr-009--central-region-authority-boundary)) | Two regions buy independent evidence about the target | The control plane itself is single-region; this is not multi-region HA |
+| **Inconclusive is not down** | A broken probe or a one-sided failure says nothing reliable about the target | A real outage seen by only one region shows as disagreement, not an incident |
+| **Coverage gates the SLO** | 100% availability measured over 3% of the expected checks is not a result | Reports can leave the SLO **Unproven** when evidence is insufficient |
+| **Cognito sign-in, read-only enforced on the server** ([ADR-010](docs/accepted-adrs.md#adr-010--oidc-operator-identity)) | No home-made password handling; the demo cannot be changed even with a hand-crafted request | Demo sign-in depends on Cognito being reachable |
+
+## What is proven, and what is not
+
+- **Proven on real AWS:** the live demo has been running since 5 Oct 2026, with probes executing in two real AWS
+  regions. The scheduled outage drill opens and resolves incidents end to end there.
+- **Proven locally:** the full pipeline with PostgreSQL and an SQS-compatible queue (ElasticMQ), concurrency and
+  idempotency under Testcontainers, incident open and resolve through fault injection, a k6 load run, and a
+  backup-and-restore exercise. CI runs the Java suite, the dashboard tests, and Terraform formatting and validation. An offline Terraform plan
+  has been run by hand, not in CI.
+- **Not proven:** the Fargate / RDS production design (it was never applied), network-level egress isolation for
+  probes, failover of the control plane, and production capacity.
+
+The [implementation status](docs/implementation-status.md) is the evidence ledger for every claim, and the
+[threat model](docs/threat-model.md) lists the gates that public use still has to meet.
+
+## Tech stack
+
+| Area | Choices |
+| --- | --- |
+| Backend | Java 21, Spring Boot 4, Spring Modulith, Spring Security (OAuth2 resource server), JPA and JDBC, Flyway |
+| Data and messaging | PostgreSQL 17.6, Amazon SQS (ElasticMQ locally) |
+| Probes | AWS Lambda (Java 21) around a framework-free probe engine |
+| Frontend | React 19, TypeScript, Vite, `oidc-client-ts` |
+| Infrastructure | Terraform, Docker, Docker Compose |
+| Demo hosting | Oracle Cloud ARM VM with Caddy; AWS Lambda, SQS, Cognito, S3 and CloudFront; Grafana Cloud with Alloy |
+| Observability | Micrometer, OpenTelemetry, Prometheus, Grafana, Tempo |
+| Testing | JUnit 5, Testcontainers, Vitest with Testing Library, k6 |
+
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| [`rcp-control-plane`](rcp-control-plane) | Spring Boot control plane: API, scheduler, outbox, ingestion, incidents, availability, reports |
+| [`rcp-probe-core`](rcp-probe-core) | The probe engine and SSRF policy, shared by every worker |
+| [`rcp-probe-lambda`](rcp-probe-lambda) | The regional Lambda worker |
+| [`rcp-dashboard`](rcp-dashboard/README.md) | React operator console and public status pages |
+| [`infra/aws`](infra/aws/README.md) | Terraform for the separate Fargate / RDS design |
+| [`infra/aws-demo`](infra/aws-demo/README.md), [`infra/oracle-demo`](infra/oracle-demo/README.md), [`deploy/demo`](deploy/demo/README.md) | Demo infrastructure and single-server deployment |
+| [`docs/screenshots`](docs/screenshots) | Screenshots of the live demo used in this README |
+| [`docs/diagrams`](docs/diagrams/README.md) | Four SVG/PNG figures and offline interactive HTML companions |
+| [`docs`](docs) | ADRs, implementation status, threat model, runbooks, OpenAPI contract |
+
+## Run it locally
+
+Requirements: Docker Desktop, Java 21 and Node.js. Point `JAVA_HOME` at a Java 21 JDK first; on macOS:
+
+```bash
+export JAVA_HOME=$(/usr/libexec/java_home -v 21)
 ```
 
-## Run locally
-
-Requirements: Docker Desktop, Java 21, `curl`, and `jq`.
-
-Start PostgreSQL and ElasticMQ from the repository root:
+Then, from the repository root:
 
 ```bash
 docker compose up -d
-docker compose ps
+./rcp-control-plane/mvnw -q -DskipTests install
+cd rcp-control-plane && RCP_LOCAL_JWT_SECRET="$(openssl rand -base64 48)" ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-The project uses host port `15432` for PostgreSQL to avoid common collisions with locally installed databases. ElasticMQ exposes its SQS-compatible API on `9324`.
-
-From the repository root, install the sibling probe-core module into your local Maven cache before running Spring Boot from the control-plane directory. A reactor `verify` builds it for tests but does not install it, so skipping this step on a fresh checkout makes `spring-boot:run` fail to resolve `rcp-probe-core`:
+Then, in a second terminal, start the console and open <http://localhost:5173>:
 
 ```bash
-JAVA_HOME=$(/usr/libexec/java_home -v 21) ./rcp-control-plane/mvnw -q -DskipTests install
+cd rcp-dashboard && npm ci && npm run dev
 ```
 
-In the first terminal, download the OpenTelemetry Java agent and start Spring Boot with tracing plus an ephemeral local JWT signing secret:
-
-```bash
-cd rcp-control-plane
-export JAVA_HOME=$(/usr/libexec/java_home -v 21)
-export PATH="$JAVA_HOME/bin:$PATH"
-./mvnw dependency:copy \
-  -Dartifact=io.opentelemetry.javaagent:opentelemetry-javaagent:2.25.0 \
-  -DoutputDirectory=target/otel \
-  -Dmdep.stripVersion=true
-export RCP_LOCAL_JWT_SECRET="$(openssl rand -base64 48)"
-export OTEL_SERVICE_NAME=rcp-control-plane
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
-export OTEL_METRICS_EXPORTER=none
-export OTEL_LOGS_EXPORTER=none
-./mvnw spring-boot:run \
-  -Dspring-boot.run.profiles=local \
-  -Dspring-boot.run.jvmArguments="-javaagent:target/otel/opentelemetry-javaagent.jar"
-```
-
-The `local` profile applies Flyway migrations, enables the control-plane processing loops, and starts local adapters for the two configured probe queues. The Java agent instruments supported libraries without coupling domain code to a tracing vendor. If `mvn clean` removes `target`, repeat the agent download command. The local token issuer exists only in this profile; AWS will use Cognito/OIDC instead.
-
-If executions appear hours late or expire immediately, compare the host and PostgreSQL container clocks before changing scheduler logic:
-
-```bash
-date -u
-docker compose exec -T postgres date -u
-```
-
-They should agree within a few seconds. The scheduler and deadline query use PostgreSQL time as their authority; the application and local probe adapters still run on the host. A large Docker Desktop clock skew makes local end-to-end timings unreliable. Restart Docker Desktop, recheck both clocks, and only then repeat the experiment. Keep the Compose volumes; `docker compose down -v` would delete local data and is not a clock fix.
-
-In a second terminal, request a one-hour development JWT:
-
-```bash
-export RCP_TOKEN="$(curl -fsS -X POST http://localhost:8080/local/token | jq -r .accessToken)"
-```
-
-Create a monitor. Use a public endpoint you are authorized to probe; localhost and private/reserved addresses are intentionally rejected by the SSRF policy.
-Targets with query strings are also rejected because queries commonly contain secrets. The probe's connection-time DNS resolver revalidates every answer, but network egress denial remains a separate, unproven defense until an AWS worker environment is deployed and tested.
-Registration is capped at 25 monitors per owner by default, including paused monitors. Override `RCP_MONITORS_MAX_PER_OWNER` for a different local limit; exceeding it returns HTTP 409. This cap is not a request-rate limit.
-
-```bash
-curl -fsS -X POST http://localhost:8080/api/monitors \
-  -H "Authorization: Bearer $RCP_TOKEN" \
-  -H "Content-Type: application/json" \
-  --data '{
-    "name": "Local proof",
-    "targetUrl": "https://example.com/",
-    "checkIntervalSeconds": 30,
-    "timeoutMs": 5000
-  }' | jq
-```
-
-After a few seconds, inspect the finalized regional verdict and incident state:
-
-```bash
-curl -fsS http://localhost:8080/api/monitors \
-  -H "Authorization: Bearer $RCP_TOKEN" | jq
-```
-
-Pause a monitor without deleting its historical evidence (replace `RCP_MONITOR_ID` with the ID returned by creation):
-
-```bash
-curl -fsS -X PATCH "http://localhost:8080/api/monitors/$RCP_MONITOR_ID/enabled" \
-  -H "Authorization: Bearer $RCP_TOKEN" \
-  -H "Content-Type: application/json" \
-  --data '{"enabled":false}' | jq
-```
-
-Use `{"enabled":true}` to resume. Only the owner can change this state. Pausing prevents new jobs after the in-flight scheduling transaction commits; it does not cancel already-created jobs or erase incidents. The database records each enabled interval so paused time is excluded from expected-check coverage.
-
-## Exercise incident opening and recovery
-
-The local profile has an authenticated fault-injection control. It changes only the local HTTP adapter and is absent from non-local profiles. `HTTP_503` makes both simulated regional workers report a real HTTP 503 fact without weakening URL validation.
-
-```bash
-curl -fsS -X PUT http://localhost:8080/api/local/probe-fault \
-  -H "Authorization: Bearer $RCP_TOKEN" \
-  -H "Content-Type: application/json" \
-  --data '{"mode":"HTTP_503"}' | jq
-```
-
-After two scheduled checks, the incident state becomes `OPEN`. Restore real network probing:
-
-```bash
-curl -fsS -X PUT http://localhost:8080/api/local/probe-fault \
-  -H "Authorization: Bearer $RCP_TOKEN" \
-  -H "Content-Type: application/json" \
-  --data '{"mode":"PASS_THROUGH"}' | jq
-```
-
-Two subsequent `UP` checks resolve the incident. Other supported modes are `CONNECTION_FAILURE`, `REQUEST_TIMEOUT`, and `RESPONSE_TOO_LARGE`.
-
-Useful diagnostics:
-
-```bash
-curl -fsS http://localhost:8080/actuator/health | jq
-curl -fsS http://localhost:8080/actuator/metrics \
-  -H "Authorization: Bearer $RCP_TOKEN" | jq
-docker compose logs -f elasticmq postgres
-```
-
-## Observe the reliability pipeline
-
-Compose also starts Prometheus, Grafana, an OpenTelemetry Collector, and Tempo. Prometheus scrapes the local-only `/actuator/prometheus` endpoint every five seconds, the collector receives OTLP traces from the Java agent and forwards them to Tempo, and Grafana provisions both data sources automatically.
-
-- Grafana: <http://localhost:3000/d/rcp-overview>
-- Grafana Explore for traces: <http://localhost:3000/explore>
-- Prometheus targets: <http://localhost:9090/targets>
-- Raw application metrics: <http://localhost:8080/actuator/prometheus>
-
-The dashboard separates event counters from current-state gauges. Counters answer “how much work has passed through?” while gauges expose current pressure: pending outbox events, their oldest age, pending executions, unevaluated incident decisions, and open incidents. The snapshot-age panel turns red when the database-backed gauges stop refreshing, so a stale dashboard cannot silently look healthy.
-
-The Prometheus endpoint is unauthenticated only in the `local` Spring profile so the container can scrape the host application. Non-local profiles continue to require authentication; production metrics should additionally be isolated through private networking.
-
-Local application logs use Spring Boot's ECS JSON format. Lifecycle messages carry stable business correlation fields such as `executionId`, `jobId`, `eventId`, `monitorId`, region, verdict, and incident transition; agent-instrumented operations also carry `trace.id` and `span.id`. Search by `executionId` across queue boundaries, and use `trace.id` to inspect one instrumented runtime path in Grafana Explore. Choose the Tempo data source and run this TraceQL query:
-
-```text
-{ resource.service.name = "rcp-control-plane" }
-```
-
-Trace context is diagnostic metadata, not source-of-truth state. The durable execution/job/event IDs remain the reliable way to correlate asynchronous work after retries, duplicates, restarts, or trace retention expiry.
-
-## Run the local load experiment
-
-With the application and Compose services running, execute from the repository root:
-
-```bash
-./scripts/run-load-test.sh
-```
-
-The runner obtains a short-lived local JWT, selects an existing owned monitor, and starts a pinned k6 Docker image. The default workload sends 10 iterations per second for 40 seconds; every iteration reads the monitor overview, calculates availability evidence, and generates report JSON. It checks:
-
-- fewer than 1% failed HTTP requests;
-- more than 99% successful functional checks;
-- no dropped iterations;
-- p95 below 500 ms for all three endpoints.
-
-Override the workload without editing the script:
-
-```bash
-RCP_LOAD_RATE=25 RCP_LOAD_DURATION=60s RCP_LOAD_P95_LIMIT_MS=750 \
-  ./scripts/run-load-test.sh
-```
-
-Each run writes `report.md` and the complete k6 `summary.json` beneath `artifacts/load-tests/<UTC timestamp>/`. These machine-specific results are ignored by Git. The report also records scheduler, stored-result, and loop-failure counter changes during the workload, showing whether background reliability processing continued under API pressure.
-
-This test is a regression and learning tool, not a production capacity benchmark. The runner intentionally avoids creating monitors under load so repeated experiments do not pollute the source-of-truth database.
-
-## Exercise local backup and restore
-
-Stop the local Spring application to quiesce writes, keep Compose PostgreSQL running, then execute:
-
-```bash
-./scripts/run-restore-exercise.sh
-```
-
-The script takes a PostgreSQL 17.6 custom-format backup of the existing local database, restores it into a fresh temporary PostgreSQL 17.6 container, compares core table counts, checks for orphaned jobs/results/incidents, and writes a timestamped report under ignored `artifacts/recovery-tests/`. It removes the temporary dump and restore container; it does **not** overwrite or delete the source database or its Compose volume. Start Spring again afterward. This is local recovery evidence, not an RDS restore or production RPO/RTO claim.
-
-## Validate the AWS infrastructure model
-
-Terraform is developed in reviewable slices under [`infra/aws`](infra/aws/README.md). It models the regional SQS/Lambda worker plane, central VPC/RDS/Cognito/ECS control plane, and private S3/CloudFront dashboard host; it deliberately performs no deployment. Follow that directory's offline validation instructions to produce a plan without contacting an AWS account.
-
-The repository root is a Maven reactor for the pure probe core and both Java deployables. The control plane and Lambda adapter share probe contracts and execution logic without packaging database or Spring control-plane code into the worker. Build and test everything with:
-
-```bash
-./rcp-control-plane/mvnw verify
-```
-
-## Run the operator dashboard
-
-The thin React/TypeScript client lives in [`rcp-dashboard`](rcp-dashboard/README.md). With the local Spring application running on port 8080:
-
-```bash
-cd rcp-dashboard
-npm install
-npm run dev
-```
-
-Open `http://localhost:5173`. Local development obtains a generated test JWT from the local-only backend endpoint. AWS builds use Cognito authorization code with PKCE; incident decisions and availability calculations stay in the Java control plane.
-
-Build the same non-root Java 21 control-plane container intended for ECS from the repository root:
-
-```bash
-docker build -f rcp-control-plane/Dockerfile -t rcp-control-plane:local .
-```
-
-Stop Spring Boot with `Ctrl+C`. Stop the dependency containers without deleting PostgreSQL data:
-
-```bash
-docker compose down
-```
-
-## Availability evidence policy
-
-The availability endpoint reports measured availability separately from evidence coverage. Expected opportunities come from versioned enabled scheduling periods in the requested end-exclusive window, capped at the database's current time; paused time contributes no slots. Coverage divides conclusive finalized executions by those expected slots, so pending executions and slots the scheduler never created lower coverage. The response exposes `expectedOpportunities`, `pendingExecutions`, and `missingExecutions`. Below 95% coverage, `sloMet` is `null` (insufficient evidence), even when measured availability looks good. This remains a reference policy, not a production-grade contractual SLO: maintenance windows, configured/versioned SLO targets, and late correction policy are not implemented.
-
-## Generate an owner-only reliability report
-
-The report API uses the same availability calculation for JSON and downloadable HTML. Supply the monitor ID returned by monitor creation and an explicit UTC window (the end is exclusive):
-
-```bash
-export RCP_MONITOR_ID="<owned-monitor-id>"
-curl -fsS -G "http://localhost:8080/api/monitors/$RCP_MONITOR_ID/reliability-report" \
-  -H "Authorization: Bearer $RCP_TOKEN" \
-  --data-urlencode 'from=2026-09-01T00:00:00Z' \
-  --data-urlencode 'to=2026-09-08T00:00:00Z' | jq
-```
-
-Add `/html` before the query string and use `curl -o report.html` for a download. Both representations include the schema version, generation time, source-data watermark, availability and coverage, observed error-budget usage, HTTP-response latency when there are at least 20 samples, a bounded incident transition timeline, and explicit limitations. The HTML response is an attachment with a restrictive content-security policy; PDF is not yet implemented. A report request by another owner returns 404 rather than revealing that the monitor exists.
-
-## Delivery semantics
-
-- PostgreSQL is the source of truth; queues transport work.
-- A worker deletes a probe job only after its result has been published.
-- The control plane deletes a result message only after PostgreSQL stores it or recognizes it as a duplicate.
-- A crash between publication and acknowledgement can create duplicates, so database uniqueness and durable idempotency remain required.
-- Every queue has a dead-letter queue with a five-receive redrive threshold.
-
-ElasticMQ proves the local SQS-shaped flow, not AWS IAM, Lambda event-source mapping, cross-region routing, quotas, or redrive parity. Those require a separately authorized real-AWS smoke test.
+The [local development guide](docs/local-development.md) covers the rest: creating monitors with `curl`, fault
+drills that open and resolve incidents, tracing with Grafana and Tempo, the k6 load test and the restore exercise.
+Run every test with `./rcp-control-plane/mvnw verify` from the repository root.
+
+## Documentation
+
+- [Accepted ADRs](docs/accepted-adrs.md): the decisions above, in full
+- [Implementation status](docs/implementation-status.md): what is built and the evidence for it
+- [Threat model](docs/threat-model.md): trust boundaries and deployment security gates
+- [OpenAPI contract](docs/openapi.yaml): every implemented endpoint
+- [Operator runbook](docs/local-operator-runbook.md) and the [fault-drill postmortem](docs/local-fault-drill-postmortem.md)
+- [Original architecture plan](docs/architecture-decisions.md): the plan the project started from, not a list of finished features

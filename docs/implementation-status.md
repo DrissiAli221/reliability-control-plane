@@ -39,7 +39,7 @@ The query-string rule was tightened after the initial local implementation. A mo
 
 ## How to verify the local claim
 
-With Docker running and Java 21 selected, run `rcp-control-plane/mvnw verify` from the repository root. In `rcp-dashboard`, run `npm test -- --run`, `npm run lint`, and `npm run build`. Follow the root README for the live local pipeline, k6, and restore exercise. A green local suite proves the exercised contracts only. It does not prove AWS IAM, routing, Lambda cold starts, region placement, egress denial, RDS recovery, or production performance.
+With Docker running and Java 21 selected, run `rcp-control-plane/mvnw verify` from the repository root. In `rcp-dashboard`, run `npm test -- --run`, `npm run lint`, and `npm run build`. Follow the [local development guide](local-development.md) for the live local pipeline, k6, and restore exercise. A green local suite proves the exercised contracts only. It does not prove AWS IAM, routing, Lambda cold starts, region placement, egress denial, RDS recovery, or production performance.
 
 ## Local verification record — 2026-09-29
 
