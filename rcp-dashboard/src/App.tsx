@@ -7,6 +7,7 @@ import { MonitorsPage } from "./pages/MonitorsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { SignInPage } from "./pages/SignInPage";
 import { OverviewPage } from "./pages/OverviewPage";
+import { VisualGuidePage } from "./pages/VisualGuidePage";
 import { PipelinePage } from "./pages/PipelinePage";
 import { PublicStatus } from "./PublicStatus";
 
@@ -50,6 +51,8 @@ export function App() {
       <Route path="/" element={<AppShell onLogout={() => void logout()}><OverviewPage /></AppShell>} />
       <Route path="/monitors" element={<AppShell onLogout={() => void logout()}><MonitorsPage /></AppShell>} />
       <Route path="/pipeline" element={<AppShell onLogout={() => void logout()}><PipelinePage /></AppShell>} />
+      <Route path="/learn" element={<AppShell onLogout={() => void logout()}><VisualGuidePage /></AppShell>} />
+      <Route path="/learn/:figure" element={<AppShell onLogout={() => void logout()}><VisualGuidePage /></AppShell>} />
       <Route path="/monitors/:monitorId" element={<AppShell onLogout={() => void logout()}><MonitorDetailPage /></AppShell>} />
       <Route path="/signin" element={<SignInPage />} />
       <Route path="/auth/callback" element={<AuthCallback />} />

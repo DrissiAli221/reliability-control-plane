@@ -428,7 +428,7 @@ export function MonitorDetailPage() {
           {history && history.regions.length > 0 ? (
             <table className="table compact">
               <thead>
-                <tr><th scope="col">Region</th><th scope="col">Last result</th><th scope="col" className="num">p50</th><th scope="col" className="num">p95</th><th scope="col" className="num">Samples</th></tr>
+                <tr><th scope="col">Region</th><th scope="col">Last result</th><th scope="col" className="num">p50</th><th scope="col" className="num">p95</th><th scope="col" className="num col-samples">Samples</th></tr>
               </thead>
               <tbody>
                 {history.regions.map((region) => (
@@ -442,7 +442,7 @@ export function MonitorDetailPage() {
                     </td>
                     <td className="num mono">{milliseconds(region.p50Ms)}</td>
                     <td className="num mono">{milliseconds(region.p95Ms)}</td>
-                    <td className="num mono subtle">{count(region.httpSamples)}</td>
+                    <td className="num mono subtle col-samples">{count(region.httpSamples)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -483,17 +483,17 @@ export function MonitorDetailPage() {
               <tbody>
                 {incidents.slice(0, INCIDENT_LIMIT).map((item) => (
                   <tr key={item.id}>
-                    <td>
+                    <td data-label="Opened">
                       {item.openedAt
                         ? <time dateTime={item.openedAt}>{dayLabel(item.openedAt)}, <span className="mono">{clockTime(item.openedAt)}</span></time>
                         : <span className="subtle">Before this window</span>}
                     </td>
-                    <td>
+                    <td data-label="Resolved">
                       {item.resolvedAt
                         ? <time dateTime={item.resolvedAt}>{dayLabel(item.resolvedAt)}, <span className="mono">{clockTime(item.resolvedAt)}</span></time>
                         : <span className="incident-ongoing"><StatusDot tone="fault" pulse /> Ongoing</span>}
                     </td>
-                    <td className="num mono">{duration(item.openedAt, item.resolvedAt, now)}</td>
+                    <td className="num mono" data-label="Duration">{duration(item.openedAt, item.resolvedAt, now)}</td>
                   </tr>
                 ))}
               </tbody>
