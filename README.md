@@ -49,34 +49,34 @@ fault runs through [`outage-drill.py`](deploy/demo/scripts/outage-drill.py), so 
 
 ## Where RCP runs
 
-The demo configuration combines an Oracle ARM VM with AWS dashboard delivery, identity and two regional probe workers. The local profile uses PostgreSQL and ElasticMQ with workers in one JVM; its Region names are simulation labels.
+The live demo runs the control plane on a free Oracle ARM VM and everything else on AWS: probe workers in two regions, sign-in, and the dashboard. Locally, PostgreSQL and ElasticMQ stand in for the cloud and both "regions" run in one JVM, so their names are just labels.
 
 [![RCP demo deployment: Oracle control plane, AWS regional workers, identity and dashboard delivery](docs/diagrams/deployment.png)](docs/diagrams/deployment.svg)
 
 ## The life of one check
 
-One transaction saves an execution, its deadline and two regional outbox intents. Independent workers collect observations; durable ingestion, the deadline and separate policy loops turn them into a decision.
+Scheduling a check is one database transaction: it saves the check, its deadline and one outbox message per region. The regional workers probe the site independently, their results are stored exactly once, and the check is decided when both answers are in or the deadline passes.
 
 [![Check lifecycle from atomic scheduling through regional probes, deduplication, finalization and incident policy](docs/diagrams/lifecycle.png)](docs/diagrams/lifecycle.svg)
 
 ## Verdicts and incidents
 
-Received evidence must be usable before it can support UP or DOWN. The initial incident policy needs two consecutive DOWN verdicts to open and two UP to resolve; inconclusive verdicts reset both streaks without changing incident status.
+A result only counts if it says something about the site itself. An incident opens after two DOWN checks in a row and resolves after two UP; an inconclusive check resets both streaks and leaves the incident as it is.
 
 [![Regional evidence classification and the two-state incident policy](docs/diagrams/verdicts.png)](docs/diagrams/verdicts.svg)
 
 ## Availability needs evidence
 
-A window with 100 UP checks and a window with only 10 UP checks can both report 100% measured availability. Their coverage differs: 100% versus 10%. Insufficient coverage leaves the SLO **Unproven**, rather than declaring a pass or a failure.
+100 UP checks out of 100 and 10 UP checks out of 100 expected both read as 100% availability, but only the first is backed by evidence. When too few checks were conclusive, the SLO is reported as **Unproven** instead of passed or failed.
 
 [![Two windows with the same availability, different evidence coverage and different SLO conclusions](docs/diagrams/availability.png)](docs/diagrams/availability.svg)
 
-Each figure links to its full-size SVG. The [interactive diagrams](docs/diagrams/README.md) include flow selection, rule details and calculators; download the HTML files or serve that directory locally.
+Click a figure for the full-size SVG. Interactive versions are in the console under "How RCP works" and in [`docs/diagrams`](docs/diagrams/README.md).
 
 ## Two deployment designs
 
-Geographic probes provide independent target observations; the control plane and its database remain a single
-authority. Regions diversify observations, not authority. The repository holds two deployment designs.
+In both, the two regions give independent views of the target, while the control plane and its database stay in
+one place and make every decision. The repository holds two designs:
 
 **Live demo (running).** The control plane and PostgreSQL run in Docker Compose behind Caddy, which handles HTTPS
 certificates automatically, on one Oracle Cloud Always Free ARM VM. Probe Lambdas and SQS job queues run in
@@ -91,8 +91,7 @@ cap it.
 PostgreSQL, an Application Load Balancer and two NAT gateways, described in [`infra/aws`](infra/aws/README.md). That
 layout has an always-on cost that a demo does not justify, which is why the demo uses the cheaper one.
 
-The figures above describe configuration and application behavior, not a fresh audit of live cloud health.
-Deployment instructions live in [the single-server runbook](deploy/demo/README.md), [AWS demo infrastructure](infra/aws-demo/README.md)
+Deployment instructions are in [the single-server runbook](deploy/demo/README.md), [AWS demo infrastructure](infra/aws-demo/README.md)
 and [Oracle infrastructure](infra/oracle-demo/README.md). The shared demo is read-only at the API; visitor
 registrations have separate monitor limits.
 
