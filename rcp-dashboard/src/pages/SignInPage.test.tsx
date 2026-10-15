@@ -309,6 +309,6 @@ describe("local mode", () => {
 
   it("says plainly that this is a demo deployment that will be shut down", () => {
     renderAt("/signin");
-    expect(screen.getByText(/demo deployment\. It will be shut down once the author.s internship search is over/)).toBeInTheDocument();
+    expect(screen.getByText(/demo deployment with small usage limits\. It may be taken offline later; the source stays on GitHub\./)).toBeInTheDocument();
   });
 });
