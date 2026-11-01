@@ -156,6 +156,35 @@ class IncidentProcessorIntegrationTest {
         assertThat(eventTypes()).isEqualTo("OPENED,RESOLVED");
     }
 
+    @Test
+    void earlierPendingExecutionHoldsBackLaterFinalizedOnes() {
+        Monitor monitor = createMonitor();
+        UUID pending = insertPendingExecution(monitor, minute(0));
+        insertFinalizedExecution(monitor, minute(1), ExecutionVerdict.DOWN);
+
+        assertThat(processor.processBatch()).isZero();
+
+        jdbcTemplate.update(
+                "UPDATE probe_executions SET status = 'FINALIZED', verdict = 'DOWN', finalized_at = result_deadline_at WHERE execution_id = ?",
+                pending
+        );
+        assertThat(processor.processBatch()).isEqualTo(1);
+        assertThat(processor.processBatch()).isEqualTo(1);
+        assertThat(count("incidents")).isEqualTo(1);
+    }
+
+    @Test
+    void evaluationClearsTheAwaitingFlag() {
+        Monitor monitor = createMonitor();
+        UUID execution = insertFinalizedExecution(monitor, minute(0), ExecutionVerdict.UP);
+        assertThat(awaitingEvaluation(execution)).isTrue();
+
+        assertThat(processor.processBatch()).isEqualTo(1);
+
+        assertThat(awaitingEvaluation(execution)).isFalse();
+        assertThat(processor.processBatch()).isZero();
+    }
+
     private Monitor createMonitor() {
         Monitor monitor = Monitor.create(
                 "incident-processor-test",
@@ -168,11 +197,42 @@ class IncidentProcessorIntegrationTest {
         return monitorRepository.saveAndFlush(monitor);
     }
 
-    private void insertFinalizedExecution(
+    private UUID insertPendingExecution(Monitor monitor, Instant scheduledAt) {
+        UUID executionId = UUID.randomUUID();
+        jdbcTemplate.update(
+                """
+                INSERT INTO probe_executions
+                (
+                    execution_id, monitor_id, scheduled_at, result_deadline_at,
+                    target_url_snapshot, timeout_ms_snapshot,
+                    monitor_behavior_version, incident_policy_version,
+                    expected_region_count
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1, 2)
+                """,
+                executionId,
+                monitor.getId(),
+                timestamp(scheduledAt),
+                timestamp(scheduledAt.plusSeconds(30)),
+                monitor.getTargetUrl(),
+                monitor.getTimeoutMs(),
+                monitor.getBehaviorVersion()
+        );
+        return executionId;
+    }
+
+    private boolean awaitingEvaluation(UUID executionId) {
+        return Boolean.TRUE.equals(jdbcTemplate.queryForObject(
+                "SELECT awaiting_evaluation FROM probe_executions WHERE execution_id = ?", Boolean.class, executionId
+        ));
+    }
+
+    private UUID insertFinalizedExecution(
             Monitor monitor,
             Instant scheduledAt,
             ExecutionVerdict verdict
     ) {
+        UUID executionId = UUID.randomUUID();
         jdbcTemplate.update(
                 """
                 INSERT INTO probe_executions
@@ -184,7 +244,7 @@ class IncidentProcessorIntegrationTest {
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, 1, 2, 'FINALIZED', ?, ?)
                 """,
-                UUID.randomUUID(),
+                executionId,
                 monitor.getId(),
                 timestamp(scheduledAt),
                 timestamp(scheduledAt.plusSeconds(30)),
@@ -194,6 +254,7 @@ class IncidentProcessorIntegrationTest {
                 verdict.name(),
                 timestamp(scheduledAt.plusSeconds(31))
         );
+        return executionId;
     }
 
     private String currentState(Monitor monitor) {
