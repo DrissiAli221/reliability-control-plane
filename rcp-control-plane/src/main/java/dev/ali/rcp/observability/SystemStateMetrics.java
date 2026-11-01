@@ -60,19 +60,19 @@ public class SystemStateMetrics {
                         (SELECT COUNT(*) FROM monitors WHERE deleted_at IS NULL AND enabled) AS enabled_monitors,
                         (SELECT COUNT(*) FROM monitors
                             WHERE deleted_at IS NULL AND enabled AND next_check_at <= CURRENT_TIMESTAMP) AS due_monitors,
+                        -- awaiting_evaluation (partially indexed) holds every PENDING and every unevaluated execution.
+                        -- Deleted monitors' executions keep the flag until retention, so the live-monitor check stays.
                         (SELECT COUNT(*) FROM probe_executions executions
-                            WHERE status = 'PENDING' AND EXISTS (SELECT 1 FROM monitors m WHERE m.monitor_id = executions.monitor_id AND m.deleted_at IS NULL)) AS pending_executions,
+                            WHERE awaiting_evaluation AND status = 'PENDING' AND EXISTS (SELECT 1 FROM monitors m WHERE m.monitor_id = executions.monitor_id AND m.deleted_at IS NULL)) AS pending_executions,
                         (SELECT COUNT(*) FROM probe_executions executions
-                            WHERE status = 'FINALIZED' AND EXISTS (SELECT 1 FROM monitors m WHERE m.monitor_id = executions.monitor_id AND m.deleted_at IS NULL)
-                              AND NOT EXISTS (
-                                  SELECT 1 FROM incident_evaluations evaluations
-                                  WHERE evaluations.execution_id = executions.execution_id
-                              )) AS awaiting_incident_evaluation,
+                            WHERE awaiting_evaluation AND status = 'FINALIZED' AND EXISTS (SELECT 1 FROM monitors m WHERE m.monitor_id = executions.monitor_id AND m.deleted_at IS NULL)) AS awaiting_incident_evaluation,
                         (SELECT COUNT(*) FROM incidents WHERE status = 'OPEN' AND EXISTS (SELECT 1 FROM monitors m WHERE m.monitor_id = incidents.monitor_id AND m.deleted_at IS NULL)) AS open_incidents,
                         (SELECT COUNT(*) FROM outbox_events
                             WHERE NOT EXISTS (SELECT 1 FROM monitors m WHERE m.deleted_at IS NOT NULL AND m.monitor_id::text = outbox_events.payload->>'monitorId') AND published_at IS NULL AND failed_at IS NULL) AS pending_outbox,
+                        -- A failed event is never published (outbox_one_terminal_state), but the planner does not read CHECK
+                        -- constraints: the explicit published_at IS NULL is what lets it use outbox_events_unpublished_idx.
                         (SELECT COUNT(*) FROM outbox_events
-                            WHERE NOT EXISTS (SELECT 1 FROM monitors m WHERE m.deleted_at IS NOT NULL AND m.monitor_id::text = outbox_events.payload->>'monitorId') AND failed_at IS NOT NULL) AS failed_outbox,
+                            WHERE NOT EXISTS (SELECT 1 FROM monitors m WHERE m.deleted_at IS NOT NULL AND m.monitor_id::text = outbox_events.payload->>'monitorId') AND published_at IS NULL AND failed_at IS NOT NULL) AS failed_outbox,
                         (SELECT COALESCE(
                             EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - MIN(created_at))), 0
                          ) FROM outbox_events
