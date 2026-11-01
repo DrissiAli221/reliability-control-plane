@@ -27,22 +27,18 @@ public class IncidentRepository {
                 """
                 SELECT execution_id, monitor_id, scheduled_at, verdict, monitor_behavior_version
                 FROM probe_executions executions
-                WHERE status = 'FINALIZED'
+                -- awaiting_evaluation mirrors "no incident_evaluations row" (V14 trigger) and is partially indexed,
+                -- so both checks read only the executions still in flight, never the retained history.
+                WHERE awaiting_evaluation
+                  AND status = 'FINALIZED'
                   AND EXISTS (SELECT 1 FROM monitors m WHERE m.monitor_id = executions.monitor_id AND m.deleted_at IS NULL)
-                  AND NOT EXISTS (
-                      SELECT 1 FROM incident_evaluations evaluated
-                      WHERE evaluated.execution_id = executions.execution_id
-                  )
                   AND NOT EXISTS (
                       SELECT 1
                       FROM probe_executions earlier
-                      WHERE earlier.monitor_id = executions.monitor_id
+                      WHERE earlier.awaiting_evaluation
+                        AND earlier.monitor_id = executions.monitor_id
                         AND (earlier.scheduled_at, earlier.execution_id)
                             < (executions.scheduled_at, executions.execution_id)
-                        AND NOT EXISTS (
-                            SELECT 1 FROM incident_evaluations earlier_evaluation
-                            WHERE earlier_evaluation.execution_id = earlier.execution_id
-                        )
                   )
                 ORDER BY scheduled_at, execution_id
                 LIMIT ?

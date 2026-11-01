@@ -237,14 +237,21 @@ public class PipelineRepository {
                 WITH owned AS (
                     SELECT monitor_id, enabled, next_check_at FROM monitors WHERE owner_subject = ? AND deleted_at IS NULL
                 ),
+                -- Start from the few unpublished events (partial index), never from the owner's whole history.
                 owned_outbox AS (
                     SELECT outbox.published_at, outbox.failed_at, outbox.created_at
+                    FROM outbox_events outbox
+                    JOIN probe_jobs jobs ON jobs.job_id = outbox.aggregate_id
+                    JOIN probe_executions executions ON executions.execution_id = jobs.execution_id
+                    JOIN owned ON owned.monitor_id = executions.monitor_id
+                    WHERE outbox.published_at IS NULL AND outbox.event_type = 'PROBE_JOB_REQUESTED'
+                ),
+                -- PENDING and not-yet-evaluated executions are exactly the partially indexed awaiting_evaluation rows.
+                owned_in_flight AS (
+                    SELECT executions.status
                     FROM owned
-                    JOIN probe_executions executions ON executions.monitor_id = owned.monitor_id
-                    JOIN probe_jobs jobs ON jobs.execution_id = executions.execution_id
-                    JOIN outbox_events outbox
-                      ON outbox.event_type = 'PROBE_JOB_REQUESTED' AND outbox.aggregate_id = jobs.job_id
-                    WHERE outbox.published_at IS NULL
+                    JOIN probe_executions executions
+                      ON executions.monitor_id = owned.monitor_id AND executions.awaiting_evaluation
                 )
                 SELECT
                     (SELECT COUNT(*) FROM owned WHERE enabled) AS enabled_monitors,
@@ -253,16 +260,8 @@ public class PipelineRepository {
                     (SELECT COUNT(*) FROM owned_outbox WHERE failed_at IS NOT NULL) AS failed_outbox,
                     (SELECT COALESCE(EXTRACT(EPOCH FROM (? - MIN(created_at))), 0)
                        FROM owned_outbox WHERE failed_at IS NULL) AS oldest_outbox_seconds,
-                    (SELECT COUNT(*) FROM owned
-                       JOIN probe_executions executions ON executions.monitor_id = owned.monitor_id
-                      WHERE executions.status = 'PENDING') AS pending_executions,
-                    (SELECT COUNT(*) FROM owned
-                       JOIN probe_executions executions ON executions.monitor_id = owned.monitor_id
-                      WHERE executions.status = 'FINALIZED'
-                        AND NOT EXISTS (
-                            SELECT 1 FROM incident_evaluations evaluations
-                            WHERE evaluations.execution_id = executions.execution_id
-                        )) AS awaiting_evaluation,
+                    (SELECT COUNT(*) FROM owned_in_flight WHERE status = 'PENDING') AS pending_executions,
+                    (SELECT COUNT(*) FROM owned_in_flight WHERE status = 'FINALIZED') AS awaiting_evaluation,
                     (SELECT COUNT(*) FROM owned
                        JOIN incidents ON incidents.monitor_id = owned.monitor_id
                       WHERE incidents.status = 'OPEN') AS open_incidents

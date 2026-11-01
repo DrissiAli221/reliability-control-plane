@@ -10,6 +10,9 @@ services:
   postgres:
     image: postgres:17.6
     restart: unless-stopped
+    # The working set (about 2 GB after a month of checks) must mostly fit in memory: the VM's boot volume is too slow
+    # to serve repeated table reads, and a cache-starved database stalls every request behind disk I/O.
+    command: ["postgres", "-c", "shared_buffers=512MB", "-c", "effective_cache_size=1536MB"]
     environment:
       POSTGRES_DB: rcp
       POSTGRES_USER: rcp
@@ -26,7 +29,7 @@ services:
       timeout: 5s
       retries: 6
       start_period: 20s
-    mem_limit: 512m
+    mem_limit: 2g
     cpus: 1.0
     security_opt:
       - no-new-privileges:true
