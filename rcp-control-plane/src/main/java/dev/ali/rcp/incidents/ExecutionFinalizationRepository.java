@@ -27,7 +27,10 @@ public class ExecutionFinalizationRepository {
                        result_deadline_at, expected_region_count,
                        result_deadline_at <= CURRENT_TIMESTAMP AS deadline_elapsed
                 FROM probe_executions executions
-                WHERE status = 'PENDING'
+                -- Every PENDING execution is awaiting evaluation; the flag's partial index keeps this to in-flight
+                -- rows instead of every monitor's whole history (about 300k buffer reads a second before V14).
+                WHERE awaiting_evaluation
+                  AND status = 'PENDING'
                   AND EXISTS (SELECT 1 FROM monitors m WHERE m.monitor_id = executions.monitor_id AND m.deleted_at IS NULL)
                   AND (
                       result_deadline_at <= CURRENT_TIMESTAMP
